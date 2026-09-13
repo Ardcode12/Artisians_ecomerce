@@ -21,7 +21,7 @@ import { useLanguage } from '@/context/LanguageContext';
 export default function OtpScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { phone, flowMode, verifyOtp, sendOtp } = useAuth();
+  const { phone, flowMode, userRole, verifyOtp, sendOtp } = useAuth();
   const { t } = useLanguage();
 
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
@@ -83,27 +83,51 @@ export default function OtpScreen() {
       const res = await verifyOtp(phone, fullOtp);
 
       if (res.success) {
-        if (flowMode === 'login') {
-          // LOGIN: only allow entry if a profile already exists for this number
-          if (res.isExistingProfile) {
-            router.replace('/');
+        if (userRole === 'buyer') {
+          if (flowMode === 'login') {
+            // BUYER LOGIN: only allow if registered
+            if (res.isExistingProfile) {
+              router.replace('/buyer-home');
+            } else {
+              setErrorMsg('No buyer account found for this number. Please sign up first.');
+              setHasErrorBorder(true);
+              setTimeout(() => {
+                setHasErrorBorder(false);
+                setErrorMsg('No buyer account found for this number. Please sign up first.');
+              }, 3000);
+            }
           } else {
-            // Phone number not registered — block login and prompt signup
-            setErrorMsg('No account found for this number. Please sign up first.');
-            setHasErrorBorder(true);
-            setTimeout(() => {
-              setHasErrorBorder(false);
-              setErrorMsg('No account found for this number. Please sign up first.');
-            }, 3000);
+            // BUYER SIGNUP
+            if (res.isExistingProfile) {
+              router.replace('/buyer-home');
+            } else {
+              router.push('/auth/buyer-type');
+            }
           }
         } else {
-          // SIGNUP mode
-          if (res.isExistingProfile) {
-            // Already registered — just send them home
-            router.replace('/');
+          // ARTISAN FLOW
+          if (flowMode === 'login') {
+            // LOGIN: only allow entry if a profile already exists for this number
+            if (res.isExistingProfile) {
+              router.replace('/');
+            } else {
+              // Phone number not registered — block login and prompt signup
+              setErrorMsg('No account found for this number. Please sign up first.');
+              setHasErrorBorder(true);
+              setTimeout(() => {
+                setHasErrorBorder(false);
+                setErrorMsg('No account found for this number. Please sign up first.');
+              }, 3000);
+            }
           } else {
-            // New user — start onboarding
-            router.push('/auth/details');
+            // SIGNUP mode
+            if (res.isExistingProfile) {
+              // Already registered — send them home
+              router.replace('/');
+            } else {
+              // New user — start onboarding
+              router.push('/auth/details');
+            }
           }
         }
       } else {
@@ -114,6 +138,7 @@ export default function OtpScreen() {
           inputsRef.current[0]?.focus();
         }, 1200);
       }
+
     } catch (err: any) {
       setErrorMsg("Something went wrong — please try again");
       setHasErrorBorder(true);

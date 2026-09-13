@@ -1,0 +1,27 @@
+# Master AI Pipeline Requirements
+# Install with: pip install -r requirements.txt
+
+# === Web Framework ===
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+python-multipart>=0.0.6
+python-dotenv>=1.0.0
+
+# === Service 1: Image Enhancement ===
+rembg[gpu]              # Background removal (falls back to CPU automatically)
+pillow                  # Image compositing onto clean canvas
+opencv-python-headless  # Auto white-balance (gray world) + CLAHE contrast correction
+realesrgan              # AI sharpen/denoise/upscale (Real-ESRGAN)
+basicsr                 # Required by realesrgan
+
+# === Service 2: Voice → Perfect Description ===
+faster-whisper          # Speech-to-text (Hindi, Tamil, Telugu, Bengali, Marathi, Punjabi, English)
+openai                  # OpenAI GPT-4o-mini API
+anthropic               # Claude API (alternative to OpenAI)
+deep-translator         # Fallback translation (backup to LLM)
+
+# === Service 3: Dynamic Pricing Assistant ===
+requests                # SerpApi HTTP calls for Google Shopping & Amazon
+pandas                  # Price extraction, data cleaning & median computation
+scikit-learn            # Regression / pricing analysis
+numpy                   # Matrix and numeric calculations

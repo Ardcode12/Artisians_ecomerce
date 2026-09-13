@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
 import { Camera, ArrowRight, Wallet } from 'lucide-react-native';
 import { Fonts, Shadow, Spacing } from '@/constants/artisan-theme';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
+
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000';
 
 interface HeroCardsProps {
   onAddProduct: () => void;
@@ -13,6 +16,35 @@ interface HeroCardsProps {
 
 export function HeroCards({ onAddProduct, onViewEarnings }: HeroCardsProps) {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const [earnings, setEarnings] = useState<string>('₹0');
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadEarnings() {
+      try {
+        let ordUrl = `${BACKEND_URL}/api/orders`;
+        if (user?.id) ordUrl += `?artisan_id=${user.id}`;
+        const res = await fetch(ordUrl);
+        if (res.ok) {
+          const data = await res.json();
+          const ordList = Array.isArray(data) ? data : (data.orders || []);
+          let sum = 0;
+          ordList.forEach((ord: any) => {
+            const num = parseFloat((ord.total_amount || '').replace(/[^0-9.]/g, '')) || 0;
+            sum += num;
+          });
+          if (isMounted) setEarnings(`₹${sum.toLocaleString('en-IN')}`);
+        }
+      } catch (_) {}
+    }
+    loadEarnings();
+    const interval = setInterval(loadEarnings, 5000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [user?.id]);
 
   return (
     <ScrollView
@@ -56,7 +88,7 @@ export function HeroCards({ onAddProduct, onViewEarnings }: HeroCardsProps) {
             <View style={styles.walletIconBadge}>
               <Wallet size={18} color="#0D0D0D" strokeWidth={2.2} />
             </View>
-            <Text style={styles.headlineSecondary}>₹8,450</Text>
+            <Text style={styles.headlineSecondary}>{earnings}</Text>
           </View>
           <Text style={styles.subtextSecondary}>
             {t('hero_earnings_sub')}

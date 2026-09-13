@@ -1,253 +1,375 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Modal,
+  TextInput,
+  Alert,
 } from 'react-native';
 import {
-  MessageCircle, Package, Truck, CheckCircle2, Send, X,
+  MessageCircle,
+  Package,
+  Truck,
+  CheckCircle2,
+  Send,
+  X,
+  Clock,
+  Sparkles,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
+import { useAuth } from '@/context/AuthContext';
+
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000';
 
 type TabKey = 'new' | 'orders' | 'bulk';
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'new',    label: 'New'          },
-  { key: 'orders', label: 'Orders'       },
-  { key: 'bulk',   label: 'Bulk Requests'},
+  { key: 'new',    label: 'New'           },
+  { key: 'orders', label: 'Orders'        },
+  { key: 'bulk',   label: 'Bulk Requests' },
 ];
 
-// ── Inquiry Card ──────────────────────────────────────────────────────────────
-interface InquiryCardProps {
-  buyerName: string;
-  productName: string;
-  message: string;
-  time: string;
-  onReply: () => void;
-  onViewProduct: () => void;
+interface Inquiry {
+  id: string;
+  product_id?: string;
+  product_title?: string;
+  buyer_name?: string;
+  buyer_phone?: string;
+  buyer_type?: string;
+  message?: string;
+  reply?: string;
+  replied_at?: string;
+  status?: string;
+  created_at?: string;
 }
 
-function InquiryCard({
-  buyerName,
-  productName,
-  message,
-  time,
-  onReply,
-  onViewProduct,
-}: InquiryCardProps) {
-  const initials = buyerName
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
-  return (
-    <View style={styles.inquiryCard}>
-      <View style={styles.inquiryTop}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
-        <View style={styles.inquiryMeta}>
-          <Text style={styles.inquiryTitle} numberOfLines={1}>
-            <Text style={styles.bold}>{buyerName}</Text>
-            {' asked about '}
-            <Text style={styles.bold}>{productName}</Text>
-          </Text>
-          <Text style={styles.inquiryMsg} numberOfLines={1}>
-            "{message}"
-          </Text>
-        </View>
-        <Text style={styles.time}>{time}</Text>
-      </View>
-      <View style={styles.inquiryActions}>
-        <TouchableOpacity style={styles.replyBtn} onPress={onReply} activeOpacity={0.85}>
-          <Send size={13} color="#FFFFFF" strokeWidth={2} />
-          <Text style={styles.replyBtnText}>Reply</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onViewProduct} activeOpacity={0.7}>
-          <Text style={styles.viewLink}>View Product</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
-// ── Order Card ────────────────────────────────────────────────────────────────
-type OrderStatus = 'Packed' | 'Shipped' | 'Delivered';
-
-const ORDER_STATUS: Record<OrderStatus, { color: string; Icon: any }> = {
-  Packed:    { color: '#D97706', Icon: Package },
-  Shipped:   { color: '#2563EB', Icon: Truck },
-  Delivered: { color: '#10B981', Icon: CheckCircle2 },
-};
-
-interface OrderCardProps {
-  orderId: string;
-  productName: string;
-  qty: number;
-  total: string;
-  status: OrderStatus;
-  buyerName: string;
-  city: string;
-}
-
-function OrderCard({ orderId, productName, qty, total, status, buyerName, city }: OrderCardProps) {
-  const { color, Icon } = ORDER_STATUS[status];
-  return (
-    <View style={styles.orderCard}>
-      <View style={styles.orderTop}>
-        <View style={styles.orderInfo}>
-          <Text style={styles.orderId}>Order #{orderId}</Text>
-          <Text style={styles.orderName} numberOfLines={1}>{productName}</Text>
-          <Text style={styles.orderMeta}>Qty: {qty}  ·  {total}</Text>
-          <Text style={styles.orderBuyer}>{buyerName}  ·  {city}</Text>
-        </View>
-        <View style={[styles.statusPill, { backgroundColor: color + '1A' }]}>
-          <Icon size={12} color={color} strokeWidth={2.2} />
-          <Text style={[styles.statusText, { color }]}>{status}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-// ── Bulk Card ─────────────────────────────────────────────────────────────────
-interface BulkCardProps {
-  businessName: string;
-  units: number;
-  deadline: string;
-  onSendQuote: () => void;
-}
-
-function BulkCard({ businessName, units, deadline, onSendQuote }: BulkCardProps) {
-  return (
-    <View style={styles.bulkCard}>
-      <View style={styles.bulkGoldBar} />
-      <View style={styles.bulkContent}>
-        <Text style={styles.bulkTitle}>
-          <Text style={styles.bold}>{businessName}</Text>
-          {` wants ${units} units`}
-        </Text>
-        <Text style={styles.bulkDeadline}>Deadline: {deadline}</Text>
-        <View style={styles.bulkActions}>
-          <TouchableOpacity style={styles.quoteBtn} onPress={onSendQuote} activeOpacity={0.85}>
-            <Send size={13} color="#FFFFFF" strokeWidth={2} />
-            <Text style={styles.quoteBtnText}>Send Quote</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.declineBtn} activeOpacity={0.8}>
-            <X size={13} color="#8E8E93" strokeWidth={2} />
-            <Text style={styles.declineBtnText}>Decline</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
+interface Order {
+  id: string;
+  product_id?: string;
+  product_title?: string;
+  quantity?: number;
+  total_amount?: string;
+  status?: string;
+  buyer_name?: string;
+  buyer_phone?: string;
+  buyer_address?: string;
+  created_at?: string;
 }
 
 export function OrdersAndInquiries() {
   const [activeTab, setActiveTab] = useState<TabKey>('new');
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Reply modal state
+  const [replyModalOpen, setReplyModalOpen] = useState(false);
+  const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
+
   const router = useRouter();
+  const { user } = useAuth();
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      let inqUrl = `${BACKEND_URL}/api/inquiries`;
+      if (user?.id) inqUrl += `?artisan_id=${user.id}`;
+      let ordUrl = `${BACKEND_URL}/api/orders`;
+      if (user?.id) ordUrl += `?artisan_id=${user.id}`;
+
+      const [inqRes, ordRes] = await Promise.all([fetch(inqUrl), fetch(ordUrl)]);
+      if (inqRes.ok) {
+        const iData = await inqRes.json();
+        if (iData?.inquiries && Array.isArray(iData.inquiries)) {
+          setInquiries(iData.inquiries);
+        }
+      }
+      if (ordRes.ok) {
+        const oData = await ordRes.json();
+        if (oData?.orders && Array.isArray(oData.orders)) {
+          setOrders(oData.orders);
+        }
+      }
+    } catch (_) {
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Submit reply to inquiry
+  const handleSendReply = async () => {
+    if (!selectedInquiry || !replyText.trim()) return;
+    setIsReplying(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/inquiries/${selectedInquiry.id}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reply: replyText.trim() }),
+      });
+      if (res.ok) {
+        Alert.alert('Reply Sent', 'Your response has been sent to the buyer.');
+        setReplyModalOpen(false);
+        setReplyText('');
+        fetchData();
+      } else {
+        Alert.alert('Error', 'Could not send reply. Please try again.');
+      }
+    } catch (_) {
+      Alert.alert('Error', 'Network error sending reply.');
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
+  const bulkRequests = inquiries.filter(
+    (i) => i.buyer_type === 'Retail Business' || (i.message || '').toLowerCase().includes('bulk')
+  );
 
   return (
     <View style={styles.container}>
       {/* Tab filter row */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll}>
         <View style={styles.tabRow}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.chip, activeTab === tab.key && styles.chipActive]}
-              onPress={() => setActiveTab(tab.key)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.chipText, activeTab === tab.key && styles.chipTextActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {TABS.map((tab) => {
+            const count =
+              tab.key === 'new'
+                ? inquiries.length
+                : tab.key === 'orders'
+                ? orders.length
+                : bulkRequests.length;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.chip, activeTab === tab.key && styles.chipActive]}
+                onPress={() => setActiveTab(tab.key)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.chipText, activeTab === tab.key && styles.chipTextActive]}>
+                  {tab.label} ({count})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
 
       <View style={styles.tabContent}>
-        {activeTab === 'new' && (
-          <>
-            <InquiryCard
-              buyerName="Priya S."
-              productName="Hand-woven Cotton Dupatta"
-              message="Is this available in blue too?"
-              time="2h ago"
-              onReply={() => router.push('/inquiries')}
-              onViewProduct={() =>
-                router.push({
-                  pathname: '/product-details',
-                  params: {
-                    title: 'Hand-woven Cotton Dupatta',
-                    subtitle: 'Handloom Textile',
-                    price: '₹650',
-                    imageUri: 'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=400',
-                  },
-                })
-              }
-            />
-            <InquiryCard
-              buyerName="Raj Exports"
-              productName="Terracotta Vase Set"
-              message="Can you do a bulk order of 100 units?"
-              time="5h ago"
-              onReply={() => router.push('/inquiries')}
-              onViewProduct={() =>
-                router.push({
-                  pathname: '/product-details',
-                  params: {
-                    title: 'Terracotta Vase Set',
-                    subtitle: 'Pottery & Clay',
-                    price: '₹1,200',
-                    imageUri: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=400',
-                  },
-                })
-              }
-            />
-          </>
-        )}
-        {activeTab === 'orders' && (
-          <>
-            <OrderCard
-              orderId="1024"
-              productName="Hand-woven Cotton Dupatta"
-              qty={2}
-              total="₹1,300"
-              status="Shipped"
-              buyerName="Meena D."
-              city="Mumbai"
-            />
-            <OrderCard
-              orderId="1019"
-              productName="Terracotta Vase Set"
-              qty={1}
-              total="₹850"
-              status="Delivered"
-              buyerName="Anand K."
-              city="Bengaluru"
-            />
-          </>
-        )}
-        {activeTab === 'bulk' && (
-          <>
-            <BulkCard
-              businessName="CraftBridge Co."
-              units={50}
-              deadline="Sep 20, 2026"
-              onSendQuote={() => router.push('/inquiries')}
-            />
-            <BulkCard
-              businessName="Dilli Haat Exports"
-              units={200}
-              deadline="Oct 5, 2026"
-              onSendQuote={() => router.push('/inquiries')}
-            />
-          </>
+        {loading ? (
+          <View style={styles.loaderBox}>
+            <ActivityIndicator size="small" color="#0D0D0D" />
+            <Text style={styles.loaderText}>Checking messages & orders...</Text>
+          </View>
+        ) : activeTab === 'new' ? (
+          inquiries.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <MessageCircle size={32} color="#9CA3AF" />
+              <Text style={styles.emptyTitle}>No Inquiries Yet</Text>
+              <Text style={styles.emptySub}>
+                When buyers book products or ask questions, they will appear here.
+              </Text>
+            </View>
+          ) : (
+            inquiries.map((inq) => {
+              const initials = (inq.buyer_name || 'Buyer')
+                .split(' ')
+                .map((w) => w[0])
+                .join('')
+                .slice(0, 2)
+                .toUpperCase();
+              const dateStr = inq.created_at
+                ? new Date(inq.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : 'Just now';
+
+              return (
+                <View key={inq.id} style={styles.inquiryCard}>
+                  <View style={styles.inquiryTop}>
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>{initials}</Text>
+                    </View>
+                    <View style={styles.inquiryMeta}>
+                      <Text style={styles.inquiryTitle} numberOfLines={1}>
+                        <Text style={styles.bold}>{inq.buyer_name || 'Buyer'}</Text>
+                        {' · '}
+                        <Text style={styles.bold}>{inq.product_title || 'Craft Item'}</Text>
+                      </Text>
+                      <Text style={styles.inquiryMsg} numberOfLines={2}>
+                        "{inq.message}"
+                      </Text>
+                      {inq.reply && (
+                        <View style={styles.replyBubble}>
+                          <Text style={styles.replyBubbleText}>
+                            Your Reply: "{inq.reply}"
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.time}>{dateStr}</Text>
+                  </View>
+                  <View style={styles.inquiryActions}>
+                    <TouchableOpacity
+                      style={styles.replyBtn}
+                      onPress={() => {
+                        setSelectedInquiry(inq);
+                        setReplyText(inq.reply || '');
+                        setReplyModalOpen(true);
+                      }}
+                      activeOpacity={0.85}
+                    >
+                      <Send size={13} color="#FFFFFF" strokeWidth={2} />
+                      <Text style={styles.replyBtnText}>{inq.reply ? 'Edit Reply' : 'Reply'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => router.push('/inquiries')}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.viewLink}>Open Messages</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })
+          )
+        ) : activeTab === 'orders' ? (
+          orders.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Package size={32} color="#9CA3AF" />
+              <Text style={styles.emptyTitle}>No Orders Yet</Text>
+              <Text style={styles.emptySub}>
+                When buyers book products from your catalog, orders will show here.
+              </Text>
+            </View>
+          ) : (
+            orders.map((ord) => {
+              const statusColor =
+                (ord.status || '').toLowerCase() === 'delivered'
+                  ? '#10B981'
+                  : (ord.status || '').toLowerCase() === 'shipped'
+                  ? '#2563EB'
+                  : '#D97706';
+
+              return (
+                <View key={ord.id} style={styles.orderCard}>
+                  <View style={styles.orderTop}>
+                    <View style={styles.orderInfo}>
+                      <Text style={styles.orderId}>Order #{ord.id.slice(0, 10).toUpperCase()}</Text>
+                      <Text style={styles.orderName} numberOfLines={1}>
+                        {ord.product_title || 'Handcrafted Treasure'}
+                      </Text>
+                      <Text style={styles.orderMeta}>
+                        Qty: {ord.quantity || 1}  ·  {ord.total_amount || '₹650'}
+                      </Text>
+                      <Text style={styles.orderBuyer}>
+                        Buyer: {ord.buyer_name || 'Registered Patron'}
+                      </Text>
+                      {ord.buyer_address && (
+                        <Text style={styles.orderAddress} numberOfLines={1}>
+                          Ship to: {ord.buyer_address}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={[styles.statusPill, { backgroundColor: statusColor + '1A' }]}>
+                      <Package size={12} color={statusColor} strokeWidth={2.2} />
+                      <Text style={[styles.statusText, { color: statusColor }]}>
+                        {(ord.status || 'CONFIRMED').toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })
+          )
+        ) : (
+          bulkRequests.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Sparkles size={32} color="#9CA3AF" />
+              <Text style={styles.emptyTitle}>No Bulk Inquiries</Text>
+              <Text style={styles.emptySub}>
+                Corporate or boutique wholesale requests will be listed here.
+              </Text>
+            </View>
+          ) : (
+            bulkRequests.map((req) => (
+              <View key={req.id} style={styles.bulkCard}>
+                <View style={styles.bulkGoldBar} />
+                <View style={styles.bulkContent}>
+                  <Text style={styles.bulkTitle}>
+                    <Text style={styles.bold}>{req.buyer_name || 'Boutique Client'}</Text>
+                    {` inquired about ${req.product_title || 'Craft Collection'}`}
+                  </Text>
+                  <Text style={styles.bulkDeadline}>"{req.message}"</Text>
+                  <View style={styles.bulkActions}>
+                    <TouchableOpacity
+                      style={styles.quoteBtn}
+                      onPress={() => {
+                        setSelectedInquiry(req);
+                        setReplyText('We can fulfill your bulk custom order. Here are the quote details:');
+                        setReplyModalOpen(true);
+                      }}
+                      activeOpacity={0.85}
+                    >
+                      <Send size={13} color="#FFFFFF" strokeWidth={2} />
+                      <Text style={styles.quoteBtnText}>Send Quote</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ))
+          )
         )}
       </View>
+
+      {/* ── MODAL: Reply to Buyer Message ─────────────────────────── */}
+      <Modal visible={replyModalOpen} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reply to Buyer</Text>
+              <TouchableOpacity onPress={() => setReplyModalOpen(false)}>
+                <X size={20} color="#0D0D0D" />
+              </TouchableOpacity>
+            </View>
+            {selectedInquiry && (
+              <View style={styles.modalInqBox}>
+                <Text style={styles.modalInqBuyer}>{selectedInquiry.buyer_name || 'Buyer'}:</Text>
+                <Text style={styles.modalInqMsg}>"{selectedInquiry.message}"</Text>
+              </View>
+            )}
+            <Text style={styles.inputLabel}>Your Response to Buyer:</Text>
+            <TextInput
+              style={styles.inputField}
+              value={replyText}
+              onChangeText={setReplyText}
+              placeholder="Type your message, delivery confirmation or custom sizing note..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              numberOfLines={4}
+            />
+            <TouchableOpacity
+              style={styles.sendReplyBtn}
+              onPress={handleSendReply}
+              disabled={isReplying}
+              activeOpacity={0.85}
+            >
+              {isReplying ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.sendReplyBtnText}>Send Message to Buyer</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -256,120 +378,317 @@ const styles = StyleSheet.create({
   container: { gap: Spacing.sm },
   tabScroll: { marginBottom: 6 },
   tabRow: { flexDirection: 'row', gap: Spacing.sm },
-
   chip: {
-    borderRadius: 999,
+    paddingHorizontal: 14,
     paddingVertical: 7,
-    paddingHorizontal: 16,
-    borderWidth: 1.5,
+    borderRadius: Radius.pill,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
     borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
   },
-  chipActive: { backgroundColor: '#0D0D0D', borderColor: '#0D0D0D' },
-  chipText: { fontSize: 13, fontFamily: Fonts.heading, fontWeight: '600', color: '#0D0D0D' },
-  chipTextActive: { color: '#FFFFFF', fontWeight: '700' },
-
-  tabContent: { gap: 10 },
-
+  chipActive: {
+    backgroundColor: '#0D0D0D',
+    borderColor: '#0D0D0D',
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: Fonts.heading,
+    color: '#4B5563',
+  },
+  chipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+  },
+  tabContent: { gap: Spacing.sm },
+  loaderBox: {
+    paddingVertical: 24,
+    alignItems: 'center',
+    gap: 8,
+  },
+  loaderText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  emptyBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.lg,
+    padding: 24,
+    alignItems: 'center',
+    gap: 6,
+    ...Shadow.card,
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+    marginTop: 4,
+  },
+  emptySub: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    paddingHorizontal: 16,
+  },
   inquiryCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 14,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
     ...Shadow.card,
-    elevation: 2,
   },
-  inquiryTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  inquiryTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+  },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#0D0D0D',
     justifyContent: 'center',
     alignItems: 'center',
-    flexShrink: 0,
   },
-  avatarText: { fontSize: 13, fontFamily: Fonts.headingBold, color: '#0D0D0D', fontWeight: '800' },
-  inquiryMeta: { flex: 1 },
-  inquiryTitle: { fontSize: 13, fontFamily: Fonts.body, color: '#0D0D0D', lineHeight: 18 },
-  bold: { fontFamily: Fonts.headingBold, fontWeight: '700' },
-  inquiryMsg: { fontSize: 12, fontFamily: Fonts.body, color: '#8E8E93', marginTop: 2 },
-  time: { fontSize: 11, fontFamily: Fonts.body, color: '#8E8E93', flexShrink: 0 },
-  inquiryActions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  avatarText: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#FFFFFF',
+  },
+  inquiryMeta: { flex: 1, gap: 2 },
+  inquiryTitle: {
+    fontSize: 13,
+    color: '#374151',
+    fontFamily: Fonts.body,
+  },
+  bold: {
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+  },
+  inquiryMsg: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    lineHeight: 16,
+  },
+  replyBubble: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  replyBubbleText: {
+    fontSize: 11,
+    color: '#166534',
+    fontFamily: Fonts.bodyMedium,
+  },
+  time: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    fontFamily: Fonts.body,
+  },
+  inquiryActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
   replyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: '#0D0D0D',
-    borderRadius: 999,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
-  replyBtnText: { fontSize: 12, fontFamily: Fonts.headingBold, fontWeight: '700', color: '#FFFFFF' },
-  viewLink: { fontSize: 12, fontFamily: Fonts.heading, fontWeight: '600', color: '#6B7280' },
-
+  replyBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#FFFFFF',
+  },
+  viewLink: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0D0D0D',
+  },
   orderCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
     ...Shadow.card,
-    elevation: 2,
   },
-  orderTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  orderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   orderInfo: { flex: 1, gap: 2 },
-  orderId: { fontSize: 11, fontFamily: Fonts.bodyMedium, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 },
-  orderName: { fontSize: 14, fontFamily: Fonts.headingBold, fontWeight: '700', color: '#0D0D0D' },
-  orderMeta: { fontSize: 13, fontFamily: Fonts.heading, fontWeight: '600', color: '#0D0D0D' },
-  orderBuyer: { fontSize: 12, fontFamily: Fonts.body, color: '#8E8E93' },
+  orderId: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#9CA3AF',
+  },
+  orderName: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+  },
+  orderMeta: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  orderBuyer: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 1,
+  },
+  orderAddress: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    marginTop: 1,
+  },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    borderRadius: 999,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  statusText: { fontSize: 11, fontFamily: Fonts.headingBold, fontWeight: '700' },
-
-  /* Bulk Card with Gold Accent Border */
+  statusText: {
+    fontSize: 10,
+    fontWeight: '800',
+    fontFamily: Fonts.headingBold,
+  },
   bulkCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    overflow: 'hidden',
+    borderRadius: Radius.lg,
     flexDirection: 'row',
-    borderWidth: 1.5,
-    borderColor: '#D4A017',
+    overflow: 'hidden',
     ...Shadow.card,
-    elevation: 2,
   },
-  bulkGoldBar: { width: 5, backgroundColor: '#D4A017' },
-  bulkContent: { flex: 1, padding: 14, gap: 8 },
-  bulkTitle: { fontSize: 14, fontFamily: Fonts.body, color: '#0D0D0D' },
-  bulkDeadline: { fontSize: 12, fontFamily: Fonts.body, color: '#8E8E93' },
-  bulkActions: { flexDirection: 'row', gap: 10 },
+  bulkGoldBar: {
+    width: 4,
+    backgroundColor: '#B5502F',
+  },
+  bulkContent: {
+    flex: 1,
+    padding: Spacing.md,
+    gap: 4,
+  },
+  bulkTitle: {
+    fontSize: 13,
+    color: '#374151',
+  },
+  bulkDeadline: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    marginBottom: 4,
+  },
+  bulkActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
   quoteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     backgroundColor: '#0D0D0D',
-    borderRadius: 999,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
-  quoteBtnText: { fontSize: 12, fontFamily: Fonts.headingBold, fontWeight: '700', color: '#FFFFFF' },
-  declineBtn: {
+  quoteBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#FFFFFF',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 20,
+    paddingBottom: 36,
+  },
+  modalHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 5,
-    borderRadius: 999,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
+    marginBottom: 14,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+  },
+  modalInqBox: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    marginBottom: 12,
   },
-  declineBtnText: { fontSize: 12, fontFamily: Fonts.heading, color: '#8E8E93' },
+  modalInqBuyer: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0D0D0D',
+    marginBottom: 2,
+  },
+  modalInqMsg: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  inputField: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 14,
+    padding: 12,
+    fontSize: 13,
+    color: '#0D0D0D',
+    textAlignVertical: 'top',
+    height: 90,
+  },
+  sendReplyBtn: {
+    backgroundColor: '#0D0D0D',
+    borderRadius: 24,
+    paddingVertical: 13,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  sendReplyBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+  },
 });

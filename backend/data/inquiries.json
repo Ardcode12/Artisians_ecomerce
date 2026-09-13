@@ -1,0 +1,268 @@
+[
+  {
+    "id": "inq-order-ord-1788771134749-52zkq",
+    "order_id": "ord-1788771134749-52zkq",
+    "product_id": "prod-1788771118264-bmvtd",
+    "product_title": "Handmade Soft Stuffed Bunny Toy Holding a Carrot",
+    "product_image": "http://192.168.137.205:5000/uploads/enhanced-1788770694917.jpg",
+    "artisan_id": "11111111-2222-3333-4444-919345073473",
+    "artisan_name": "Verified Artisan Maker",
+    "buyer_phone": "+91 93450 73473",
+    "buyer_name": "Handmade Buyer",
+    "buyer_type": "Order Confirmed",
+    "message": "New Order Booked! Order #ORD-178877 confirmed for 1x \"Handmade Soft Stuffed Bunny Toy Holding a Carrot\". Total: ₹700. Delivery: Flat 402, Heritage Residency, MG Road, Bengaluru - 560001.",
+    "status": "new_order",
+    "created_at": "2026-09-07T08:52:14.749Z",
+    "updated_at": "2026-09-07T08:52:14.749Z",
+    "messages": [
+      {
+        "id": "msg-1788771134751-ord",
+        "sender": "buyer",
+        "sender_name": "Handmade Buyer",
+        "text": "Hello! I have placed an order for 1x \"Handmade Soft Stuffed Bunny Toy Holding a Carrot\". Total amount: ₹700. Shipping to: Flat 402, Heritage Residency, MG Road, Bengaluru - 560001. Looking forward to it!",
+        "time": "2:22 pm",
+        "timestamp": "2026-09-07T08:52:14.749Z"
+      }
+    ]
+  },
+  {
+    "id": "inq-1788760051251-39rr7",
+    "order_id": null,
+    "product_id": "prod-1788713149830-f4tdj",
+    "product_title": "Exquisite Handloom Silk Saree in Vibrant Green and Pink",
+    "product_image": "",
+    "artisan_id": "11111111-2222-3333-4444-919345073473",
+    "artisan_name": "Master Artisan",
+    "buyer_phone": "+916374389595",
+    "buyer_name": "Arnald",
+    "buyer_type": "Product Inquiry",
+    "message": "Hello! I am interested in \"Exquisite Handloom Silk Saree in Vibrant Green and Pink\". Is this available for immediate dispatch or custom order?",
+    "status": "buyer_replied",
+    "created_at": "2026-09-07T05:47:31.251Z",
+    "updated_at": "2026-09-07T05:48:46.528Z",
+    "messages": [
+      {
+        "id": "msg-1788760051251-1",
+        "sender": "buyer",
+        "sender_name": "Arnald",
+        "text": "Hello! I am interested in \"Exquisite Handloom Silk Saree in Vibrant Green and Pink\". Is this available for immediate dispatch or custom order?",
+        "time": "11:17 am",
+        "timestamp": "2026-09-07T05:47:31.251Z"
+      },
+      {
+        "id": "msg-1788760089901-9wom",
+        "sender": "seller",
+        "sender_name": "Master Artisan",
+        "text": "Hi",
+        "time": "11:18 am",
+        "timestamp": "2026-09-07T05:48:09.901Z"
+      },
+      {
+        "id": "msg-1788760104141-4mtv",
+        "sender": "buyer",
+        "sender_name": "Arnald",
+        "text": "Could you please reduce the price",
+        "time": "11:18 am",
+        "timestamp": "2026-09-07T05:48:24.141Z"
+      },
+      {
+        "id": "msg-1788760113668-srx4",
+        "sender": "seller",
+        "sender_name": "Master Artisan",
+        "text": "Yes",
+        "time": "11:18 am",
+        "timestamp": "2026-09-07T05:48:33.668Z"
+      },
+      {
+        "id": "msg-1788760115190-xub5",
+        "sender": "buyer",
+        "sender_name": "Arnald",
+        "text": "Hlooooooooo",
+        "time": "11:18 am",
+        "timestamp": "2026-09-07T05:48:35.190Z"
+      },
+      {
+        "id": "msg-1788760126528-dhzf",
+        "sender": "buyer",
+        "sender_name": "Arnald",
+        "text": "Gowtham",
+        "time": "11:18 am",
+        "timestamp": "2026-09-07T05:48:46.528Z"
+      }
+    ],
+    "last_message": "Gowtham",
+    "reply": "Yes",
+    "replied_at": "2026-09-07T05:48:33.668Z"
+  },
+  {
+    "id": "inq-1788759927220-srf4n",
+    "order_id": null,
+    "product_id": "prod-1788713149830-f4tdj",
+    "product_title": "Exquisite Handloom Silk Saree in Vibrant Green and Pink",
+    "product_image": "",
+    "artisan_id": "11111111-2222-3333-4444-919345073473",
+    "artisan_name": "Master Artisan",
+    "buyer_phone": "+916374389595",
+    "buyer_name": "Arnald",
+    "buyer_type": "Order Confirmed",
+    "message": "New Order Booked! Quantity: 1. Total: ₹650. Delivery: 14/10 MGR NAGAR VAIKKALPUDHUR CHENNIMALAI, ERODE",
+    "status": "new",
+    "created_at": "2026-09-07T05:45:27.220Z",
+    "updated_at": "2026-09-07T05:45:27.220Z",
+    "messages": [
+      {
+        "id": "msg-1788759927220-1",
+        "sender": "buyer",
+        "sender_name": "Arnald",
+        "text": "New Order Booked! Quantity: 1. Total: ₹650. Delivery: 14/10 MGR NAGAR VAIKKALPUDHUR CHENNIMALAI, ERODE",
+        "time": "11:15 am",
+        "timestamp": "2026-09-07T05:45:27.220Z"
+      }
+    ]
+  },
+  {
+    "id": "inq-order-ord-1788759924772-kjgwk",
+    "order_id": "ord-1788759924772-kjgwk",
+    "product_id": "prod-1788713149830-f4tdj",
+    "product_title": "Exquisite Handloom Silk Saree in Vibrant Green and Pink",
+    "product_image": "http://192.168.137.205:5000/uploads/enhanced-1788713094017.jpg",
+    "artisan_id": "11111111-2222-3333-4444-919345073473",
+    "artisan_name": "Verified Artisan Maker",
+    "buyer_phone": "+916374389595",
+    "buyer_name": "Arnald",
+    "buyer_type": "Order Confirmed",
+    "message": "New Order Booked! Order #ORD-178875 confirmed for 1x \"Exquisite Handloom Silk Saree in Vibrant Green and Pink\". Total: ₹650. Delivery: 14/10 MGR NAGAR VAIKKALPUDHUR CHENNIMALAI, ERODE.",
+    "status": "new_order",
+    "created_at": "2026-09-07T05:45:24.772Z",
+    "updated_at": "2026-09-07T05:45:24.772Z",
+    "messages": [
+      {
+        "id": "msg-1788759924774-ord",
+        "sender": "buyer",
+        "sender_name": "Arnald",
+        "text": "Hello! I have placed an order for 1x \"Exquisite Handloom Silk Saree in Vibrant Green and Pink\". Total amount: ₹650. Shipping to: 14/10 MGR NAGAR VAIKKALPUDHUR CHENNIMALAI, ERODE. Looking forward to it!",
+        "time": "11:15 am",
+        "timestamp": "2026-09-07T05:45:24.772Z"
+      }
+    ]
+  },
+  {
+    "id": "inq-order-ord-1788756005685-iosxw",
+    "order_id": "ord-1788756005685-iosxw",
+    "product_id": "prod-1788755938204-gqkui",
+    "product_title": "Adorable Handcrafted White Plush Bunny Toy with Carrot",
+    "product_image": "http://192.168.137.205:5000/uploads/enhanced-1788755838014.jpg",
+    "artisan_id": "11111111-2222-3333-4444-919345073473",
+    "artisan_name": "Master Artisan",
+    "buyer_phone": "+91 93450 73473",
+    "buyer_name": "Handmade Buyer",
+    "buyer_type": "Order Confirmed",
+    "message": "New Order Booked! Order #ORD-178875 confirmed for 1x \"Adorable Handcrafted White Plush Bunny Toy with Carrot\". Total: ₹850. Delivery: Flat 402, Heritage Residency, MG Road, Bengaluru - 560001.",
+    "status": "new_order",
+    "created_at": "2026-09-07T04:40:05.685Z",
+    "updated_at": "2026-09-07T04:40:05.685Z",
+    "messages": [
+      {
+        "id": "msg-1788756005688-ord",
+        "sender": "buyer",
+        "sender_name": "Handmade Buyer",
+        "text": "Hello! I have placed an order for 1x \"Adorable Handcrafted White Plush Bunny Toy with Carrot\". Total amount: ₹850. Shipping to: Flat 402, Heritage Residency, MG Road, Bengaluru - 560001. Looking forward to it!",
+        "time": "10:10 am",
+        "timestamp": "2026-09-07T04:40:05.685Z"
+      }
+    ]
+  },
+  {
+    "id": "inq-order-ord-1788720234330-vaem8",
+    "order_id": "ord-1788720234330-vaem8",
+    "product_id": "prod-1788713284396-hbxmf",
+    "product_title": "Handcrafted Plush Bunny Toy Holding Carrot",
+    "product_image": "http://192.168.137.205:5000/uploads/enhanced-1788713167149.jpg",
+    "artisan_id": "11111111-2222-3333-4444-919345073473",
+    "artisan_name": "Verified Artisan Maker",
+    "buyer_phone": "+91 93450 73473",
+    "buyer_name": "Handmade Buyer",
+    "buyer_type": "Order Confirmed",
+    "message": "New Order Booked! Order #ORD-178872 confirmed for 1x \"Handcrafted Plush Bunny Toy Holding Carrot\". Total: ₹300. Delivery: Flat 402, Heritage Residency, MG Road, Bengaluru - 560001.",
+    "status": "replied",
+    "created_at": "2026-09-06T18:43:54.330Z",
+    "updated_at": "2026-09-07T04:37:00.797Z",
+    "messages": [
+      {
+        "id": "msg-1788720234331-ord",
+        "sender": "buyer",
+        "sender_name": "Handmade Buyer",
+        "text": "Hello! I have placed an order for 1x \"Handcrafted Plush Bunny Toy Holding Carrot\". Total amount: ₹300. Shipping to: Flat 402, Heritage Residency, MG Road, Bengaluru - 560001. Looking forward to it!",
+        "time": "12:13 am",
+        "timestamp": "2026-09-06T18:43:54.330Z"
+      },
+      {
+        "id": "msg-1788720290389-eh19",
+        "sender": "seller",
+        "sender_name": "Verified Artisan Maker",
+        "text": "Okey",
+        "time": "12:14 am",
+        "timestamp": "2026-09-06T18:44:50.389Z"
+      },
+      {
+        "id": "msg-1788755820797-94pc",
+        "sender": "seller",
+        "sender_name": "Verified Artisan Maker",
+        "text": "Hi",
+        "time": "10:07 am",
+        "timestamp": "2026-09-07T04:37:00.797Z"
+      }
+    ],
+    "last_message": "Hi",
+    "reply": "Hi",
+    "replied_at": "2026-09-07T04:37:00.797Z"
+  },
+  {
+    "id": "inq-order-ord-1788719694526-cizxe",
+    "product_id": "prod-test-live",
+    "product_title": "Handmade Kashmiri Pashmina Shawl",
+    "artisan_id": "artisan-1",
+    "buyer_phone": "+919345073473",
+    "buyer_name": "Priya Sharma",
+    "buyer_type": "Order Confirmed",
+    "message": "New Order Booked! Quantity: 1. Total: ₹3,500. Delivery: 14 Lotus Enclave, Indiranagar, Bengaluru",
+    "status": "new_order",
+    "created_at": "2026-09-06T18:34:54.526Z"
+  },
+  {
+    "id": "inq-order-ord-1788718927826-jyrhu",
+    "product_id": "prod-1788713149830-f4tdj",
+    "product_title": "Exquisite Handloom Silk Saree in Vibrant Green and Pink",
+    "artisan_id": "11111111-2222-3333-4444-919345073473",
+    "buyer_phone": "+91 93450 73473",
+    "buyer_name": "Handmade Buyer",
+    "buyer_type": "Order Confirmed",
+    "message": "New Order Booked! Quantity: 1. Total: ₹650. Delivery: Flat 402, Heritage Residency, MG Road, Bengaluru - 560001",
+    "status": "new_order",
+    "created_at": "2026-09-06T18:22:07.826Z"
+  },
+  {
+    "id": "inq-order-ord-1788718900716-3w5kq",
+    "product_id": "prod-1788713284396-hbxmf",
+    "product_title": "Handcrafted Plush Bunny Toy Holding Carrot",
+    "artisan_id": "11111111-2222-3333-4444-919345073473",
+    "buyer_phone": "+91 93450 73473",
+    "buyer_name": "Handmade Buyer",
+    "buyer_type": "Order Confirmed",
+    "message": "New Order Booked! Quantity: 1. Total: ₹300. Delivery: Flat 402, Heritage Residency, MG Road, Bengaluru - 560001",
+    "status": "new_order",
+    "created_at": "2026-09-06T18:21:40.716Z"
+  },
+  {
+    "id": "inq-1788715135881-oilqh",
+    "product_id": "prod-1788713284396-hbxmf",
+    "product_title": "Handcrafted Plush Bunny Toy Holding Carrot",
+    "artisan_id": null,
+    "buyer_phone": "+916374389595",
+    "buyer_name": "Shopper",
+    "buyer_type": "Individual Buyer",
+    "message": "Can this be custom ordered in a peacock blue shade?",
+    "status": "new",
+    "created_at": "2026-09-06T17:18:55.881Z"
+  }
+]

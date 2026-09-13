@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, ArtisanProfile, SUPABASE_ANON_KEY } from '@/services/supabase';
 import { User, Session } from '@supabase/supabase-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@/utils/storage';
 import { mapLegacyLanguage } from '@/context/LanguageContext';
 
-interface OnboardingData {
+export interface OnboardingData {
   name: string;
   craftType: string;
   craftCustom: string;
@@ -12,20 +12,55 @@ interface OnboardingData {
   schemeId: string;
 }
 
+export interface BuyerProfile {
+  id: string;
+  phone: string;
+  name?: string;
+  buyer_type: 'Individual Buyer' | 'Retail Business' | 'Government Procurement';
+  business_name?: string;
+  gstin?: string;
+  department?: string;
+  address_line?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  is_onboarded?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BuyerOnboardingData {
+  buyerType: 'Individual Buyer' | 'Retail Business' | 'Government Procurement';
+  businessName: string;
+  gstin: string;
+  department: string;
+  addressLine: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: ArtisanProfile | null;
+  buyerProfile: BuyerProfile | null;
+  userRole: 'artisan' | 'buyer';
+  setUserRole: (role: 'artisan' | 'buyer') => void;
   isLoading: boolean;
   flowMode: 'login' | 'signup';
   setFlowMode: (mode: 'login' | 'signup') => void;
   phone: string;
   setPhone: (phone: string) => void;
   onboardingData: OnboardingData;
+  buyerOnboardingData: BuyerOnboardingData;
   updateOnboardingData: (data: Partial<OnboardingData>) => void;
+  updateBuyerOnboardingData: (data: Partial<BuyerOnboardingData>) => void;
   sendOtp: (rawPhone: string) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (rawPhone: string, token: string) => Promise<{ success: boolean; isExistingProfile?: boolean; error?: string }>;
   saveProfile: () => Promise<{ success: boolean; profile?: ArtisanProfile; error?: string }>;
+  saveBuyerProfile: () => Promise<{ success: boolean; profile?: BuyerProfile; error?: string }>;
+  updateBuyerProfile: (updates: Partial<BuyerProfile>) => Promise<{ success: boolean; profile?: BuyerProfile; error?: string }>;
   updateProfile: (updates: Partial<ArtisanProfile>) => Promise<{ success: boolean; profile?: ArtisanProfile; error?: string }>;
   updateBankDetails: (bankData: {
     bank_account_no: string;
@@ -47,12 +82,23 @@ const defaultOnboarding: OnboardingData = {
   schemeId: '',
 };
 
+const defaultBuyerOnboarding: BuyerOnboardingData = {
+  buyerType: 'Individual Buyer',
+  businessName: '',
+  gstin: '',
+  department: '',
+  addressLine: '',
+  city: '',
+  state: '',
+  pincode: '',
+};
+
+
 // ─── Backend URL ──────────────────────────────────────────────────────────────
 // The app tries multiple hosts in order (LAN IP first, then localhost).
 const BACKEND_HOSTS = [
-  process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.161.235.254:5000',
-  'http://10.161.235.254:5000',
-  'http://192.168.1.1:5000',
+  process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000',
+  'http://192.168.137.205:5000',
   'http://localhost:5000',
 ];
 
@@ -113,22 +159,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<ArtisanProfile | null>(null);
+  const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null>(null);
+  const [userRole, setUserRoleState] = useState<'artisan' | 'buyer'>('artisan');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [flowMode, setFlowMode] = useState<'login' | 'signup'>('login');
   const [phone, setPhone] = useState<string>('');
   const [onboardingData, setOnboardingData] = useState<OnboardingData>(defaultOnboarding);
+  const [buyerOnboardingData, setBuyerOnboardingData] = useState<BuyerOnboardingData>(defaultBuyerOnboarding);
+
+  const setUserRole = (role: 'artisan' | 'buyer') => {
+    setUserRoleState(role);
+    AsyncStorage.setItem('@artisanlink_user_role', role).catch(() => {});
+  };
 
   useEffect(() => {
     let isMounted = true;
 
     async function getInitialSession() {
       try {
+        const savedRole = await AsyncStorage.getItem('@artisanlink_user_role');
+        if (savedRole === 'artisan' || savedRole === 'buyer') {
+          if (isMounted) setUserRoleState(savedRole);
+        }
+
         const { data } = await supabase.auth.getSession();
         if (isMounted) {
           setSession(data.session);
           setUser(data.session?.user ?? null);
           if (data.session?.user) {
-            await fetchProfile(data.session.user.id, data.session.user.phone || '');
+            const phoneVal = data.session.user.phone || '';
+            await fetchProfile(data.session.user.id, phoneVal);
+            await fetchBuyerProfile(data.session.user.id, phoneVal);
           }
         }
       } catch (err) {
@@ -146,9 +207,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(newSession);
         setUser(newSession?.user ?? null);
         if (newSession?.user) {
-          await fetchProfile(newSession.user.id, newSession.user.phone || '');
+          const phoneVal = newSession.user.phone || '';
+          await fetchProfile(newSession.user.id, phoneVal);
+          await fetchBuyerProfile(newSession.user.id, phoneVal);
         } else {
           setProfile(null);
+          setBuyerProfile(null);
         }
         setIsLoading(false);
       }
@@ -216,6 +280,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Error fetching profile:', e);
     }
   };
+
+  /**
+   * Fetch buyer profile from backend then Supabase as fallback.
+   */
+  const fetchBuyerProfile = async (userId: string, phoneNum: string) => {
+    try {
+      if (phoneNum) {
+        const formattedPhone = phoneNum.startsWith('+') ? phoneNum : `+91${phoneNum.replace(/[^0-9]/g, '')}`;
+        const backendData = await fetchFromBackend(
+          `/api/buyer/check-phone?phone=${encodeURIComponent(formattedPhone)}`
+        );
+        if (backendData?.exists && backendData.profile) {
+          const bp = backendData.profile as BuyerProfile;
+          setBuyerProfile(bp);
+          setBuyerOnboardingData({
+            buyerType: bp.buyer_type || 'Individual Buyer',
+            businessName: bp.business_name || '',
+            gstin: bp.gstin || '',
+            department: bp.department || '',
+            addressLine: bp.address_line || '',
+            city: bp.city || '',
+            state: bp.state || '',
+            pincode: bp.pincode || '',
+          });
+          return;
+        }
+      }
+    } catch (e) {}
+
+    try {
+      const { data, error } = await supabase
+        .from('buyer_profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!error && data) {
+        setBuyerProfile(data as BuyerProfile);
+        setBuyerOnboardingData({
+          buyerType: data.buyer_type || 'Individual Buyer',
+          businessName: data.business_name || '',
+          gstin: data.gstin || '',
+          department: data.department || '',
+          addressLine: data.address_line || '',
+          city: data.city || '',
+          state: data.state || '',
+          pincode: data.pincode || '',
+        });
+      }
+    } catch (e) {
+      console.warn('Error fetching buyer profile:', e);
+    }
+  };
+
 
   const updateOnboardingData = (data: Partial<OnboardingData>) => {
     setOnboardingData(prev => ({ ...prev, ...data }));
@@ -302,41 +420,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: "That code didn't work — use 123456 for testing" };
     }
 
-    // ── Step 2: Check if profile exists (AUTHORITATIVE CHECK) ─────────────────
+    // ── Step 2: Check if profile exists based on userRole (AUTHORITATIVE CHECK) ──
     let isExistingProfile = false;
-    let foundProfile: ArtisanProfile | null = null;
+    let foundArtisanProfile: ArtisanProfile | null = null;
+    let foundBuyerProfile: BuyerProfile | null = null;
 
     // A) Ask backend /api/auth/verify-otp (handles local file + Supabase DB)
     try {
       const backendRes = await fetchFromBackend('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: formattedPhone, token: cleanToken }),
+        body: JSON.stringify({ phone: formattedPhone, token: cleanToken, role: userRole }),
       });
 
       if (backendRes) {
-        if (backendRes.isExistingProfile && backendRes.profile?.name) {
-          isExistingProfile = true;
-          foundProfile = backendRes.profile as ArtisanProfile;
+        if (userRole === 'buyer') {
+          if (backendRes.isExistingProfile && backendRes.profile) {
+            isExistingProfile = true;
+            foundBuyerProfile = backendRes.profile as BuyerProfile;
+          } else {
+            isExistingProfile = false;
+          }
         } else {
-          isExistingProfile = false;
+          if (backendRes.isExistingProfile && backendRes.profile?.name) {
+            isExistingProfile = true;
+            foundArtisanProfile = backendRes.profile as ArtisanProfile;
+          } else {
+            isExistingProfile = false;
+          }
         }
       } else {
         // Backend unreachable — fall back to Supabase direct check
         throw new Error('backend_unavailable');
       }
     } catch (_) {
-      // B) Fallback: direct Supabase profiles table check
+      // B) Fallback: direct Supabase check
       try {
-        const { data: sbProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('phone', formattedPhone)
-          .maybeSingle();
+        if (userRole === 'buyer') {
+          const { data: sbBuyer } = await supabase
+            .from('buyer_profiles')
+            .select('*')
+            .eq('phone', formattedPhone)
+            .maybeSingle();
 
-        if (sbProfile && sbProfile.name) {
-          isExistingProfile = true;
-          foundProfile = sbProfile as ArtisanProfile;
+          if (sbBuyer && (sbBuyer.buyer_type || sbBuyer.address_line || sbBuyer.name)) {
+            isExistingProfile = true;
+            foundBuyerProfile = sbBuyer as BuyerProfile;
+          }
+        } else {
+          const { data: sbProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('phone', formattedPhone)
+            .maybeSingle();
+
+          if (sbProfile && sbProfile.name) {
+            isExistingProfile = true;
+            foundArtisanProfile = sbProfile as ArtisanProfile;
+          }
         }
       } catch (e) {}
     }
@@ -345,18 +486,128 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(authenticatedUser);
     setSession(authSession);
 
-    if (foundProfile && isExistingProfile) {
-      setProfile(foundProfile);
-      setOnboardingData({
-        name: foundProfile.name,
-        craftType: foundProfile.craft_type || '',
-        craftCustom: foundProfile.craft_custom || '',
-        language: foundProfile.language || 'English',
-        schemeId: foundProfile.scheme_id || '',
-      });
+    if (userRole === 'buyer') {
+      if (foundBuyerProfile && isExistingProfile) {
+        setBuyerProfile(foundBuyerProfile);
+        setBuyerOnboardingData({
+          buyerType: foundBuyerProfile.buyer_type || 'Individual Buyer',
+          businessName: foundBuyerProfile.business_name || '',
+          gstin: foundBuyerProfile.gstin || '',
+          department: foundBuyerProfile.department || '',
+          addressLine: foundBuyerProfile.address_line || '',
+          city: foundBuyerProfile.city || '',
+          state: foundBuyerProfile.state || '',
+          pincode: foundBuyerProfile.pincode || '',
+        });
+      }
+    } else {
+      if (foundArtisanProfile && isExistingProfile) {
+        setProfile(foundArtisanProfile);
+        setOnboardingData({
+          name: foundArtisanProfile.name,
+          craftType: foundArtisanProfile.craft_type || '',
+          craftCustom: foundArtisanProfile.craft_custom || '',
+          language: foundArtisanProfile.language || 'English',
+          schemeId: foundArtisanProfile.scheme_id || '',
+        });
+      }
     }
 
     return { success: true, isExistingProfile };
+  };
+
+  // ── Update Buyer Onboarding Data ──────────────────────────────────────────
+  const updateBuyerOnboardingData = (data: Partial<BuyerOnboardingData>) => {
+    setBuyerOnboardingData(prev => ({ ...prev, ...data }));
+  };
+
+  // ── Save Buyer Profile ────────────────────────────────────────────────────
+  const saveBuyerProfile = async (): Promise<{ success: boolean; profile?: BuyerProfile; error?: string }> => {
+    const formattedPhone = phone.startsWith('+') ? phone : `+91${phone.trim()}`;
+    const last10 = phone.replace(/[^0-9]/g, '').slice(-10).padStart(10, '0');
+    const userId = user?.id || `22222222-3333-4444-5555-91${last10}`;
+
+    const newBuyerProfile: BuyerProfile = {
+      id: userId,
+      phone: formattedPhone,
+      name: buyerOnboardingData.businessName.trim() || 'Shopper',
+      buyer_type: buyerOnboardingData.buyerType || 'Individual Buyer',
+      business_name: buyerOnboardingData.businessName.trim() || undefined,
+      gstin: buyerOnboardingData.gstin.trim() || undefined,
+      department: buyerOnboardingData.department.trim() || undefined,
+      address_line: buyerOnboardingData.addressLine.trim() || undefined,
+      city: buyerOnboardingData.city.trim() || undefined,
+      state: buyerOnboardingData.state.trim() || undefined,
+      pincode: buyerOnboardingData.pincode.trim() || undefined,
+      is_onboarded: true,
+      updated_at: new Date().toISOString(),
+    };
+
+    setBuyerProfile(newBuyerProfile);
+
+    // 1. Save to backend (persistent local file + syncs to Supabase)
+    try {
+      const backendRes = await fetchFromBackend('/api/buyer/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBuyerProfile),
+      });
+      if (backendRes?.profile) {
+        setBuyerProfile(backendRes.profile as BuyerProfile);
+      }
+    } catch (e) {
+      console.warn('Backend buyer save note:', e);
+    }
+
+    // 2. Also attempt direct Supabase upsert
+    try {
+      const { data, error } = await supabase
+        .from('buyer_profiles')
+        .upsert(newBuyerProfile, { onConflict: 'phone' })
+        .select()
+        .maybeSingle();
+
+      if (!error && data) {
+        setBuyerProfile(data as BuyerProfile);
+      }
+    } catch (err: any) {
+      console.warn('Supabase buyer upsert note:', err?.message);
+    }
+
+    return { success: true, profile: newBuyerProfile };
+  };
+
+  // ── Update Buyer Profile ──────────────────────────────────────────────────
+  const updateBuyerProfile = async (updates: Partial<BuyerProfile>): Promise<{ success: boolean; profile?: BuyerProfile; error?: string }> => {
+    const updated: BuyerProfile = {
+      ...(buyerProfile || {
+        id: user?.id || `buyer-${Date.now()}`,
+        phone: phone || '+91 93450 73473',
+        buyer_type: 'Individual Buyer',
+      }),
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+
+    setBuyerProfile(updated);
+
+    try {
+      await fetchFromBackend('/api/buyer/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+    } catch (e) {
+      console.warn('Backend buyer update note:', e);
+    }
+
+    try {
+      await supabase
+        .from('buyer_profiles')
+        .upsert(updated, { onConflict: 'phone' });
+    } catch (_) {}
+
+    return { success: true, profile: updated };
   };
 
   // ── Save Profile ──────────────────────────────────────────────────────────
@@ -412,6 +663,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return { success: true, profile: newProfile };
   };
+
 
   // ── Update Profile ────────────────────────────────────────────────────────
   const updateProfile = async (updates: Partial<ArtisanProfile>): Promise<{ success: boolean; profile?: ArtisanProfile; error?: string }> => {
@@ -525,13 +777,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setSession(null);
     setProfile(null);
+    setBuyerProfile(null);
     setPhone('');
     setOnboardingData(defaultOnboarding);
+    setBuyerOnboardingData(defaultBuyerOnboarding);
   };
 
   const refreshProfile = async () => {
     if (user?.id) {
-      await fetchProfile(user.id, user.phone || phone);
+      const phoneVal = user.phone || phone;
+      await fetchProfile(user.id, phoneVal);
+      await fetchBuyerProfile(user.id, phoneVal);
     }
   };
 
@@ -541,16 +797,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         session,
         profile,
+        buyerProfile,
+        userRole,
+        setUserRole,
         isLoading,
         flowMode,
         setFlowMode,
         phone,
         setPhone,
         onboardingData,
+        buyerOnboardingData,
         updateOnboardingData,
+        updateBuyerOnboardingData,
         sendOtp,
         verifyOtp,
         saveProfile,
+        saveBuyerProfile,
+        updateBuyerProfile,
         updateProfile,
         updateBankDetails,
         uploadAvatar,

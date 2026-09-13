@@ -8,6 +8,9 @@ import {
   TextInput,
   Image,
   StatusBar,
+  Alert,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,69 +21,103 @@ import {
   Plus,
   Minus,
   ArrowRight,
+  MapPin,
+  Truck,
+  ShieldCheck,
+  CheckCircle2,
+  Tag,
+  CreditCard,
+  Banknote,
+  QrCode,
 } from 'lucide-react-native';
-import { Fonts, Shadow } from '@/constants/artisan-theme';
+import { Fonts, Shadow, Radius } from '@/constants/artisan-theme';
+import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 
-interface CartItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  price: number;
-  quantity: number;
-  imageUri: string;
-  showDelete?: boolean;
-}
-
-const INITIAL_ITEMS: CartItem[] = [
-  {
-    id: '1',
-    title: 'Roller Rabbit',
-    subtitle: 'Vado Odelle Dress',
-    price: 198.0,
-    quantity: 1,
-    imageUri: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&q=80',
-  },
-  {
-    id: '2',
-    title: 'Axel Arigato',
-    subtitle: 'Clean 90 Triole Snakers',
-    price: 245.0,
-    quantity: 1,
-    imageUri: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&q=80',
-    showDelete: true,
-  },
-  {
-    id: '3',
-    title: 'Herschel Supply Co.',
-    subtitle: 'Daypack Backpack',
-    price: 40.0,
-    quantity: 1,
-    imageUri: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300&q=80',
-  },
-];
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000';
 
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { cart, removeFromCart, updateQuantity, clearCart, cartTotal, isCartLoading } = useCart();
+  const { profile, user } = useAuth();
 
-  const [items, setItems] = useState<CartItem[]>(INITIAL_ITEMS);
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card'>('cod');
+  const [shippingAddress, setShippingAddress] = useState(
+    profile?.location || 'Flat 402, Heritage Residency, MG Road, Bengaluru - 560001'
+  );
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [orderSuccessModal, setOrderSuccessModal] = useState(false);
+  const [placedOrderId, setPlacedOrderId] = useState('');
 
-  const updateQuantity = (id: string, delta: number) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
-      )
-    );
+  // Apply Promo Code
+  const handleApplyPromo = () => {
+    const code = promoCode.trim().toUpperCase();
+    if (code === 'HERITAGE10' || code === 'ARTISAN10') {
+      const disc = Math.round(cartTotal * 0.1);
+      setDiscount(disc);
+      setPromoApplied(true);
+      Alert.alert('Promo Applied!', `You saved ₹${disc.toLocaleString('en-IN')} (10% Artisan Craft Discount)`);
+    } else if (code) {
+      Alert.alert('Invalid Code', 'Try code "HERITAGE10" for 10% off handcrafted crafts.');
+    }
   };
 
-  const removeItem = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-  };
+  const finalTotal = Math.max(0, cartTotal - discount);
 
-  const subtotal = items.reduce((acc, it) => acc + it.price * it.quantity, 0);
-  const total = Math.max(0, subtotal - discount);
+  // Place Order API
+  const handlePlaceOrder = async () => {
+    if (cart.length === 0) {
+      Alert.alert('Cart Empty', 'Add handcrafted items before placing an order.');
+      return;
+    }
+
+    if (!shippingAddress.trim()) {
+      Alert.alert('Address Missing', 'Please provide a shipping delivery address.');
+      return;
+    }
+
+    setIsPlacingOrder(true);
+    try {
+      // Create orders on backend for all items
+      const orderPromises = cart.map(async (item) => {
+        const itemPriceNum = parseFloat(item.product.price.replace(/[^0-9.]/g, '')) || 650;
+        const itemTotal = `₹${(itemPriceNum * item.quantity).toLocaleString('en-IN')}`;
+
+        return fetch(`${BACKEND_URL}/api/orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            product_id: item.product.id,
+            product_title: item.product.title,
+            product_image: item.product.image_url || '',
+            artisan_id: item.product.artisan_id || null,
+            artisan_name: item.product.artisan_name || 'Master Artisan',
+            buyer_phone: profile?.phone || '+91 93450 73473',
+            buyer_name: profile?.name || 'Handmade Buyer',
+            buyer_address: shippingAddress.trim(),
+            quantity: item.quantity,
+            total_amount: itemTotal,
+            payment_method: paymentMethod,
+          }),
+        });
+      });
+
+      await Promise.all(orderPromises);
+
+      const generatedId = `ORD-${Date.now().toString().slice(-6)}`;
+      setPlacedOrderId(generatedId);
+      clearCart();
+      setOrderSuccessModal(true);
+    } catch (err: any) {
+      Alert.alert('Order Failed', err.message || 'Could not place order. Please check connection.');
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -96,144 +133,330 @@ export default function CartScreen() {
           <ArrowLeft size={20} color="#FFFFFF" strokeWidth={2.5} />
         </TouchableOpacity>
 
+        <Text style={styles.headerTitle}>Shopping Bag</Text>
+
         <View style={styles.circleBtnWhite}>
           <ShoppingBag size={20} color="#0D0D0D" strokeWidth={2} />
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{items.length}</Text>
-          </View>
         </View>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + 120 },
-        ]}
-      >
-        {/* Title */}
-        <Text style={styles.pageTitle}>My Cart</Text>
-
-        {/* ── Cart Items List ──────────────────────────────────── */}
-        <View style={styles.itemsList}>
-          {items.map((item) => {
-            return (
-              <View key={item.id} style={styles.cardOuterWrapper}>
-                {item.showDelete ? (
-                  <View style={styles.deleteActionWrapper}>
-                    {/* Main item body shifted */}
-                    <View style={styles.swipeCardBody}>
-                      <View style={styles.itemThumbWrapper}>
-                        <Image source={{ uri: item.imageUri }} style={styles.thumbImage} resizeMode="cover" />
-                      </View>
-                      <View style={styles.itemInfoCol}>
-                        <Text style={styles.itemTitle}>{item.title}</Text>
-                        <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
-                        <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
-                      </View>
-                      <View style={styles.stepperPill}>
-                        <TouchableOpacity
-                          onPress={() => updateQuantity(item.id, -1)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Minus size={12} color="#0D0D0D" strokeWidth={2.5} />
-                        </TouchableOpacity>
-                        <Text style={styles.stepperNum}>{item.quantity}</Text>
-                        <TouchableOpacity
-                          onPress={() => updateQuantity(item.id, 1)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Plus size={12} color="#0D0D0D" strokeWidth={2.5} />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                    {/* Black delete action tab on right */}
-                    <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => removeItem(item.id)}
-                      activeOpacity={0.85}
-                    >
-                      <Trash2 size={20} color="#FFFFFF" strokeWidth={2.2} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.regularCard}>
-                    <View style={styles.itemThumbWrapper}>
-                      <Image source={{ uri: item.imageUri }} style={styles.thumbImage} resizeMode="cover" />
-                    </View>
-                    <View style={styles.itemInfoCol}>
-                      <Text style={styles.itemTitle}>{item.title}</Text>
-                      <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
-                      <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
-                    </View>
-                    <View style={styles.stepperPill}>
-                      <TouchableOpacity
-                        onPress={() => updateQuantity(item.id, -1)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Minus size={12} color="#0D0D0D" strokeWidth={2.5} />
-                      </TouchableOpacity>
-                      <Text style={styles.stepperNum}>{item.quantity}</Text>
-                      <TouchableOpacity
-                        onPress={() => updateQuantity(item.id, 1)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Plus size={12} color="#0D0D0D" strokeWidth={2.5} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              </View>
-            );
-          })}
+      {/* ── Main Content ────────────────────────────────────────── */}
+      {isCartLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#0D0D0D" />
         </View>
-
-        {/* ── Promo Code Row ───────────────────────────────────── */}
-        <View style={styles.promoContainer}>
-          <TextInput
-            style={styles.promoInput}
-            placeholder="Promo Code"
-            placeholderTextColor="#9CA3AF"
-            value={promoCode}
-            onChangeText={setPromoCode}
-          />
+      ) : cart.length === 0 ? (
+        /* Empty Cart State */
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconCircle}>
+            <ShoppingBag size={48} color="#8E8E93" strokeWidth={1.5} />
+          </View>
+          <Text style={styles.emptyTitle}>Your Bag is Empty</Text>
+          <Text style={styles.emptySubtitle}>
+            Explore authentic handloom textiles, terracotta pottery, and certified GI crafts directly from Indian artisans.
+          </Text>
           <TouchableOpacity
-            style={styles.applyBtn}
-            onPress={() => {
-              if (promoCode.trim().toLowerCase() === 'fscreation') {
-                setDiscount(50);
-              }
-            }}
+            style={styles.exploreBtn}
+            onPress={() => router.replace('/')}
             activeOpacity={0.85}
           >
-            <Text style={styles.applyBtnText}>Apply</Text>
+            <Text style={styles.exploreBtnText}>Discover Handcrafted Items</Text>
+            <ArrowRight size={16} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
-      </ScrollView>
-
-      {/* ── Fixed Bottom Checkout Section ────────────────────── */}
-      <View
-        style={[
-          styles.bottomFixedSection,
-          { paddingBottom: Math.max(insets.bottom, 18) },
-        ]}
-      >
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total ({items.length} item) :</Text>
-          <Text style={styles.totalAmount}>${total.toFixed(0)}</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.checkoutBtn}
-          activeOpacity={0.9}
-          onPress={() => router.push('/')}
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
         >
-          <Text style={styles.checkoutBtnText}>Proceed to Checkout</Text>
-          <View style={styles.checkoutArrowCircle}>
-            <ArrowRight size={16} color="#0D0D0D" strokeWidth={2.5} />
+          {/* Trust Banner */}
+          <View style={styles.trustBanner}>
+            <View style={styles.trustItem}>
+              <Truck size={16} color="#0D0D0D" />
+              <Text style={styles.trustText}>Free Direct Artisan Delivery</Text>
+            </View>
+            <View style={styles.trustDivider} />
+            <View style={styles.trustItem}>
+              <ShieldCheck size={16} color="#10B981" />
+              <Text style={styles.trustText}>100% Genuine Heritage</Text>
+            </View>
           </View>
-        </TouchableOpacity>
-      </View>
+
+          {/* Cart Items List */}
+          <View style={styles.itemsList}>
+            {cart.map((item) => {
+              const priceNum = parseFloat(item.product.price.replace(/[^0-9.]/g, '')) || 650;
+              const formattedItemPrice = `₹${priceNum.toLocaleString('en-IN')}`;
+              const imageUri =
+                item.product.image_url ||
+                'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=600&q=80';
+
+              return (
+                <View key={item.id} style={styles.cartCard}>
+                  <Image source={{ uri: imageUri }} style={styles.cardImage} resizeMode="cover" />
+
+                  <View style={styles.cardContent}>
+                    <View style={styles.cardTopRow}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={styles.itemTitle} numberOfLines={1}>
+                          {item.product.title}
+                        </Text>
+                        <Text style={styles.itemSubtitle} numberOfLines={1}>
+                          {item.product.craft_type || item.product.category || 'Handcrafted'}
+                        </Text>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.deleteCircle}
+                        onPress={() => removeFromCart(item.product.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Trash2 size={16} color="#EF4444" strokeWidth={2} />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.cardBottomRow}>
+                      <Text style={styles.itemPrice}>{formattedItemPrice}</Text>
+
+                      {/* Stepper */}
+                      <View style={styles.stepperWrap}>
+                        <TouchableOpacity
+                          style={styles.stepperBtn}
+                          onPress={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          activeOpacity={0.7}
+                        >
+                          <Minus size={13} color="#0D0D0D" strokeWidth={2.5} />
+                        </TouchableOpacity>
+
+                        <Text style={styles.quantityText}>{item.quantity}</Text>
+
+                        <TouchableOpacity
+                          style={styles.stepperBtn}
+                          onPress={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          activeOpacity={0.7}
+                        >
+                          <Plus size={13} color="#0D0D0D" strokeWidth={2.5} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Promo Code Input */}
+          <View style={styles.promoSection}>
+            <View style={styles.promoInputWrap}>
+              <Tag size={18} color="#8E8E93" style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.promoInput}
+                placeholder="Promo code (e.g. HERITAGE10)"
+                placeholderTextColor="#A0A0A5"
+                value={promoCode}
+                onChangeText={setPromoCode}
+                autoCapitalize="characters"
+              />
+              <TouchableOpacity
+                style={[styles.applyBtn, promoApplied && styles.applyBtnActive]}
+                onPress={handleApplyPromo}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.applyBtnText}>{promoApplied ? 'Applied' : 'Apply'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Delivery Shipping Address */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionCardHeader}>
+              <View style={styles.rowAlign}>
+                <MapPin size={17} color="#0D0D0D" />
+                <Text style={styles.sectionCardTitle}>Shipping Address</Text>
+              </View>
+            </View>
+            <TextInput
+              style={styles.addressInputField}
+              value={shippingAddress}
+              onChangeText={setShippingAddress}
+              placeholder="Enter your shipping address..."
+              placeholderTextColor="#A0A0A5"
+              multiline
+              numberOfLines={2}
+            />
+          </View>
+
+          {/* Payment Method Selector */}
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionCardTitle}>Payment Method</Text>
+            <View style={styles.paymentOptionsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.paymentOptionCard,
+                  paymentMethod === 'cod' && styles.paymentOptionCardActive,
+                ]}
+                onPress={() => setPaymentMethod('cod')}
+                activeOpacity={0.8}
+              >
+                <Banknote size={20} color={paymentMethod === 'cod' ? '#FFFFFF' : '#0D0D0D'} />
+                <Text
+                  style={[
+                    styles.paymentOptionText,
+                    paymentMethod === 'cod' && styles.paymentOptionTextActive,
+                  ]}
+                >
+                  Cash on Delivery
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.paymentOptionCard,
+                  paymentMethod === 'upi' && styles.paymentOptionCardActive,
+                ]}
+                onPress={() => setPaymentMethod('upi')}
+                activeOpacity={0.8}
+              >
+                <QrCode size={20} color={paymentMethod === 'upi' ? '#FFFFFF' : '#0D0D0D'} />
+                <Text
+                  style={[
+                    styles.paymentOptionText,
+                    paymentMethod === 'upi' && styles.paymentOptionTextActive,
+                  ]}
+                >
+                  UPI / QR
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.paymentOptionCard,
+                  paymentMethod === 'card' && styles.paymentOptionCardActive,
+                ]}
+                onPress={() => setPaymentMethod('card')}
+                activeOpacity={0.8}
+              >
+                <CreditCard size={20} color={paymentMethod === 'card' ? '#FFFFFF' : '#0D0D0D'} />
+                <Text
+                  style={[
+                    styles.paymentOptionText,
+                    paymentMethod === 'card' && styles.paymentOptionTextActive,
+                  ]}
+                >
+                  Card / Net
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Order Summary Receipt */}
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryTitle}>Order Summary</Text>
+
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Subtotal ({cart.length} crafts)</Text>
+              <Text style={styles.summaryValue}>₹{cartTotal.toLocaleString('en-IN')}</Text>
+            </View>
+
+            {discount > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: '#10B981' }]}>Artisan Promo Discount</Text>
+                <Text style={[styles.summaryValue, { color: '#10B981' }]}>
+                  -₹{discount.toLocaleString('en-IN')}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Artisan Direct Shipping</Text>
+              <Text style={[styles.summaryValue, { color: '#10B981' }]}>FREE</Text>
+            </View>
+
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>GST & Craft Levies</Text>
+              <Text style={styles.summaryValue}>Included</Text>
+            </View>
+
+            <View style={styles.summaryDivider} />
+
+            <View style={styles.summaryRowTotal}>
+              <Text style={styles.totalLabel}>Total Payable</Text>
+              <Text style={styles.totalValue}>₹{finalTotal.toLocaleString('en-IN')}</Text>
+            </View>
+          </View>
+        </ScrollView>
+      )}
+
+      {/* ── Fixed Bottom Checkout Bar ────────────────────────────── */}
+      {cart.length > 0 && (
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <View style={styles.bottomPriceCol}>
+            <Text style={styles.bottomPriceLabel}>Total</Text>
+            <Text style={styles.bottomPriceValue}>₹{finalTotal.toLocaleString('en-IN')}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.checkoutBtn}
+            onPress={handlePlaceOrder}
+            disabled={isPlacingOrder}
+            activeOpacity={0.88}
+          >
+            {isPlacingOrder ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Text style={styles.checkoutBtnText}>Place Order</Text>
+                <ArrowRight size={18} color="#FFFFFF" strokeWidth={2.5} />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── Order Success Modal ─────────────────────────────────── */}
+      <Modal
+        visible={orderSuccessModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setOrderSuccessModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.successModalSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.successIconCircle}>
+              <CheckCircle2 size={48} color="#10B981" />
+            </View>
+
+            <Text style={styles.successTitle}>Order Placed Successfully!</Text>
+            <Text style={styles.successSub}>
+              Order #{placedOrderId} has been confirmed. The artisans have been notified to begin preparing your authentic handmade pieces.
+            </Text>
+
+            <View style={styles.modalSuccessBtns}>
+              <TouchableOpacity
+                style={styles.keepBrowsingBtn}
+                onPress={() => {
+                  setOrderSuccessModal(false);
+                  router.replace('/');
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.keepBrowsingText}>Discover More</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.viewOrdersBtn}
+                onPress={() => {
+                  setOrderSuccessModal(false);
+                  router.push('/profile');
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.viewOrdersText}>View in Orders →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -247,8 +470,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F7',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
   },
   circleBtnBlack: {
     width: 44,
@@ -257,104 +489,130 @@ const styles = StyleSheet.create({
     backgroundColor: '#0D0D0D',
     justifyContent: 'center',
     alignItems: 'center',
+    ...Shadow.card,
   },
   circleBtnWhite: {
     width: 44,
     height: 44,
     borderRadius: 22,
     backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: '#E5E5EA',
+    ...Shadow.card,
+  },
+  centered: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
   },
-  badge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: '#0D0D0D',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
+  emptyContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 3,
+    paddingHorizontal: 32,
   },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '800',
-    fontFamily: Fonts.headingBold,
+  emptyIconCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#F5F5F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  scrollContent: {
-    paddingHorizontal: 22,
-    paddingTop: 10,
-  },
-  pageTitle: {
-    fontSize: 24,
+  emptyTitle: {
+    fontSize: 22,
     fontWeight: '800',
     fontFamily: Fonts.headingBold,
     color: '#0D0D0D',
-    marginBottom: 20,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    fontFamily: Fonts.body,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 28,
+  },
+  exploreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#0D0D0D',
+    borderRadius: 30,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    ...Shadow.card,
+  },
+  exploreBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#FFFFFF',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  trustBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    backgroundColor: '#F9F9FB',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#EFEFF2',
+  },
+  trustItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  trustText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: Fonts.bodyMedium,
+    color: '#0D0D0D',
+  },
+  trustDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: '#E5E5EA',
   },
   itemsList: {
-    gap: 16,
+    gap: 14,
+    marginBottom: 20,
   },
-  cardOuterWrapper: {
-    width: '100%',
-  },
-  regularCard: {
+  cartCard: {
     flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 18,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#EFEFF2',
     ...Shadow.card,
-    elevation: 3,
   },
-  deleteActionWrapper: {
-    flexDirection: 'row',
-    backgroundColor: '#0D0D0D',
-    borderRadius: 20,
-    overflow: 'hidden',
-    ...Shadow.card,
-    elevation: 4,
-  },
-  swipeCardBody: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
-    padding: 12,
-  },
-  deleteButton: {
-    width: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0D0D0D',
-  },
-  itemThumbWrapper: {
-    width: 68,
-    height: 68,
+  cardImage: {
+    width: 80,
+    height: 80,
     borderRadius: 14,
-    backgroundColor: '#F3F4F6',
-    overflow: 'hidden',
-    marginRight: 14,
+    backgroundColor: '#F5F5F7',
   },
-  thumbImage: {
-    width: '100%',
-    height: '100%',
-  },
-  itemInfoCol: {
+  cardContent: {
     flex: 1,
-    gap: 3,
+    marginLeft: 12,
+    justifyContent: 'space-between',
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   itemTitle: {
     fontSize: 14,
@@ -364,110 +622,318 @@ const styles = StyleSheet.create({
   },
   itemSubtitle: {
     fontSize: 12,
-    color: '#8E8E93',
+    fontWeight: '500',
     fontFamily: Fonts.body,
-  },
-  itemPrice: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
+    color: '#8E8E93',
     marginTop: 2,
   },
-  stepperPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F0F0',
+  deleteCircle: {
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    gap: 10,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  stepperNum: {
-    fontSize: 13,
-    fontWeight: '700',
+  cardBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  itemPrice: {
+    fontSize: 15,
+    fontWeight: '800',
     fontFamily: Fonts.headingBold,
     color: '#0D0D0D',
   },
-  promoContainer: {
-    marginTop: 24,
+  stepperWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F5F5F7',
     borderRadius: 16,
-    paddingLeft: 18,
-    paddingRight: 6,
-    height: 54,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 10,
+  },
+  stepperBtn: {
+    padding: 3,
+  },
+  quantityText: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+    minWidth: 14,
+    textAlign: 'center',
+  },
+  promoSection: {
+    marginBottom: 16,
+  },
+  promoInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9F9FB',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#EFEFF2',
   },
   promoInput: {
     flex: 1,
     fontSize: 13,
     fontFamily: Fonts.bodyMedium,
     color: '#0D0D0D',
+    paddingVertical: 8,
   },
   applyBtn: {
     backgroundColor: '#0D0D0D',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  applyBtnActive: {
+    backgroundColor: '#10B981',
   },
   applyBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
+    color: '#FFFFFF',
   },
-  bottomFixedSection: {
+  sectionCard: {
+    backgroundColor: '#F9F9FB',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#EFEFF2',
+  },
+  sectionCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  rowAlign: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+    marginBottom: 10,
+  },
+  addressInputField: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 13,
+    fontFamily: Fonts.body,
+    color: '#0D0D0D',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    lineHeight: 18,
+  },
+  paymentOptionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  paymentOptionCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: '#E5E5EA',
+  },
+  paymentOptionCardActive: {
+    backgroundColor: '#0D0D0D',
+    borderColor: '#0D0D0D',
+  },
+  paymentOptionText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+  },
+  paymentOptionTextActive: {
+    color: '#FFFFFF',
+  },
+  summaryCard: {
+    backgroundColor: '#F9F9FB',
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#EFEFF2',
+    marginBottom: 16,
+  },
+  summaryTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+    marginBottom: 14,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    fontFamily: Fonts.body,
+    color: '#6B7280',
+  },
+  summaryValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: '#E5E5EA',
+    marginVertical: 12,
+  },
+  summaryRowTotal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  totalLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+  },
+  totalValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+  },
+  bottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 22,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F7',
-    ...Shadow.nav,
-  },
-  totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    ...Shadow.nav,
   },
-  totalLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+  bottomPriceCol: {
+    justifyContent: 'center',
+  },
+  bottomPriceLabel: {
+    fontSize: 11,
+    fontWeight: '600',
     fontFamily: Fonts.bodyMedium,
     color: '#8E8E93',
   },
-  totalAmount: {
-    fontSize: 24,
+  bottomPriceValue: {
+    fontSize: 22,
     fontWeight: '800',
     fontFamily: Fonts.headingBold,
     color: '#0D0D0D',
   },
   checkoutBtn: {
-    backgroundColor: '#0D0D0D',
-    borderRadius: 30,
-    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 22,
+    gap: 8,
+    backgroundColor: '#0D0D0D',
+    borderRadius: 30,
+    paddingVertical: 14,
+    paddingHorizontal: 26,
+    ...Shadow.card,
   },
   checkoutBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
+    color: '#FFFFFF',
   },
-  checkoutArrowCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  successModalSheet: {
     backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    alignItems: 'center',
+  },
+  successIconCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: '#DCFCE7',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 16,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  successSub: {
+    fontSize: 14,
+    fontFamily: Fonts.body,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  modalSuccessBtns: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  keepBrowsingBtn: {
+    flex: 1,
+    backgroundColor: '#F5F5F7',
+    borderRadius: 26,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  keepBrowsingText: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+  },
+  viewOrdersBtn: {
+    flex: 1.2,
+    backgroundColor: '#0D0D0D',
+    borderRadius: 26,
+    paddingVertical: 14,
+    alignItems: 'center',
+    ...Shadow.card,
+  },
+  viewOrdersText: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#FFFFFF',
   },
 });

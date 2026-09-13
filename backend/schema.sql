@@ -148,3 +148,205 @@ DROP POLICY IF EXISTS "Allow Avatar Updates" ON storage.objects;
 CREATE POLICY "Allow Avatar Updates"
     ON storage.objects FOR UPDATE
     USING (bucket_id = 'avatars');
+
+-- 9. Products table for Add Product and Listings
+CREATE TABLE IF NOT EXISTS public.products (
+    id TEXT PRIMARY KEY,
+    artisan_id TEXT,
+    title TEXT NOT NULL,
+    description_en TEXT DEFAULT '',
+    description_hi TEXT DEFAULT '',
+    category TEXT DEFAULT 'Handicraft',
+    craft_type TEXT DEFAULT 'Handicraft',
+    price TEXT NOT NULL,
+    units INTEGER DEFAULT 1,
+    image_url TEXT DEFAULT '',
+    material_cost NUMERIC DEFAULT 0,
+    marketplaces JSONB DEFAULT '[]'::jsonb,
+    status TEXT DEFAULT 'published' CHECK (status IN ('published', 'draft', 'sold', 'inquiries')),
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Idempotent column additions in case products table already existed
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS description_en TEXT DEFAULT '';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS description_hi TEXT DEFAULT '';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Handicraft';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS craft_type TEXT DEFAULT 'Handicraft';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS units INTEGER DEFAULT 1;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS material_cost NUMERIC DEFAULT 0;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS marketplaces JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'published';
+
+-- Indexes for fast query performance
+CREATE INDEX IF NOT EXISTS idx_products_artisan_id ON public.products(artisan_id);
+CREATE INDEX IF NOT EXISTS idx_products_status ON public.products(status);
+CREATE INDEX IF NOT EXISTS idx_products_category ON public.products(category);
+CREATE INDEX IF NOT EXISTS idx_products_created_at ON public.products(created_at DESC);
+
+-- Enable RLS
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for products
+DROP POLICY IF EXISTS "Allow select products" ON public.products;
+CREATE POLICY "Allow select products"
+    ON public.products
+    FOR SELECT
+    USING (true);
+
+DROP POLICY IF EXISTS "Allow insert products" ON public.products;
+CREATE POLICY "Allow insert products"
+    ON public.products
+    FOR INSERT
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow update products" ON public.products;
+CREATE POLICY "Allow update products"
+    ON public.products
+    FOR UPDATE
+    USING (true)
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow delete products" ON public.products;
+CREATE POLICY "Allow delete products"
+    ON public.products
+    FOR DELETE
+    USING (true);
+
+-- Auto-update updated_at timestamp trigger
+DROP TRIGGER IF EXISTS set_products_updated_at ON public.products;
+CREATE TRIGGER set_products_updated_at
+    BEFORE UPDATE ON public.products
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+-- 10. Storage bucket for product images
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('products', 'products', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public Products Access" ON storage.objects;
+CREATE POLICY "Public Products Access"
+    ON storage.objects FOR SELECT
+    USING (bucket_id = 'products');
+
+DROP POLICY IF EXISTS "Allow Product Uploads" ON storage.objects;
+CREATE POLICY "Allow Product Uploads"
+    ON storage.objects FOR INSERT
+    WITH CHECK (bucket_id = 'products');
+
+-- 11. DEDICATED BUYER PROFILES TABLE
+CREATE TABLE IF NOT EXISTS public.buyer_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    phone TEXT NOT NULL,
+    name TEXT,
+    buyer_type TEXT NOT NULL DEFAULT 'Individual Buyer' CHECK (buyer_type IN ('Individual Buyer', 'Retail Business', 'Government Procurement')),
+    business_name TEXT,
+    gstin TEXT,
+    department TEXT,
+    address_line TEXT,
+    city TEXT,
+    state TEXT,
+    pincode TEXT,
+    is_onboarded BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT unique_buyer_profiles_phone UNIQUE (phone)
+);
+
+-- Indexes for fast query lookup
+CREATE INDEX IF NOT EXISTS idx_buyer_profiles_phone ON public.buyer_profiles(phone);
+CREATE INDEX IF NOT EXISTS idx_buyer_profiles_type ON public.buyer_profiles(buyer_type);
+CREATE INDEX IF NOT EXISTS idx_buyer_profiles_created_at ON public.buyer_profiles(created_at DESC);
+
+-- Enable RLS for buyer_profiles
+ALTER TABLE public.buyer_profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow select buyer_profiles" ON public.buyer_profiles;
+CREATE POLICY "Allow select buyer_profiles"
+    ON public.buyer_profiles
+    FOR SELECT
+    USING (true);
+
+DROP POLICY IF EXISTS "Allow insert buyer_profiles" ON public.buyer_profiles;
+CREATE POLICY "Allow insert buyer_profiles"
+    ON public.buyer_profiles
+    FOR INSERT
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow update buyer_profiles" ON public.buyer_profiles;
+CREATE POLICY "Allow update buyer_profiles"
+    ON public.buyer_profiles
+    FOR UPDATE
+    USING (true)
+    WITH CHECK (true);
+
+-- Auto-update updated_at timestamp trigger for buyer_profiles
+DROP TRIGGER IF EXISTS set_buyer_profiles_updated_at ON public.buyer_profiles;
+CREATE TRIGGER set_buyer_profiles_updated_at
+    BEFORE UPDATE ON public.buyer_profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+-- 12. DEDICATED INQUIRIES TABLE (Connecting Buyers Directly With Artisans)
+CREATE TABLE IF NOT EXISTS public.inquiries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id TEXT NOT NULL,
+    product_title TEXT,
+    artisan_id TEXT,
+    buyer_phone TEXT,
+    buyer_name TEXT,
+    buyer_type TEXT DEFAULT 'Individual Buyer',
+    message TEXT NOT NULL,
+    status TEXT DEFAULT 'new' CHECK (status IN ('new', 'replied', 'closed')),
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_inquiries_artisan_id ON public.inquiries(artisan_id);
+CREATE INDEX IF NOT EXISTS idx_inquiries_buyer_phone ON public.inquiries(buyer_phone);
+CREATE INDEX IF NOT EXISTS idx_inquiries_created_at ON public.inquiries(created_at DESC);
+
+ALTER TABLE public.inquiries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all inquiries" ON public.inquiries;
+CREATE POLICY "Allow all inquiries"
+    ON public.inquiries
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+-- 13. DEDICATED ORDERS TABLE
+CREATE TABLE IF NOT EXISTS public.orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id TEXT NOT NULL,
+    product_title TEXT,
+    product_image TEXT,
+    artisan_id TEXT,
+    artisan_name TEXT,
+    buyer_phone TEXT NOT NULL,
+    buyer_name TEXT,
+    buyer_address TEXT,
+    quantity INTEGER DEFAULT 1,
+    total_amount TEXT NOT NULL,
+    status TEXT DEFAULT 'confirmed' CHECK (status IN ('pending', 'confirmed', 'shipped', 'delivered', 'cancelled')),
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_buyer_phone ON public.orders(buyer_phone);
+CREATE INDEX IF NOT EXISTS idx_orders_artisan_id ON public.orders(artisan_id);
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at DESC);
+
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all orders" ON public.orders;
+CREATE POLICY "Allow all orders"
+    ON public.orders
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+
+

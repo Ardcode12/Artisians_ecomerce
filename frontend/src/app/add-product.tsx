@@ -35,6 +35,7 @@ import { PriceStep } from '@/components/artisan/add-product/PriceStep';
 import { ReviewStep } from '@/components/artisan/add-product/ReviewStep';
 import { useLanguage } from '@/context/LanguageContext';
 
+const { width } = Dimensions.get('window');
 
 export default function AddProductScreen() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -42,10 +43,15 @@ export default function AddProductScreen() {
     imageUri: '',
     title: '',
     description: '',
+    description_en: '',
+    description_hi: '',
+    description_ta: '',
     category: '',
     suggestedPrice: '',
     finalPrice: '',
     units: 1,
+    materialCost: 0,
+    priceData: null as any,
   });
 
   const insets = useSafeAreaInsets();
@@ -145,18 +151,24 @@ export default function AddProductScreen() {
         )}
         {currentStep === 1 && (
           <VoiceStep
+            imageUri={productData.imageUri}
             title={productData.title}
             description={productData.description}
             category={productData.category}
+            description_en={productData.description_en}
+            description_hi={productData.description_hi}
+            description_ta={productData.description_ta}
             onUpdate={(fields) => setProductData((d) => ({ ...d, ...fields }))}
             onNext={goNext}
           />
         )}
         {currentStep === 2 && (
           <PriceStep
-            suggestedPrice={productData.suggestedPrice || '₹650'}
+            suggestedPrice={productData.suggestedPrice}
             finalPrice={productData.finalPrice}
             units={productData.units}
+            productTitle={productData.title}
+            craftType={productData.category}
             onUpdate={(fields) => setProductData((d) => ({ ...d, ...fields }))}
             onNext={goNext}
           />

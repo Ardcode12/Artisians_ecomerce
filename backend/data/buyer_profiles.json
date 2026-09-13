@@ -1,0 +1,26 @@
+{
+  "+919999988888": {
+    "id": "22222222-3333-4444-5555-919999988888",
+    "phone": "+919999988888",
+    "name": "Priya Sharma",
+    "buyer_type": "Individual Buyer",
+    "address_line": "42 Lotus Garden, Gandhi Road",
+    "city": "Chennai",
+    "state": "Tamil Nadu",
+    "pincode": "600001",
+    "is_onboarded": true,
+    "updated_at": "2026-09-06T17:00:43.965Z"
+  },
+  "+916374389595": {
+    "id": "11111111-2222-3333-4444-916374389595",
+    "phone": "+916374389595",
+    "name": "Arnald",
+    "buyer_type": "Individual Buyer",
+    "is_onboarded": true,
+    "updated_at": "2026-09-06T18:23:11.406Z",
+    "address_line": "14/10 MGR NAGAR VAIKKALPUDHUR CHENNIMALAI",
+    "city": "ERODE",
+    "state": "TAMILNADU",
+    "pincode": "638051"
+  }
+}

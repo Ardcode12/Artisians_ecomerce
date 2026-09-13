@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@/utils/storage';
 import { translations, LanguageCode, TranslationKeys, LANGUAGE_META } from '@/i18n/translations';
 
 const STORAGE_KEY = '@artisanlink_language';

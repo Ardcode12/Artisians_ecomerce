@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,10 @@ import {
   Image,
   Modal,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import {
   useFonts,
   Poppins_600SemiBold,
@@ -35,6 +36,8 @@ import {
   LogOut,
   X,
   ChevronRight,
+  Plus,
+  Inbox,
 } from 'lucide-react-native';
 
 import { Fonts, Radius, Shadow, NAV_HEIGHT } from '@/constants/artisan-theme';
@@ -47,51 +50,44 @@ import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottom
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import WelcomeScreen from './welcome';
+import BuyerHomeScreen from './buyer-home';
 
-// ── Artisan Product Mock Data ──────────────────────────────────────
-const ARTISAN_LISTINGS = [
-  {
-    id: '1',
-    title: 'Hand-woven Cotton Dupatta',
-    subtitle: 'Handloom Textile',
-    price: '₹650',
-    status: 'inquiries' as ListingStatus,
-    inquiryCount: 3,
-    imageUri: 'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=400&q=80',
-  },
-  {
-    id: '2',
-    title: 'Terracotta Vase Set (3pc)',
-    subtitle: 'Pottery & Clay',
-    price: '₹1,200',
-    status: 'published' as ListingStatus,
-    imageUri: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=400&q=80',
-  },
-  {
-    id: '3',
-    title: 'Wooden Carved Elephant',
-    subtitle: 'Wood Carving',
-    price: '₹2,800',
-    status: 'draft' as ListingStatus,
-    imageUri: 'https://images.unsplash.com/photo-1603827457577-609e6f42a45e?w=400&q=80',
-  },
-  {
-    id: '4',
-    title: 'Brass Dhokra Necklace',
-    subtitle: 'Metalwork Jewelry',
-    price: '₹950',
-    status: 'sold' as ListingStatus,
-    imageUri: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&q=80',
-  },
-];
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000';
+
+interface Product {
+  id: string;
+  title: string;
+  category?: string;
+  craft_type?: string;
+  price: string;
+  status?: string;
+  image_url?: string;
+  artisan_id?: string;
+  description_en?: string;
+  description_hi?: string;
+  description_ta?: string;
+  units?: number;
+}
+
+function productStatus(p: Product): ListingStatus {
+  const s = (p.status || 'published').toLowerCase();
+  if (s === 'sold') return 'sold';
+  if (s === 'draft') return 'draft';
+  if (s === 'inquiries') return 'inquiries';
+  return 'published';
+}
+
 
 export default function ArtisanHomeScreen() {
   const [activeTab, setActiveTab] = useState<ArtisanTab>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [recentProducts, setRecentProducts] = useState<Product[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(true);
+  const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { session, profile, signOut, isLoading } = useAuth();
+  const { session, profile, user, signOut, isLoading, userRole } = useAuth();
   const { t } = useLanguage();
 
   const [fontsLoaded] = useFonts({
@@ -102,11 +98,65 @@ export default function ArtisanHomeScreen() {
     Inter_700Bold,
   });
 
+  const fetchRecentProducts = useCallback(async () => {
+    try {
+      setListingsLoading(true);
+      let url = `${BACKEND_URL}/api/products?limit=4`;
+      if (user?.id) url += `&artisan_id=${user.id}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (resp.ok && data.products) {
+        setRecentProducts(data.products.slice(0, 4));
+      } else {
+        setRecentProducts([]);
+      }
+    } catch (_) {
+      setRecentProducts([]);
+    } finally {
+      setListingsLoading(false);
+    }
+  }, [user?.id]);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      let inqUrl = `${BACKEND_URL}/api/inquiries`;
+      if (user?.id) inqUrl += `?artisan_id=${user.id}`;
+      let ordUrl = `${BACKEND_URL}/api/orders`;
+      if (user?.id) ordUrl += `?artisan_id=${user.id}`;
+
+      const [inqRes, ordRes] = await Promise.all([fetch(inqUrl), fetch(ordUrl)]);
+      let count = 0;
+      if (inqRes.ok) {
+        const d = await inqRes.json();
+        if (d.inquiries) count += d.inquiries.length;
+      }
+      if (ordRes.ok) {
+        const d = await ordRes.json();
+        if (d.orders) count += d.orders.length;
+      }
+      setUnreadNotifsCount(count);
+    } catch (_) {}
+  }, [user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (session) {
+        fetchRecentProducts();
+        fetchNotifications();
+      }
+    }, [session, fetchRecentProducts, fetchNotifications])
+  );
+
   if (!fontsLoaded || isLoading) return null;
 
   // If user is not logged in, show Welcome / Login & Sign Up screen as initial landing page
   if (!session) {
     return <WelcomeScreen />;
+  }
+
+  // If active user session is a buyer, show Buyer Home screen
+  if (userRole === 'buyer') {
+    return <BuyerHomeScreen />;
   }
 
   const handleTabChange = (tab: ArtisanTab) => {
@@ -145,7 +195,7 @@ export default function ArtisanHomeScreen() {
             activeOpacity={0.8}
           >
             <Bell size={20} color="#0D0D0D" strokeWidth={2} />
-            <View style={styles.unreadRedDot} />
+            {unreadNotifsCount > 0 && <View style={styles.unreadRedDot} />}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -225,32 +275,59 @@ export default function ArtisanHomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* 2-Column Product Grid with Status Dots */}
-          <View style={styles.grid}>
-            {ARTISAN_LISTINGS.map((item) => (
-              <View key={item.id} style={styles.gridCell}>
-                <ListingCard
-                  title={item.title}
-                  subtitle={item.subtitle}
-                  price={item.price}
-                  status={item.status}
-                  inquiryCount={item.inquiryCount}
-                  imageUri={item.imageUri}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/product-details',
-                      params: {
-                        title: item.title,
-                        subtitle: item.subtitle,
-                        price: item.price,
-                        imageUri: item.imageUri,
-                      },
-                    })
-                  }
-                />
-              </View>
-            ))}
-          </View>
+          {/* 2-Column Product Grid — real data from backend */}
+          {listingsLoading ? (
+            <View style={styles.listingsLoader}>
+              <ActivityIndicator size="small" color="#0D0D0D" />
+              <Text style={styles.listingsLoaderText}>Loading your products...</Text>
+            </View>
+          ) : recentProducts.length === 0 ? (
+            <View style={styles.listingsEmpty}>
+              <Inbox size={40} color="#9CA3AF" strokeWidth={1.5} />
+              <Text style={styles.listingsEmptyTitle}>No products yet</Text>
+              <Text style={styles.listingsEmptyText}>Add your first product to start selling</Text>
+              <TouchableOpacity
+                style={styles.addFirstBtn}
+                onPress={() => router.push('/add-product')}
+                activeOpacity={0.85}
+              >
+                <Plus size={14} color="#FFFFFF" />
+                <Text style={styles.addFirstBtnText}>Add Product</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.grid}>
+              {recentProducts.map((item) => (
+                <View key={item.id} style={styles.gridCell}>
+                  <ListingCard
+                    title={item.title}
+                    subtitle={item.category || item.craft_type || 'Handicraft'}
+                    price={item.price}
+                    status={productStatus(item)}
+                    imageUri={item.image_url || ''}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/product-details',
+                        params: {
+                          id: item.id,
+                          title: item.title,
+                          subtitle: item.category || item.craft_type || '',
+                          price: item.price,
+                          imageUri: item.image_url || '',
+                          description_en: item.description_en || '',
+                          description_hi: item.description_hi || '',
+                          description_ta: item.description_ta || '',
+                          category: item.category || item.craft_type || 'Handicraft',
+                          units: String(item.units || 1),
+                          status: item.status || 'published',
+                        },
+                      })
+                    }
+                  />
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* ── Orders & Inquiries Section ────────────────────────────── */}
@@ -712,5 +789,49 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
     fontFamily: Fonts.body,
+  },
+  listingsLoader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 32,
+  },
+  listingsLoaderText: {
+    fontSize: 13,
+    fontFamily: Fonts.body,
+    color: '#6B7280',
+  },
+  listingsEmpty: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 8,
+  },
+  listingsEmptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+  },
+  listingsEmptyText: {
+    fontSize: 13,
+    fontFamily: Fonts.body,
+    color: '#8E8E93',
+    textAlign: 'center',
+  },
+  addFirstBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#0D0D0D',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginTop: 6,
+  },
+  addFirstBtnText: {
+    fontSize: 13,
+    fontFamily: Fonts.headingBold,
+    color: '#FFFFFF',
   },
 });

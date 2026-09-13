@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,13 @@ import {
   FlatList,
   ScrollView,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import {
   useFonts,
   Poppins_600SemiBold,
@@ -29,82 +33,63 @@ import {
   ArrowUpDown,
   Plus,
   Inbox,
+  RefreshCw,
 } from 'lucide-react-native';
 
 import { Fonts, Radius, Shadow, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { ListingCard, ListingStatus } from '@/components/artisan/ListingCard';
 import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
+import { EditProductModal, EditableProduct } from '@/components/artisan/EditProductModal';
 
-const ALL_LISTINGS = [
-  {
-    id: '1',
-    title: 'Hand-woven Cotton Dupatta',
-    subtitle: 'Handloom Textile',
-    price: '₹650',
-    category: 'Textiles',
-    status: 'inquiries' as ListingStatus,
-    inquiryCount: 3,
-    imageUri: 'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=400&q=80',
-  },
-  {
-    id: '2',
-    title: 'Terracotta Vase Set (3pc)',
-    subtitle: 'Pottery & Clay',
-    price: '₹1,200',
-    category: 'Pottery',
-    status: 'published' as ListingStatus,
-    imageUri: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=400&q=80',
-  },
-  {
-    id: '3',
-    title: 'Wooden Carved Elephant',
-    subtitle: 'Wood Carving',
-    price: '₹2,800',
-    category: 'Woodcraft',
-    status: 'draft' as ListingStatus,
-    imageUri: 'https://images.unsplash.com/photo-1603827457577-609e6f42a45e?w=400&q=80',
-  },
-  {
-    id: '4',
-    title: 'Brass Dhokra Necklace',
-    subtitle: 'Metalwork Jewelry',
-    price: '₹950',
-    category: 'Jewelry',
-    status: 'sold' as ListingStatus,
-    imageUri: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&q=80',
-  },
-  {
-    id: '5',
-    title: 'Madhubani Hand-painted Stole',
-    subtitle: 'Folk Art & Silk',
-    price: '₹1,650',
-    category: 'Textiles',
-    status: 'published' as ListingStatus,
-    imageUri: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400&q=80',
-  },
-  {
-    id: '6',
-    title: 'Blue Pottery Decorative Plate',
-    subtitle: 'Ceramic Crafts',
-    price: '₹750',
-    category: 'Pottery',
-    status: 'inquiries' as ListingStatus,
-    inquiryCount: 2,
-    imageUri: 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=400&q=80',
-  },
-];
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000';
 
-const FILTERS = ['All', 'Textiles', 'Pottery', 'Woodcraft', 'Jewelry'];
+const CATEGORY_FILTERS = ['All', 'Textiles', 'Pottery', 'Woodcraft', 'Jewelry', 'Painting', 'Metalwork', 'Other'];
+
+interface Product {
+  id: string;
+  title: string;
+  description_en?: string;
+  description_hi?: string;
+  description_ta?: string;
+  category?: string;
+  craft_type?: string;
+  price: string;
+  units?: number;
+  image_url?: string;
+  status?: string;
+  artisan_id?: string;
+  created_at?: string;
+}
+
+function statusForProduct(p: Product): ListingStatus {
+  const s = (p.status || 'published').toLowerCase();
+  if (s === 'sold') return 'sold';
+  if (s === 'draft') return 'draft';
+  if (s === 'inquiries') return 'inquiries';
+  return 'published';
+}
 
 export default function ListingsScreen() {
   const [activeTab, setActiveTab] = useState<ArtisanTab>('listings');
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState('');
+
+  // Edit modal state
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<EditableProduct | null>(null);
+
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useLanguage();
+  const { user } = useAuth();
 
   const [fontsLoaded] = useFonts({
     Poppins_600SemiBold,
@@ -113,6 +98,42 @@ export default function ListingsScreen() {
     Inter_500Medium,
     Inter_700Bold,
   });
+
+  const fetchProducts = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setFetchError('');
+
+    try {
+      let url = `${BACKEND_URL}/api/products?limit=100`;
+      if (user?.id) url += `&artisan_id=${user.id}`;
+
+      const resp = await fetch(url, {
+        headers: { Accept: 'application/json' },
+      });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        throw new Error(data.error || `Server error ${resp.status}`);
+      }
+
+      setProducts(data.products || []);
+    } catch (err: any) {
+      console.warn('[Listings] Fetch error:', err.message);
+      setFetchError(err.message || 'Failed to load products');
+      setProducts([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.id]);
+
+  // Re-fetch when screen comes into focus (e.g., after publishing a product)
+  useFocusEffect(
+    useCallback(() => {
+      fetchProducts();
+    }, [fetchProducts])
+  );
 
   if (!fontsLoaded) return null;
 
@@ -125,11 +146,88 @@ export default function ListingsScreen() {
     if (tab === 'profile') router.push('/profile');
   };
 
-  const filtered = ALL_LISTINGS.filter((item) => {
-    const matchesFilter = activeFilter === 'All' || item.category === activeFilter;
+  const handleOpenEdit = (item: Product) => {
+    setProductToEdit({
+      id: item.id,
+      title: item.title,
+      price: item.price,
+      category: item.category || item.craft_type || 'Handicraft',
+      craft_type: item.craft_type || item.category || 'Handicraft',
+      units: item.units || 1,
+      status: item.status || 'published',
+      description_en: item.description_en || '',
+      description_hi: item.description_hi || '',
+      description_ta: item.description_ta || '',
+      image_url: item.image_url || '',
+    });
+    setEditModalVisible(true);
+  };
+
+  const handleEditSuccess = (updatedProduct: any) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === updatedProduct.id ? { ...p, ...updatedProduct } : p))
+    );
+  };
+
+  const handlePromptDelete = (item: Product) => {
+    const confirmMessage = `Are you sure you want to delete "${item.title}"? This cannot be undone.`;
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(confirmMessage)) {
+        executeDelete(item.id);
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Delete Product',
+      confirmMessage,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => executeDelete(item.id),
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const executeDelete = async (productId: string) => {
+    try {
+      // Optimistic removal
+      setProducts((prev) => prev.filter((p) => p.id !== productId));
+
+      const resp = await fetch(`${BACKEND_URL}/api/products/${productId}`, {
+        method: 'DELETE',
+        headers: { Accept: 'application/json' },
+      });
+
+      const data = await resp.json();
+      if (!resp.ok || !data.success) {
+        throw new Error(data.error || 'Server failed to delete product');
+      }
+
+      if (Platform.OS !== 'web') {
+        Alert.alert('Deleted', 'Product has been deleted from your catalog.');
+      }
+    } catch (err: any) {
+      console.warn('[Listings] Delete error:', err.message);
+      Alert.alert('Error', err.message || 'Could not delete product. Re-fetching...');
+      fetchProducts();
+    }
+  };
+
+  const filtered = products.filter((item) => {
+    const cat = item.category || item.craft_type || '';
+    const matchesFilter =
+      activeFilter === 'All' ||
+      cat.toLowerCase().includes(activeFilter.toLowerCase());
     const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.category || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.craft_type || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
@@ -178,15 +276,23 @@ export default function ListingsScreen() {
               onChangeText={setSearchQuery}
             />
           </View>
-          <TouchableOpacity style={styles.sortBtn} activeOpacity={0.8}>
-            <ArrowUpDown size={18} color="#0D0D0D" />
+          <TouchableOpacity
+            style={styles.sortBtn}
+            onPress={() => fetchProducts(true)}
+            activeOpacity={0.8}
+          >
+            <RefreshCw size={18} color="#0D0D0D" />
           </TouchableOpacity>
         </View>
 
         {/* Filter chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScroll}
+        >
           <View style={styles.filterRow}>
-            {FILTERS.map((f) => (
+            {CATEGORY_FILTERS.map((f) => (
               <TouchableOpacity
                 key={f}
                 style={[styles.chip, activeFilter === f && styles.chipActive]}
@@ -202,48 +308,103 @@ export default function ListingsScreen() {
         </ScrollView>
       </View>
 
+      {/* Loading state */}
+      {loading && (
+        <View style={styles.centeredState}>
+          <ActivityIndicator size="large" color="#0D0D0D" />
+          <Text style={styles.loadingText}>Loading your products...</Text>
+        </View>
+      )}
+
+      {/* Error state */}
+      {!loading && fetchError ? (
+        <View style={styles.centeredState}>
+          <Text style={styles.errorTitle}>Could not load products</Text>
+          <Text style={styles.errorSub}>{fetchError}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => fetchProducts()} activeOpacity={0.8}>
+            <RefreshCw size={16} color="#FFFFFF" />
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       {/* Grid or List */}
-      <FlatList
-        data={filtered}
-        key={viewMode}
-        numColumns={viewMode === 'grid' ? 2 : 1}
-        keyExtractor={(it) => it.id}
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: NAV_HEIGHT + insets.bottom + 80 },
-        ]}
-        columnWrapperStyle={viewMode === 'grid' ? styles.columnWrapper : undefined}
-        renderItem={({ item }) => (
-          <View style={viewMode === 'grid' ? styles.gridCell : styles.listCell}>
-            <ListingCard
-              title={item.title}
-              subtitle={item.subtitle}
-              price={item.price}
-              status={item.status}
-              inquiryCount={item.inquiryCount}
-              imageUri={item.imageUri}
-              onPress={() =>
-                router.push({
-                  pathname: '/product-details',
-                  params: {
-                    title: item.title,
-                    subtitle: item.subtitle,
-                    price: item.price,
-                    imageUri: item.imageUri,
-                  },
-                })
-              }
+      {!loading && !fetchError && (
+        <FlatList
+          data={filtered}
+          key={viewMode}
+          numColumns={viewMode === 'grid' ? 2 : 1}
+          keyExtractor={(it) => it.id}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: NAV_HEIGHT + insets.bottom + 80 },
+          ]}
+          columnWrapperStyle={viewMode === 'grid' ? styles.columnWrapper : undefined}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchProducts(true)}
+              tintColor="#0D0D0D"
             />
-          </View>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Inbox size={48} color="#9CA3AF" strokeWidth={1.5} />
-            <Text style={styles.emptyTitle}>{t('listings_empty_title')}</Text>
-            <Text style={styles.emptySub}>{t('listings_empty_sub')}</Text>
-          </View>
-        }
-      />
+          }
+          renderItem={({ item }) => (
+            <View style={viewMode === 'grid' ? styles.gridCell : styles.listCell}>
+              <ListingCard
+                title={item.title}
+                subtitle={item.category || item.craft_type || 'Handicraft'}
+                price={item.price}
+                status={statusForProduct(item)}
+                imageUri={item.image_url || ''}
+                onEdit={() => handleOpenEdit(item)}
+                onDelete={() => handlePromptDelete(item)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/product-details',
+                    params: {
+                      id: item.id,
+                      title: item.title,
+                      subtitle: item.category || item.craft_type || '',
+                      price: item.price,
+                      imageUri: item.image_url || '',
+                      description_en: item.description_en || '',
+                      description_hi: item.description_hi || '',
+                      description_ta: item.description_ta || '',
+                      category: item.category || item.craft_type || 'Handicraft',
+                      units: String(item.units || 1),
+                      status: item.status || 'published',
+                    },
+                  })
+                }
+              />
+            </View>
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Inbox size={56} color="#9CA3AF" strokeWidth={1.5} />
+              <Text style={styles.emptyTitle}>
+                {searchQuery || activeFilter !== 'All'
+                  ? 'No products match your search'
+                  : t('listings_empty_title')}
+              </Text>
+              <Text style={styles.emptySub}>
+                {searchQuery || activeFilter !== 'All'
+                  ? 'Try a different filter or search term'
+                  : t('listings_empty_sub')}
+              </Text>
+              {!searchQuery && activeFilter === 'All' && (
+                <TouchableOpacity
+                  style={styles.addFirstBtn}
+                  onPress={() => router.push('/add-product')}
+                  activeOpacity={0.85}
+                >
+                  <Plus size={16} color="#FFFFFF" />
+                  <Text style={styles.addFirstBtnText}>Add Your First Product</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          }
+        />
+      )}
 
       {/* Add Product Floating Action Button */}
       <TouchableOpacity
@@ -254,6 +415,17 @@ export default function ListingsScreen() {
         <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
         <Text style={styles.fabText}>{t('listings_add_product')}</Text>
       </TouchableOpacity>
+
+      {/* Edit Product Modal */}
+      <EditProductModal
+        visible={editModalVisible}
+        product={productToEdit}
+        onClose={() => {
+          setEditModalVisible(false);
+          setProductToEdit(null);
+        }}
+        onSuccess={handleEditSuccess}
+      />
 
       <ArtisanBottomNav activeTab={activeTab} onTabChange={handleTabChange} />
     </View>
@@ -360,6 +532,29 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
+
+  centeredState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  loadingText: { fontSize: 14, fontFamily: Fonts.bodyMedium, color: '#6B7280' },
+  errorTitle: { fontSize: 16, fontWeight: '700', fontFamily: Fonts.headingBold, color: '#0D0D0D' },
+  errorSub: { fontSize: 13, color: '#6B7280', fontFamily: Fonts.body, textAlign: 'center' },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#0D0D0D',
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  retryBtnText: { fontSize: 14, fontFamily: Fonts.headingBold, color: '#FFFFFF' },
+
   listContent: {
     paddingHorizontal: 22,
     paddingTop: 16,
@@ -378,19 +573,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
-    gap: 8,
+    gap: 10,
   },
   emptyTitle: {
     fontSize: 16,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
     color: '#0D0D0D',
+    textAlign: 'center',
   },
   emptySub: {
     fontSize: 13,
     color: '#8E8E93',
     fontFamily: Fonts.body,
+    textAlign: 'center',
   },
+  addFirstBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#0D0D0D',
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    marginTop: 8,
+    ...Shadow.card,
+  },
+  addFirstBtnText: { fontSize: 14, fontFamily: Fonts.headingBold, color: '#FFFFFF' },
   fab: {
     position: 'absolute',
     right: 22,

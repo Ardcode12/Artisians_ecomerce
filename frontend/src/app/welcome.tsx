@@ -16,7 +16,7 @@ import { useLanguage } from '@/context/LanguageContext';
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { setFlowMode } = useAuth();
+  const { setFlowMode, userRole, setUserRole } = useAuth();
   const { t } = useLanguage();
 
   const handleAuth = (mode: 'login' | 'signup') => {
@@ -52,6 +52,45 @@ export default function WelcomeScreen() {
             { paddingBottom: Math.max(insets.bottom, 32) },
           ]}
         >
+          {/* Segmented Role Toggle: Sell Your Craft | Shop Handmade */}
+          <View style={styles.roleToggleContainer}>
+            <TouchableOpacity
+              style={[
+                styles.roleOption,
+                userRole === 'artisan' ? styles.roleOptionActive : styles.roleOptionInactive,
+              ]}
+              onPress={() => setUserRole('artisan')}
+              activeOpacity={0.85}
+            >
+              <Text
+                style={[
+                  styles.roleOptionText,
+                  userRole === 'artisan' ? styles.roleOptionTextActive : styles.roleOptionTextInactive,
+                ]}
+              >
+                Sell Your Craft
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.roleOption,
+                userRole === 'buyer' ? styles.roleOptionActive : styles.roleOptionInactive,
+              ]}
+              onPress={() => setUserRole('buyer')}
+              activeOpacity={0.85}
+            >
+              <Text
+                style={[
+                  styles.roleOptionText,
+                  userRole === 'buyer' ? styles.roleOptionTextActive : styles.roleOptionTextInactive,
+                ]}
+              >
+                Shop Handmade
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
             style={styles.loginBtn}
             onPress={() => handleAuth('login')}
@@ -72,6 +111,7 @@ export default function WelcomeScreen() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -111,6 +151,46 @@ const styles = StyleSheet.create({
   bottomSection: {
     gap: 14,
     width: '100%',
+  },
+  /* Role Toggle Pill */
+  roleToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(15, 15, 15, 0.72)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.28)',
+    borderRadius: 30,
+    padding: 4,
+    marginBottom: 4,
+  },
+  roleOption: {
+    flex: 1,
+    height: 44,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  roleOptionActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  roleOptionInactive: {
+    backgroundColor: 'transparent',
+  },
+  roleOptionText: {
+    fontSize: 14,
+    fontFamily: Fonts.heading,
+  },
+  roleOptionTextActive: {
+    color: '#0D0D0D',
+    fontWeight: '700',
+  },
+  roleOptionTextInactive: {
+    color: 'rgba(255, 255, 255, 0.82)',
+    fontWeight: '500',
   },
   /* Exact Figma white pill Login button */
   loginBtn: {

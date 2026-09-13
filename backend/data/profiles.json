@@ -71,5 +71,23 @@
     "bank_holder_name": "Dev Artisan",
     "bank_name": "State Bank of India",
     "upi_id": "devartisan@okhdfcbank"
+  },
+  "+919999988888": {
+    "id": "22222222-3333-4444-5555-919999988888",
+    "phone": "+919999988888",
+    "name": "Priya Sharma",
+    "role": "buyer",
+    "location": "Chennai, Tamil Nadu",
+    "is_onboarded": true,
+    "updated_at": "2026-09-06T17:00:43.966Z"
+  },
+  "+916374389595": {
+    "id": "11111111-2222-3333-4444-916374389595",
+    "phone": "+916374389595",
+    "name": "Arnald",
+    "role": "buyer",
+    "location": "ERODE, TAMILNADU",
+    "is_onboarded": true,
+    "updated_at": "2026-09-06T18:23:11.408Z"
   }
 }

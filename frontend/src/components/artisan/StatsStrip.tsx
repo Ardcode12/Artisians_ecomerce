@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Package, MessageCircle, Wallet } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Fonts, Shadow, Spacing } from '@/constants/artisan-theme';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
+
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000';
 
 interface StatCardProps {
   Icon: any;
@@ -27,24 +30,71 @@ function StatCard({ Icon, value, label, onPress }: StatCardProps) {
 export function StatsStrip() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { user } = useAuth();
+
+  const [activeListings, setActiveListings] = useState<number>(0);
+  const [newInquiries, setNewInquiries] = useState<number>(0);
+  const [earnings, setEarnings] = useState<string>('₹0');
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadStats() {
+      try {
+        let pUrl = `${BACKEND_URL}/api/products`;
+        if (user?.id) pUrl += `?artisan_id=${user.id}`;
+        let iUrl = `${BACKEND_URL}/api/inquiries`;
+        if (user?.id) iUrl += `?artisan_id=${user.id}`;
+        let oUrl = `${BACKEND_URL}/api/orders`;
+        if (user?.id) oUrl += `?artisan_id=${user.id}`;
+
+        const [pRes, iRes, oRes] = await Promise.all([fetch(pUrl), fetch(iUrl), fetch(oUrl)]);
+        if (pRes.ok) {
+          const pData = await pRes.json();
+          const list = Array.isArray(pData) ? pData : (pData.products || []);
+          if (isMounted) setActiveListings(list.length);
+        }
+        if (iRes.ok) {
+          const iData = await iRes.json();
+          const inqList = Array.isArray(iData) ? iData : (iData.inquiries || []);
+          if (isMounted) setNewInquiries(inqList.length);
+        }
+        if (oRes.ok) {
+          const oData = await oRes.json();
+          const ordList = Array.isArray(oData) ? oData : (oData.orders || []);
+          let sum = 0;
+          ordList.forEach((ord: any) => {
+            const num = parseFloat((ord.total_amount || '').replace(/[^0-9.]/g, '')) || 0;
+            sum += num;
+          });
+          if (isMounted) setEarnings(`₹${sum.toLocaleString('en-IN')}`);
+        }
+      } catch (_) {}
+    }
+    loadStats();
+    const interval = setInterval(loadStats, 5000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [user?.id]);
 
   return (
     <View style={styles.row}>
       <StatCard
         Icon={Package}
-        value="12"
+        value={String(activeListings)}
         label={t('stats_active_listings')}
         onPress={() => router.push('/listings')}
       />
       <StatCard
         Icon={MessageCircle}
-        value="3"
+        value={String(newInquiries)}
         label={t('stats_new_inquiries')}
         onPress={() => router.push('/inquiries')}
       />
       <StatCard
         Icon={Wallet}
-        value="₹8,450"
+        value={earnings}
         label={t('stats_this_month')}
         onPress={() => router.push('/earnings')}
       />

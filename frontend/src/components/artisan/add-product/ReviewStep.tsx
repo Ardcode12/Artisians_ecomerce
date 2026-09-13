@@ -7,6 +7,8 @@ import {
   ScrollView,
   Image,
   Modal,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {
   Building2,
@@ -17,17 +19,27 @@ import {
   CheckCircle2,
   Image as ImageIcon,
   Send,
+  Globe,
+  AlertCircle,
 } from 'lucide-react-native';
 import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
+import { useAuth } from '@/context/AuthContext';
+
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000';
 
 interface ProductData {
   imageUri: string;
   title: string;
   description: string;
+  description_en?: string;
+  description_hi?: string;
+  description_ta?: string;
   category: string;
   suggestedPrice: string;
   finalPrice: string;
   units: number;
+  materialCost?: number;
+  priceData?: any;
 }
 
 interface ReviewStepProps {
@@ -48,26 +60,87 @@ export function ReviewStep({ productData, onPublish }: ReviewStepProps) {
   );
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [langView, setLangView] = useState<'en' | 'hi' | 'ta'>('en');
 
-  const displayPrice = productData.finalPrice || productData.suggestedPrice || '₹650';
-  const displayTitle = productData.title || 'Hand-woven Cotton Dupatta — Indigo Block Print';
-  const displayDesc = productData.description || 'Authentic hand-woven cotton dupatta featuring traditional indigo block-print motifs.';
-  const displayCat = productData.category || 'Handloom Textile';
+  const { user } = useAuth();
+
+  const displayPrice = productData.finalPrice || productData.suggestedPrice || '₹0';
+  const displayTitle = productData.title || 'Untitled Product';
+  const displayDescEn = productData.description_en || productData.description || '';
+  const displayDescHi = productData.description_hi || '';
+  const displayDescTa = productData.description_ta || '';
+  const displayCat = productData.category || 'Handicraft';
+  const displayDesc =
+    langView === 'hi' && displayDescHi
+      ? displayDescHi
+      : langView === 'ta' && displayDescTa
+      ? displayDescTa
+      : displayDescEn;
 
   const toggleMarket = (i: number) => {
-    setSelectedMarkets((prev) => prev.map((v, idx) => idx === i ? !v : v));
+    setSelectedMarkets((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
+    if (!displayTitle || displayTitle === 'Untitled Product') {
+      Alert.alert('Missing info', 'Please go back and add a product title.');
+      return;
+    }
+    const numPrice = parseInt(displayPrice.replace(/[^\d]/g, ''));
+    if (!numPrice || numPrice === 0) {
+      Alert.alert('Missing price', 'Please go back and set a selling price.');
+      return;
+    }
+
     setPublishing(true);
-    setTimeout(() => {
+    setErrorMsg('');
+
+    const selectedMarketNames = MARKETPLACES.filter((_, i) => selectedMarkets[i]).map((m) => m.name);
+
+    try {
+      const payload = {
+        artisan_id: user?.id || null,
+        title: displayTitle,
+        description_en: displayDescEn,
+        description_hi: displayDescHi,
+        description_ta: displayDescTa,
+        description: displayDescEn,
+        category: displayCat,
+        craft_type: displayCat,
+        price: displayPrice,
+        units: productData.units || 1,
+        image_url: productData.imageUri || '',
+        material_cost: productData.materialCost || 0,
+        marketplaces: selectedMarketNames,
+      };
+
+      const resp = await fetch(`${BACKEND_URL}/api/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok || !data.success) {
+        throw new Error(data.error || `Server error ${resp.status}`);
+      }
+
+      console.log('[ReviewStep] Product published:', data.product_id);
       setPublishing(false);
       setPublished(true);
+
+      // Navigate after brief success animation
       setTimeout(() => {
         setPublished(false);
         onPublish();
-      }, 2000);
-    }, 2200);
+      }, 2200);
+    } catch (err: any) {
+      console.error('[ReviewStep] Publish error:', err.message);
+      setPublishing(false);
+      setErrorMsg(err.message || 'Failed to publish product. Please try again.');
+    }
   };
 
   return (
@@ -80,11 +153,12 @@ export function ReviewStep({ productData, onPublish }: ReviewStepProps) {
           ) : (
             <View style={styles.imagePlaceholder}>
               <ImageIcon size={52} color={Colors.textSecondary} />
+              <Text style={styles.imagePlaceholderText}>No image</Text>
             </View>
           )}
           <View style={styles.dotNav}>
-            {[0, 1, 2].map((i) => (
-              <View key={i} style={[styles.dotNavDot, i === 0 && styles.dotNavDotActive]} />
+            {[0].map((i) => (
+              <View key={i} style={[styles.dotNavDot, styles.dotNavDotActive]} />
             ))}
           </View>
           <View style={styles.imageAiBadge}>
@@ -95,23 +169,46 @@ export function ReviewStep({ productData, onPublish }: ReviewStepProps) {
 
         {/* White review sheet */}
         <View style={styles.sheet}>
-          <View style={styles.langToggle}>
-            {['EN', 'HI'].map((lang, i) => (
+          {/* Language toggle for description preview */}
+          {(displayDescHi || displayDescTa) ? (
+            <View style={styles.langToggle}>
               <TouchableOpacity
-                key={lang}
-                style={[styles.langBtn, i === 0 && styles.langBtnActive]}
+                style={[styles.langBtn, langView === 'en' && styles.langBtnActive]}
+                onPress={() => setLangView('en')}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.langBtnText, i === 0 && styles.langBtnTextActive]}>{lang}</Text>
+                <Text style={[styles.langBtnText, langView === 'en' && styles.langBtnTextActive]}>🇬🇧 EN</Text>
               </TouchableOpacity>
-            ))}
-            <Text style={styles.langHint}>Preview description language</Text>
-          </View>
+              {displayDescHi ? (
+                <TouchableOpacity
+                  style={[styles.langBtn, langView === 'hi' && styles.langBtnActive]}
+                  onPress={() => setLangView('hi')}
+                  activeOpacity={0.8}
+                >
+                  <Globe size={12} color={langView === 'hi' ? '#FFFFFF' : Colors.textSecondary} />
+                  <Text style={[styles.langBtnText, langView === 'hi' && styles.langBtnTextActive]}>हिंदी</Text>
+                </TouchableOpacity>
+              ) : null}
+              {displayDescTa ? (
+                <TouchableOpacity
+                  style={[styles.langBtn, langView === 'ta' && styles.langBtnActive]}
+                  onPress={() => setLangView('ta')}
+                  activeOpacity={0.8}
+                >
+                  <Globe size={12} color={langView === 'ta' ? '#FFFFFF' : Colors.textSecondary} />
+                  <Text style={[styles.langBtnText, langView === 'ta' && styles.langBtnTextActive]}>தமிழ்</Text>
+                </TouchableOpacity>
+              ) : null}
+              <Text style={styles.langHint}>Preview language</Text>
+            </View>
+          ) : null}
 
           {/* Title + category */}
           <View style={styles.titleRow}>
             <View style={styles.titleBlock}>
-              <Text style={styles.productTitle} numberOfLines={2}>{displayTitle}</Text>
+              <Text style={styles.productTitle} numberOfLines={2}>
+                {displayTitle}
+              </Text>
               <Text style={styles.productCat}>{displayCat}</Text>
             </View>
             <View style={styles.unitsBlock}>
@@ -135,8 +232,22 @@ export function ReviewStep({ productData, onPublish }: ReviewStepProps) {
           {/* Description block */}
           <View style={styles.descBlock}>
             <Text style={styles.descLabel}>Description</Text>
-            <Text style={styles.descText} numberOfLines={4}>{displayDesc}</Text>
+            {displayDesc ? (
+              <Text style={styles.descText} numberOfLines={5}>
+                {displayDesc}
+              </Text>
+            ) : (
+              <Text style={styles.descTextEmpty}>No description — go back to add one.</Text>
+            )}
           </View>
+
+          {/* Error message */}
+          {errorMsg ? (
+            <View style={styles.errorBox}>
+              <AlertCircle size={18} color="#EF4444" />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          ) : null}
 
           {/* Marketplace selector */}
           <View style={styles.marketSection}>
@@ -156,7 +267,9 @@ export function ReviewStep({ productData, onPublish }: ReviewStepProps) {
                     <Text style={[styles.marketName, active && styles.marketNameActive]}>
                       {m.name}
                     </Text>
-                    <Text style={[styles.marketSub, active && styles.marketSubActive]}>{m.sub}</Text>
+                    <Text style={[styles.marketSub, active && styles.marketSubActive]}>
+                      {m.sub}
+                    </Text>
                     {active && (
                       <View style={styles.marketCheck}>
                         <Check size={12} color="#FFFFFF" strokeWidth={3} />
@@ -175,7 +288,11 @@ export function ReviewStep({ productData, onPublish }: ReviewStepProps) {
             activeOpacity={0.88}
             disabled={publishing}
           >
-            <Send size={18} color="#FFFFFF" />
+            {publishing ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Send size={18} color="#FFFFFF" />
+            )}
             <Text style={styles.publishBtnText}>
               {publishing ? 'Publishing...' : 'Publish Listing'}
             </Text>
@@ -188,8 +305,10 @@ export function ReviewStep({ productData, onPublish }: ReviewStepProps) {
         <View style={styles.successOverlay}>
           <View style={styles.successCard}>
             <CheckCircle2 size={56} color="#10B981" />
-            <Text style={styles.successTitle}>Your product is live!</Text>
-            <Text style={styles.successSub}>Buyers can now discover your craft</Text>
+            <Text style={styles.successTitle}>Your product is live! 🎉</Text>
+            <Text style={styles.successSub}>
+              Buyers can now discover your craft across marketplaces
+            </Text>
           </View>
         </View>
       </Modal>
@@ -212,6 +331,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 8,
+  },
+  imagePlaceholderText: {
+    fontSize: 13,
+    fontFamily: Fonts.body,
+    color: Colors.textSecondary,
   },
   dotNav: {
     position: 'absolute',
@@ -241,7 +366,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  imageAiBadgeText: { fontSize: 12, fontFamily: Fonts.heading, color: Colors.surface, fontWeight: '700' },
+  imageAiBadgeText: {
+    fontSize: 12,
+    fontFamily: Fonts.heading,
+    color: Colors.surface,
+    fontWeight: '700',
+  },
 
   sheet: {
     backgroundColor: Colors.surface,
@@ -260,11 +390,13 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   langBtn: {
-    width: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 14,
     height: 40,
     borderRadius: Radius.pill,
     justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: Colors.surfaceGray,
     borderWidth: 1.5,
     borderColor: Colors.border,
@@ -276,7 +408,12 @@ const styles = StyleSheet.create({
 
   titleRow: { flexDirection: 'row', gap: Spacing.sm, justifyContent: 'space-between' },
   titleBlock: { flex: 1 },
-  productTitle: { fontSize: 20, fontFamily: Fonts.headingBold, color: '#0D0D0D', letterSpacing: -0.4 },
+  productTitle: {
+    fontSize: 20,
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+    letterSpacing: -0.4,
+  },
   productCat: { fontSize: 13, fontFamily: Fonts.body, color: Colors.textSecondary, marginTop: 4 },
   unitsBlock: {
     alignItems: 'center',
@@ -289,7 +426,13 @@ const styles = StyleSheet.create({
   unitsLabel: { fontSize: 10, fontFamily: Fonts.body, color: Colors.textSecondary },
 
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  priceLabelSmall: { fontSize: 11, fontFamily: Fonts.body, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  priceLabelSmall: {
+    fontSize: 11,
+    fontFamily: Fonts.body,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   priceValue: { fontSize: 32, fontFamily: Fonts.headingBold, color: '#0D0D0D', letterSpacing: -1 },
   aiBadge: {
     backgroundColor: '#FFF3CD',
@@ -306,7 +449,36 @@ const styles = StyleSheet.create({
 
   descBlock: { gap: Spacing.sm },
   descLabel: { fontSize: 16, fontFamily: Fonts.heading, color: '#0D0D0D', fontWeight: '700' },
-  descText: { fontSize: 14, fontFamily: Fonts.body, color: Colors.textSecondary, lineHeight: 22 },
+  descText: {
+    fontSize: 14,
+    fontFamily: Fonts.body,
+    color: Colors.textSecondary,
+    lineHeight: 22,
+  },
+  descTextEmpty: {
+    fontSize: 13,
+    fontFamily: Fonts.body,
+    color: Colors.textSecondary,
+    fontStyle: 'italic',
+  },
+
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: Fonts.body,
+    color: '#991B1B',
+    lineHeight: 18,
+  },
 
   marketSection: { gap: Spacing.md },
   marketTitle: { fontSize: 16, fontFamily: Fonts.heading, color: '#0D0D0D', fontWeight: '700' },
@@ -367,9 +539,15 @@ const styles = StyleSheet.create({
     padding: Spacing.xxl,
     alignItems: 'center',
     gap: Spacing.md,
-    width: 280,
+    width: 300,
     ...Shadow.hero,
   },
-  successTitle: { fontSize: 20, fontFamily: Fonts.headingBold, color: '#0D0D0D' },
-  successSub: { fontSize: 13, fontFamily: Fonts.body, color: Colors.textSecondary, textAlign: 'center' },
+  successTitle: { fontSize: 20, fontFamily: Fonts.headingBold, color: '#0D0D0D', textAlign: 'center' },
+  successSub: {
+    fontSize: 13,
+    fontFamily: Fonts.body,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 19,
+  },
 });

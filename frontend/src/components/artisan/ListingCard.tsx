@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Image,
 } from 'react-native';
 import { Fonts, Shadow, Spacing } from '@/constants/artisan-theme';
+import { Pencil, Trash2 } from 'lucide-react-native';
 
 export type ListingStatus = 'draft' | 'published' | 'inquiries' | 'sold';
 
@@ -14,6 +15,8 @@ interface ListingCardProps {
   inquiryCount?: number;
   imageUri?: string;
   onPress?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 const STATUS_DOT: Record<ListingStatus, string> = {
@@ -38,6 +41,8 @@ export function ListingCard({
   inquiryCount = 3,
   imageUri,
   onPress,
+  onEdit,
+  onDelete,
 }: ListingCardProps) {
   const dotColor = STATUS_DOT[status] || STATUS_DOT.published;
   const chip = CHIP_STYLES[status] || CHIP_STYLES.published;
@@ -57,6 +62,38 @@ export function ListingCard({
         <View style={styles.statusBadge}>
           <View style={[styles.statusDot, { backgroundColor: dotColor }]} />
         </View>
+
+        {/* Quick action overlay if onEdit or onDelete provided */}
+        {(onEdit || onDelete) && (
+          <View style={styles.quickActionRow}>
+            {onEdit && (
+              <TouchableOpacity
+                style={styles.actionCircleBtn}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  onEdit();
+                }}
+                activeOpacity={0.8}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Pencil size={12} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
+            {onDelete && (
+              <TouchableOpacity
+                style={[styles.actionCircleBtn, styles.deleteCircleBtn]}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  onDelete();
+                }}
+                activeOpacity={0.8}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Trash2 size={12} color="#FF6B6B" />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Product Information */}
@@ -157,5 +194,25 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
+  },
+  quickActionRow: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    flexDirection: 'row',
+    gap: 6,
+    zIndex: 10,
+  },
+  actionCircleBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(13, 13, 13, 0.78)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadow.card,
+  },
+  deleteCircleBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.85)',
   },
 });

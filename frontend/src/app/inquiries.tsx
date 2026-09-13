@@ -47,6 +47,8 @@ import { Fonts, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
 import { useLanguage } from '@/context/LanguageContext';
 
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000';
+
 // ── Types ───────────────────────────────────────────────────────────────────
 interface Message {
   id: string;
@@ -76,86 +78,9 @@ interface ClientReview {
   reply?: string;
 }
 
-// ── Seed Data Matching the Cloned Designs ───────────────────────────────────
-const ACTIVITIES = [
-  { id: '1', name: 'Kristine', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&q=80' },
-  { id: '2', name: 'Kay',      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&q=80' },
-  { id: '3', name: 'Cheryl',   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&q=80' },
-  { id: '4', name: 'Jeen',     avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&q=80' },
-  { id: '5', name: 'Priya',    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&q=80' },
-  { id: '6', name: 'Rahul',    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300&q=80' },
-];
-
-const INITIAL_CONVERSATIONS: Conversation[] = [
-  {
-    id: '1',
-    name: 'Kristine Jones',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&q=80',
-    isOnline: true,
-    lastMessage: 'Hello hw are you? I am going to market. Do you want shopping?',
-    time: '23 min',
-    unread: 2,
-    messages: [
-      { id: 'm1', text: "Hi, Kristine! How's your day going?", time: '4:35 am', fromMe: false },
-      { id: 'm2', text: 'You know how it goes..', time: '4:36 am', fromMe: true },
-      { id: 'm3', text: 'Do you want Startucks?', time: '4:37 am', fromMe: false },
-      { id: 'm4', text: "Only if you say man. Let's see how it is.", time: '4:48 am', fromMe: true },
-      { id: 'm5', text: "Great! Thank you, I'm going to work or IRR Calculation.", time: '4:50 am', fromMe: true },
-    ],
-  },
-  {
-    id: '2',
-    name: 'Kay Hicks',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&q=80',
-    isOnline: true,
-    lastMessage: 'We are on the runways at the military hangar, there ia a plane in it.',
-    time: '40 min',
-    unread: 1,
-    messages: [
-      { id: 'k1', text: 'Hey, I checked your handcrafted brass collection!', time: '10:15 am', fromMe: false },
-      { id: 'k2', text: 'We are on the runways at the military hangar, there ia a plane in it.', time: '10:20 am', fromMe: false },
-    ],
-  },
-  {
-    id: '3',
-    name: 'Cheryl Moretti',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&q=80',
-    isOnline: true,
-    lastMessage: 'I receved my new watch that I ordered from Amazon.',
-    time: '1 hr',
-    unread: 0,
-    messages: [
-      { id: 'c1', text: 'Good morning! Is the handloom saree ready for dispatch?', time: '8:30 am', fromMe: false },
-      { id: 'c2', text: 'Yes, it was handed over to courier this morning.', time: '8:45 am', fromMe: true },
-      { id: 'c3', text: 'I receved my new watch that I ordered from Amazon.', time: '9:00 am', fromMe: false },
-    ],
-  },
-  {
-    id: '4',
-    name: 'Jeen',
-    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&q=80',
-    isOnline: true,
-    lastMessage: "I just arrived in front of the school. I'm wating for you hurry up!",
-    time: '1 hr',
-    unread: 0,
-    messages: [
-      { id: 'j1', text: "I just arrived in front of the school. I'm wating for you hurry up!", time: '9:30 am', fromMe: false },
-    ],
-  },
-  {
-    id: '5',
-    name: 'Priya Sharma',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&q=80',
-    isOnline: false,
-    lastMessage: 'Could you tell me if the terracotta vase set is customizable in indigo?',
-    time: '3 hr',
-    unread: 1,
-    messages: [
-      { id: 'p1', text: 'Hello! Beautiful pottery pieces in your catalog.', time: '1:00 pm', fromMe: false },
-      { id: 'p2', text: 'Could you tell me if the terracotta vase set is customizable in indigo?', time: '1:05 pm', fromMe: false },
-    ],
-  },
-];
+// ── Real Live Conversations & Reviews ───────────────────────────────────────
+const ACTIVITIES: any[] = [];
+const INITIAL_CONVERSATIONS: Conversation[] = [];
 
 const INITIAL_REVIEWS: ClientReview[] = [
   {
@@ -183,22 +108,6 @@ const INITIAL_REVIEWS: ClientReview[] = [
     rating: 5,
     comment: 'The silk handloom fabric texture and authentic zari border exceeded all expectations. Exceptional craftsmanship!',
     reply: 'Thank you Selena! Each motif was hand-woven on traditional pit looms.',
-  },
-  {
-    id: 'r4',
-    name: 'Hasan Mahmud',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&q=80',
-    date: '24 June, 2024',
-    rating: 5,
-    comment: 'Direct connection with the artisan gave us complete transparency on customization and bulk pricing. Highly recommended!',
-  },
-  {
-    id: 'r5',
-    name: 'Mossarof Hossen',
-    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200&q=80',
-    date: '24 June, 2024',
-    rating: 5,
-    comment: 'The brass dhokra figurine has stunning heirloom quality. Honored to support authentic Indian crafts.',
   },
 ];
 
@@ -294,22 +203,98 @@ export default function InquiriesScreen() {
     }
   };
 
+  // Fetch real inquiries from backend
+  const fetchLiveInquiries = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/inquiries`);
+      if (res.ok) {
+        const data = await res.json();
+        const inqList = Array.isArray(data) ? data : (data.inquiries || []);
+        if (inqList.length >= 0) {
+          const liveConvs: Conversation[] = inqList.map((inq: any) => {
+            let msgs: Message[] = [];
+            if (Array.isArray(inq.messages) && inq.messages.length > 0) {
+              msgs = inq.messages.map((m: any) => ({
+                id: m.id || `m-${Math.random()}`,
+                text: m.text,
+                time: m.time || (m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase() : 'Now'),
+                fromMe: m.sender === 'seller',
+              }));
+            } else {
+              if (inq.message) {
+                msgs.push({
+                  id: `inq-msg-1-${inq.id}`,
+                  text: inq.message + (inq.product_title ? `\n\n[Item: ${inq.product_title}]` : ''),
+                  time: inq.created_at ? new Date(inq.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase() : 'Earlier',
+                  fromMe: false,
+                });
+              }
+              if (inq.reply) {
+                msgs.push({
+                  id: `inq-reply-${inq.id}`,
+                  text: inq.reply,
+                  time: inq.replied_at ? new Date(inq.replied_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase() : 'Replied',
+                  fromMe: true,
+                });
+              }
+            }
+
+            const isOrder = inq.order_id || inq.status === 'new_order';
+            const buyerLabel = inq.buyer_name || (isOrder ? 'Order Customer' : 'Craft Buyer');
+            const displayTitle = isOrder
+              ? `${buyerLabel} (Order #${(inq.order_id || inq.id).slice(0, 8).toUpperCase()})`
+              : buyerLabel;
+
+            return {
+              id: inq.id,
+              name: displayTitle,
+              avatar: inq.buyer_avatar || inq.product_image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&q=80',
+              isOnline: true,
+              lastMessage: inq.last_message || inq.reply || inq.message || (isOrder ? 'New Order Placed' : 'Product Inquiry'),
+              time: inq.created_at ? new Date(inq.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Today',
+              unread: inq.status === 'replied' ? 0 : 1,
+              messages: msgs,
+            };
+          });
+
+          setConversations(liveConvs);
+
+          // If currently inside a chat, sync messages
+          setSelectedConversation((curr) => {
+            if (!curr) return null;
+            const match = liveConvs.find((c) => c.id === curr.id);
+            return match || curr;
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveInquiries();
+    const timer = setInterval(fetchLiveInquiries, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Send Message
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputText.trim() || !selectedConversation) return;
+    const textToSend = inputText.trim();
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
 
     const newMsg: Message = {
       id: `msg-${Date.now()}`,
-      text: inputText.trim(),
+      text: textToSend,
       time: timeStr,
       fromMe: true,
     };
 
     const updated = {
       ...selectedConversation,
-      lastMessage: inputText.trim(),
+      lastMessage: textToSend,
       time: 'Just now',
       messages: [...selectedConversation.messages, newMsg],
     };
@@ -324,7 +309,29 @@ export default function InquiriesScreen() {
       chatScrollRef.current?.scrollToEnd({ animated: true });
     }, 100);
 
-    // Auto buyer response simulation
+    // Send real message to backend thread
+    if (selectedConversation.id.startsWith('inq-')) {
+      try {
+        let res = await fetch(`${BACKEND_URL}/api/inquiries/${selectedConversation.id}/message`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sender: 'seller', text: textToSend }),
+        });
+        if (!res.ok) {
+          res = await fetch(`${BACKEND_URL}/api/inquiries/${selectedConversation.id}/reply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reply: textToSend }),
+          });
+        }
+        fetchLiveInquiries();
+      } catch (err) {
+        console.warn('Failed to send message to backend:', err);
+      }
+      return;
+    }
+
+    // Auto buyer response simulation for demo contacts
     setTimeout(() => {
       const buyerReply: Message = {
         id: `msg-reply-${Date.now()}`,
@@ -909,72 +916,88 @@ export default function InquiriesScreen() {
             )}
           </View>
 
-          {/* Activities Horizontal Section */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeading}>Activities</Text>
-          </View>
+          {/* Recent Customers Section (Only if live conversations exist) */}
+          {filteredConversations.length > 0 && (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionHeading}>Recent Customers</Text>
+              </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.activitiesScroll}
-          >
-            {ACTIVITIES.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.activityItem}
-                activeOpacity={0.8}
-                onPress={() => handleActivityPress(item)}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.activitiesScroll}
               >
-                <View style={styles.activityAvatarRing}>
-                  <Image source={{ uri: item.avatar }} style={styles.activityAvatar} />
-                </View>
-                <Text style={styles.activityName} numberOfLines={1}>
-                  {item.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                {filteredConversations.map((item) => (
+                  <TouchableOpacity
+                    key={`act-${item.id}`}
+                    style={styles.activityItem}
+                    activeOpacity={0.8}
+                    onPress={() => handleOpenConversation(item)}
+                  >
+                    <View style={styles.activityAvatarRing}>
+                      <Image source={{ uri: item.avatar }} style={styles.activityAvatar} />
+                    </View>
+                    <Text style={styles.activityName} numberOfLines={1}>
+                      {item.name.split(' ')[0]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
+          )}
 
           {/* Messages Vertical Section */}
-          <View style={[styles.sectionHeader, { marginTop: 24 }]}>
-            <Text style={styles.sectionHeading}>Messages</Text>
+          <View style={[styles.sectionHeader, { marginTop: filteredConversations.length > 0 ? 24 : 10 }]}>
+            <Text style={styles.sectionHeading}>Messages & Order Chats</Text>
           </View>
 
-          <View style={styles.messagesList}>
-            {filteredConversations.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.conversationRow}
-                activeOpacity={0.75}
-                onPress={() => handleOpenConversation(item)}
-              >
-                {/* Avatar with Vibrant Green Ring */}
-                <View style={styles.convAvatarRing}>
-                  <Image source={{ uri: item.avatar }} style={styles.convAvatar} />
-                </View>
-
-                {/* Message Details */}
-                <View style={styles.convContent}>
-                  <View style={styles.convTopRow}>
-                    <Text style={styles.convName}>{item.name}</Text>
-                    <Text style={styles.convTime}>{item.time}</Text>
+          {filteredConversations.length === 0 ? (
+            <View style={{ paddingVertical: 50, alignItems: 'center', paddingHorizontal: 24 }}>
+              <MessageSquare size={40} color="#9CA3AF" />
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#0D0D0D', marginTop: 12 }}>
+                No Inquiries Yet
+              </Text>
+              <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 6, textAlign: 'center', lineHeight: 18 }}>
+                When a buyer books an order or sends questions about your handmade crafts, the conversation will appear here.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.messagesList}>
+              {filteredConversations.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.conversationRow}
+                  activeOpacity={0.75}
+                  onPress={() => handleOpenConversation(item)}
+                >
+                  {/* Avatar */}
+                  <View style={styles.convAvatarRing}>
+                    <Image source={{ uri: item.avatar }} style={styles.convAvatar} />
                   </View>
 
-                  <View style={styles.convBottomRow}>
-                    <Text style={styles.convSnippet} numberOfLines={2}>
-                      {item.lastMessage}
-                    </Text>
-                    {item.unread > 0 && (
-                      <View style={styles.unreadBadge}>
-                        <Text style={styles.unreadBadgeText}>{item.unread}</Text>
-                      </View>
-                    )}
+                  {/* Message Details */}
+                  <View style={styles.convContent}>
+                    <View style={styles.convTopRow}>
+                      <Text style={styles.convName}>{item.name}</Text>
+                      <Text style={styles.convTime}>{item.time}</Text>
+                    </View>
+
+                    <View style={styles.convBottomRow}>
+                      <Text style={styles.convSnippet} numberOfLines={2}>
+                        {item.lastMessage}
+                      </Text>
+                      {item.unread > 0 && (
+                        <View style={styles.unreadBadge}>
+                          <Text style={styles.unreadBadgeText}>{item.unread}</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </ScrollView>
       )}
 

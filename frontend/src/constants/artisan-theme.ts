@@ -71,6 +71,7 @@ export const Radius = {
   xl: 20,
   xxl: 24,
   pill: 999,         // Figma fully-rounded pills
+  full: 999,
   circle: 9999,
 };
 
