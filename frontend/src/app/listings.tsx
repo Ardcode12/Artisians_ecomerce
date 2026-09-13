@@ -43,7 +43,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { EditProductModal, EditableProduct } from '@/components/artisan/EditProductModal';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000';
 
 const CATEGORY_FILTERS = ['All', 'Textiles', 'Pottery', 'Woodcraft', 'Jewelry', 'Painting', 'Metalwork', 'Other'];
 

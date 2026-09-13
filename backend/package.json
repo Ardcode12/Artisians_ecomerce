@@ -4,9 +4,9 @@
   "description": "Backend services and Supabase database integration for Artisans E-commerce",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "ai": "python ai/main.py"
+    "start": "python start_server.py",
+    "dev": "python start_server.py",
+    "fastapi": "python start_server.py"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

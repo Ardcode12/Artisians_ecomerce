@@ -47,7 +47,7 @@ export interface DetailedProduct extends EditableProduct {
   artisan_name?: string;
 }
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000';
 
 const LANG_OPTIONS = ['EN', 'हिं', 'தமிழ்', 'తెలుగు'];
 

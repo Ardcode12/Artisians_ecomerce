@@ -24,7 +24,7 @@ import { useRouter } from 'expo-router';
 import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000';
 
 type TabKey = 'new' | 'orders' | 'bulk';
 

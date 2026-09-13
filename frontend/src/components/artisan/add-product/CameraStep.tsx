@@ -16,7 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 const { width } = require('react-native').Dimensions.get('window');
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.137.205:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000';
 
 interface CameraStepProps {
   imageUri: string;
