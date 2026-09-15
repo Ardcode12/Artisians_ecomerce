@@ -18,6 +18,6 @@ if __name__ == "__main__":
     print(f"============================================================")
     print(f"   Artisans Marketplace FastAPI Backend")
     print(f"   Database: Local SQLite on-device (data/artisans.db)")
-    print(f"   Server: http://localhost:{PORT}")
+    print(f"   Server: http://0.0.0.0:{PORT} (Listening on all interfaces)")
     print(f"============================================================")
-    uvicorn.run("app.main:app", host=HOST, port=PORT, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=PORT, reload=True)

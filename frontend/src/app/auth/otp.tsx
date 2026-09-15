@@ -83,51 +83,19 @@ export default function OtpScreen() {
       const res = await verifyOtp(phone, fullOtp);
 
       if (res.success) {
-        if (userRole === 'buyer') {
-          if (flowMode === 'login') {
-            // BUYER LOGIN: only allow if registered
-            if (res.isExistingProfile) {
-              router.replace('/buyer-home');
-            } else {
-              setErrorMsg('No buyer account found for this number. Please sign up first.');
-              setHasErrorBorder(true);
-              setTimeout(() => {
-                setHasErrorBorder(false);
-                setErrorMsg('No buyer account found for this number. Please sign up first.');
-              }, 3000);
-            }
+        if (res.isExistingProfile) {
+          // Account already exists — redirect directly to Home screen
+          if (userRole === 'buyer') {
+            router.replace('/buyer-home');
           } else {
-            // BUYER SIGNUP
-            if (res.isExistingProfile) {
-              router.replace('/buyer-home');
-            } else {
-              router.push('/auth/buyer-type');
-            }
+            router.replace('/');
           }
         } else {
-          // ARTISAN FLOW
-          if (flowMode === 'login') {
-            // LOGIN: only allow entry if a profile already exists for this number
-            if (res.isExistingProfile) {
-              router.replace('/');
-            } else {
-              // Phone number not registered — block login and prompt signup
-              setErrorMsg('No account found for this number. Please sign up first.');
-              setHasErrorBorder(true);
-              setTimeout(() => {
-                setHasErrorBorder(false);
-                setErrorMsg('No account found for this number. Please sign up first.');
-              }, 3000);
-            }
+          // New user / account does not exist — navigate to signup onboarding
+          if (userRole === 'buyer') {
+            router.push('/auth/buyer-type');
           } else {
-            // SIGNUP mode
-            if (res.isExistingProfile) {
-              // Already registered — send them home
-              router.replace('/');
-            } else {
-              // New user — start onboarding
-              router.push('/auth/details');
-            }
+            router.push('/auth/details');
           }
         }
       } else {

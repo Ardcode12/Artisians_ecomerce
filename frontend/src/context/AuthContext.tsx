@@ -3,6 +3,7 @@ import { supabase, ArtisanProfile, SUPABASE_ANON_KEY } from '@/services/supabase
 import { User, Session } from '@supabase/supabase-js';
 import AsyncStorage from '@/utils/storage';
 import { mapLegacyLanguage } from '@/context/LanguageContext';
+import Constants from 'expo-constants';
 
 export interface OnboardingData {
   name: string;
@@ -95,62 +96,112 @@ const defaultBuyerOnboarding: BuyerOnboardingData = {
 
 
 // ─── Backend URL ──────────────────────────────────────────────────────────────
-// The app tries multiple hosts in order (LAN IP first, then localhost).
-const BACKEND_HOSTS = [
-  process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000',
-  'http://10.29.208.1:5000',
-  'http://localhost:5000',
-  'http://127.0.0.1:5000',
-];
+const getBackendHosts = (): string[] => {
+  const hosts: string[] = [];
+
+  // 1. Explicit environment variable
+  if (process.env.EXPO_PUBLIC_BACKEND_URL) {
+    hosts.push(process.env.EXPO_PUBLIC_BACKEND_URL.replace(/\/$/, ''));
+  }
+
+  // 2. Local network IP address
+  hosts.push('http://10.29.208.1:5000');
+
+  // 3. Expo Go host IP detection for physical mobile devices
+  try {
+    const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
+    if (hostUri) {
+      const parts = hostUri.split(':');
+      const rawHost = parts[0];
+      if (rawHost && rawHost !== 'localhost' && rawHost !== '127.0.0.1' && !rawHost.includes('.exp.direct')) {
+        hosts.push(`http://${rawHost}:5000`);
+      }
+    }
+  } catch (e) {}
+
+  // 4. Localhost fallbacks for web & Android emulator
+  hosts.push('http://localhost:5000');
+  hosts.push('http://127.0.0.1:5000');
+  hosts.push('http://10.0.2.2:5000');
+
+  return Array.from(new Set(hosts));
+};
 
 let cachedBackendHost: string | null = null;
 
 /**
- * Try each known backend host in order and return the first that responds.
- * Caches the working host for the lifetime of the app session.
+ * Probe a single host to see if it responds to /api/health within timeout.
  */
-async function fetchFromBackend(urlPath: string, options: RequestInit = {}): Promise<any> {
-  // Use cached host if known
-  if (cachedBackendHost) {
-    try {
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 3000);
-      const res = await fetch(`${cachedBackendHost}${urlPath}`, {
-        ...options,
-        signal: controller.signal,
-      });
-      clearTimeout(t);
-      if (res.ok) return await res.json();
-      if (res.status >= 400 && res.status < 500) {
-        // A proper HTTP error from the server — still return the JSON body
-        return await res.json();
-      }
-    } catch (_) {
-      cachedBackendHost = null; // Reset and fall through to retry
+async function probeHost(host: string, timeoutMs: number = 2000): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(`${host}/api/health`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    clearTimeout(t);
+    if (res.ok) {
+      return host;
     }
+  } catch (_) {}
+  return null;
+}
+
+/**
+ * Discover working backend host fast by probing all candidate hosts in parallel.
+ */
+async function findWorkingHost(): Promise<string> {
+  const hosts = getBackendHosts();
+
+  // Test cached host first if available
+  if (cachedBackendHost) {
+    const ok = await probeHost(cachedBackendHost, 1500);
+    if (ok) return cachedBackendHost;
+    cachedBackendHost = null;
   }
 
-  for (const host of BACKEND_HOSTS) {
-    try {
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 3000);
-      const res = await fetch(`${host}${urlPath}`, {
-        ...options,
-        signal: controller.signal,
-      });
-      clearTimeout(t);
-      if (res.ok) {
-        cachedBackendHost = host;
-        return await res.json();
-      }
-      if (res.status >= 400 && res.status < 500) {
-        cachedBackendHost = host;
-        return await res.json();
-      }
-    } catch (_) {
-      // Try next host
-    }
+  // Probe all candidate hosts in parallel (max 2 seconds)
+  const probePromises = hosts.map(host => probeHost(host, 2000));
+  const results = await Promise.all(probePromises);
+  const workingHost = results.find(h => h !== null);
+
+  if (workingHost) {
+    cachedBackendHost = workingHost;
+    console.log(`[AUTH] Discovered working backend host: ${workingHost}`);
+    return workingHost;
   }
+
+  // Fallback to primary host if probes fail
+  return hosts[0];
+}
+
+/**
+ * Send request to backend host. Automatically discovers working host if needed.
+ */
+async function fetchFromBackend(urlPath: string, options: RequestInit = {}): Promise<any> {
+  const timeoutMs = options.method === 'POST' ? 12000 : 5000;
+  const host = await findWorkingHost();
+
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+    console.log(`[AUTH] Fetching ${host}${urlPath}...`);
+    const res = await fetch(`${host}${urlPath}`, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(t);
+
+    const json = await res.json();
+    if (res.ok || (res.status >= 400 && res.status < 500)) {
+      return json;
+    }
+  } catch (err: any) {
+    console.warn(`[AUTH] Request to ${host}${urlPath} failed:`, err?.message || err);
+    cachedBackendHost = null; // Reset cached host on error to retry discovery
+  }
+
   return null;
 }
 
@@ -345,25 +396,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const formattedPhone = rawPhone.startsWith('+') ? rawPhone : `+91${rawPhone.trim()}`;
     setPhone(rawPhone);
 
-    // Notify backend (fire-and-forget, no blocking)
-    fetchFromBackend('/api/auth/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: formattedPhone }),
-    }).catch(() => {});
+    try {
+      console.log(`[AUTH] Requesting OTP for ${formattedPhone}...`);
+      const res = await fetchFromBackend('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formattedPhone }),
+      });
 
-    // For development: always return success (OTP = 123456)
-    return { success: true };
+      console.log('[AUTH] Send OTP backend response:', res);
+
+      if (res && res.success) {
+        return { success: true };
+      }
+      return {
+        success: false,
+        error: res?.detail || res?.error || 'Server connection issue. Please restart python start_server.py',
+      };
+    } catch (err) {
+      console.error('[AUTH] Send OTP exception:', err);
+      return { success: false, error: 'Could not connect to authentication server' };
+    }
   };
 
   // ── Verify OTP ──────────────────────────────────────────────────────────────
   /**
-   * Verify OTP and check whether this phone number already has a profile.
-   *
-   * Strategy:
-   *  1. Call backend /api/auth/verify-otp  (checks local profiles.json + Supabase)
-   *  2. If backend unavailable, fall back to direct Supabase check
-   *  3. Master code 123456 always passes OTP; backend decides if profile exists
+   * Verify real randomized OTP via backend auth service.
    */
   const verifyOtp = async (
     rawPhone: string,
@@ -371,62 +429,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ): Promise<{ success: boolean; isExistingProfile?: boolean; error?: string }> => {
     const formattedPhone = rawPhone.startsWith('+') ? rawPhone : `+91${rawPhone.trim()}`;
     const cleanToken = token.trim();
-    const isMasterCode = cleanToken === '123456';
 
-    // ── Step 1: Validate OTP ──────────────────────────────────────────────────
-    // Try Supabase real OTP verification
-    let authenticatedUser: User | null = null;
-    let authSession: Session | null = null;
-
-    if (SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('placeholder')) {
-      try {
-        const { data, error } = await supabase.auth.verifyOtp({
-          phone: formattedPhone,
-          token: cleanToken,
-          type: 'sms',
-        });
-        if (!error && data?.user) {
-          authenticatedUser = data.user;
-          authSession = data.session;
-        }
-      } catch (_) {}
-    }
-
-    // Master code fallback: create a deterministic synthetic user
-    if (isMasterCode && !authenticatedUser) {
-      const last10 = rawPhone.replace(/[^0-9]/g, '').slice(-10).padStart(10, '0');
-      const deterministicId = `11111111-2222-3333-4444-91${last10}`;
-
-      authenticatedUser = {
-        id: deterministicId,
-        phone: formattedPhone,
-        role: 'authenticated',
-        aud: 'authenticated',
-        app_metadata: { provider: 'phone' },
-        user_metadata: {},
-        created_at: new Date().toISOString(),
-      } as any;
-
-      authSession = {
-        access_token: 'dev_token_' + deterministicId,
-        refresh_token: 'dev_refresh_' + Date.now(),
-        expires_in: 86400,
-        token_type: 'bearer',
-        user: authenticatedUser!,
-      } as any;
-    }
-
-    // If neither real OTP nor master code → reject
-    if (!authenticatedUser) {
-      return { success: false, error: "That code didn't work — use 123456 for testing" };
-    }
-
-    // ── Step 2: Check if profile exists based on userRole (AUTHORITATIVE CHECK) ──
-    let isExistingProfile = false;
-    let foundArtisanProfile: ArtisanProfile | null = null;
-    let foundBuyerProfile: BuyerProfile | null = null;
-
-    // A) Ask backend /api/auth/verify-otp (handles local file + Supabase DB)
+    // Call backend /api/auth/verify-otp (strictly verifies random 6-digit OTP from Twilio)
     try {
       const backendRes = await fetchFromBackend('/api/auth/verify-otp', {
         method: 'POST',
@@ -434,87 +438,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ phone: formattedPhone, token: cleanToken, role: userRole }),
       });
 
-      if (backendRes) {
+      if (backendRes && backendRes.success) {
+        const last10 = rawPhone.replace(/[^0-9]/g, '').slice(-10).padStart(10, '0');
+        const prefix = userRole === 'buyer' ? '22222222-3333-4444-5555-91' : '11111111-2222-3333-4444-91';
+        const userId = backendRes.user?.id || `${prefix}${last10}`;
+
+        const authenticatedUser: User = {
+          id: userId,
+          phone: formattedPhone,
+          role: 'authenticated',
+          aud: 'authenticated',
+          app_metadata: { provider: 'phone' },
+          user_metadata: {},
+          created_at: new Date().toISOString(),
+        } as any;
+
+        const authSession: Session = {
+          access_token: 'auth_token_' + userId,
+          refresh_token: 'refresh_' + Date.now(),
+          expires_in: 86400,
+          token_type: 'bearer',
+          user: authenticatedUser,
+        } as any;
+
+        const isExistingProfile = Boolean(backendRes.isExistingProfile);
+
+        setUser(authenticatedUser);
+        setSession(authSession);
+
         if (userRole === 'buyer') {
-          if (backendRes.isExistingProfile && backendRes.profile) {
-            isExistingProfile = true;
-            foundBuyerProfile = backendRes.profile as BuyerProfile;
-          } else {
-            isExistingProfile = false;
+          if (backendRes.profile && isExistingProfile) {
+            const bp = backendRes.profile as BuyerProfile;
+            setBuyerProfile(bp);
+            setBuyerOnboardingData({
+              buyerType: bp.buyer_type || 'Individual Buyer',
+              businessName: bp.business_name || '',
+              gstin: bp.gstin || '',
+              department: bp.department || '',
+              addressLine: bp.address_line || '',
+              city: bp.city || '',
+              state: bp.state || '',
+              pincode: bp.pincode || '',
+            });
           }
         } else {
-          if (backendRes.isExistingProfile && backendRes.profile?.name) {
-            isExistingProfile = true;
-            foundArtisanProfile = backendRes.profile as ArtisanProfile;
-          } else {
-            isExistingProfile = false;
+          if (backendRes.profile && isExistingProfile) {
+            const ap = backendRes.profile as ArtisanProfile;
+            setProfile(ap);
+            setOnboardingData({
+              name: ap.name,
+              craftType: ap.craft_type || '',
+              craftCustom: ap.craft_custom || '',
+              language: ap.language || 'English',
+              schemeId: ap.scheme_id || '',
+            });
           }
         }
+
+        return { success: true, isExistingProfile };
       } else {
-        // Backend unreachable — fall back to Supabase direct check
-        throw new Error('backend_unavailable');
+        return {
+          success: false,
+          error: backendRes?.detail || backendRes?.error || 'Invalid or expired OTP code. Please enter the exact code sent to your phone.',
+        };
       }
-    } catch (_) {
-      // B) Fallback: direct Supabase check
-      try {
-        if (userRole === 'buyer') {
-          const { data: sbBuyer } = await supabase
-            .from('buyer_profiles')
-            .select('*')
-            .eq('phone', formattedPhone)
-            .maybeSingle();
-
-          if (sbBuyer && (sbBuyer.buyer_type || sbBuyer.address_line || sbBuyer.name)) {
-            isExistingProfile = true;
-            foundBuyerProfile = sbBuyer as BuyerProfile;
-          }
-        } else {
-          const { data: sbProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('phone', formattedPhone)
-            .maybeSingle();
-
-          if (sbProfile && sbProfile.name) {
-            isExistingProfile = true;
-            foundArtisanProfile = sbProfile as ArtisanProfile;
-          }
-        }
-      } catch (e) {}
+    } catch (e) {
+      return { success: false, error: 'Network error verifying OTP. Please try again.' };
     }
-
-    // ── Step 3: Commit auth state ─────────────────────────────────────────────
-    setUser(authenticatedUser);
-    setSession(authSession);
-
-    if (userRole === 'buyer') {
-      if (foundBuyerProfile && isExistingProfile) {
-        setBuyerProfile(foundBuyerProfile);
-        setBuyerOnboardingData({
-          buyerType: foundBuyerProfile.buyer_type || 'Individual Buyer',
-          businessName: foundBuyerProfile.business_name || '',
-          gstin: foundBuyerProfile.gstin || '',
-          department: foundBuyerProfile.department || '',
-          addressLine: foundBuyerProfile.address_line || '',
-          city: foundBuyerProfile.city || '',
-          state: foundBuyerProfile.state || '',
-          pincode: foundBuyerProfile.pincode || '',
-        });
-      }
-    } else {
-      if (foundArtisanProfile && isExistingProfile) {
-        setProfile(foundArtisanProfile);
-        setOnboardingData({
-          name: foundArtisanProfile.name,
-          craftType: foundArtisanProfile.craft_type || '',
-          craftCustom: foundArtisanProfile.craft_custom || '',
-          language: foundArtisanProfile.language || 'English',
-          schemeId: foundArtisanProfile.scheme_id || '',
-        });
-      }
-    }
-
-    return { success: true, isExistingProfile };
   };
 
   // ── Update Buyer Onboarding Data ──────────────────────────────────────────
