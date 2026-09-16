@@ -16,7 +16,11 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from app.main import app
 
-client = TestClient(app)
+try:
+    client = TestClient(app)
+except Exception:
+    import httpx
+    client = httpx.Client(base_url="http://127.0.0.1:5000", timeout=30.0)
 
 
 def test_suite():

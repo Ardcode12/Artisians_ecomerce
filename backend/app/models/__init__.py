@@ -21,6 +21,13 @@ from app.models.ai import (
     EnhanceImageBase64Request,
 )
 
+
+def dump_model(model, **kwargs):
+    """Safely dump pydantic model for both v1 (.dict) and v2 (.model_dump)."""
+    if hasattr(model, "model_dump"):
+        return model.model_dump(**kwargs)
+    return model.dict(**kwargs)
+
 __all__ = [
     "ProfileUpsertRequest",
     "ProfileUpdateRequest",

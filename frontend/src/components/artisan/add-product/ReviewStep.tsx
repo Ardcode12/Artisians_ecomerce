@@ -24,8 +24,10 @@ import {
 } from 'lucide-react-native';
 import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { InstagramIcon } from '@/components/ui/InstagramIcon';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 
 interface ProductData {
   imageUri: string;
@@ -44,7 +46,10 @@ interface ProductData {
 
 interface ReviewStepProps {
   productData: ProductData;
-  onPublish: () => void;
+  onPublish: (productId?: string) => void;
+  postToIg?: boolean;
+  reelStyle?: string;
+  onReelTriggered?: (jobId: string) => void;
 }
 
 const MARKETPLACES = [
@@ -54,7 +59,13 @@ const MARKETPLACES = [
   { Icon: Store, name: 'Craftsvilla', sub: 'Indian craft marketplace', selected: false },
 ];
 
-export function ReviewStep({ productData, onPublish }: ReviewStepProps) {
+export function ReviewStep({
+  productData,
+  onPublish,
+  postToIg = false,
+  reelStyle = 'heritage',
+  onReelTriggered,
+}: ReviewStepProps) {
   const [selectedMarkets, setSelectedMarkets] = useState(
     MARKETPLACES.map((m) => m.selected)
   );
@@ -64,6 +75,7 @@ export function ReviewStep({ productData, onPublish }: ReviewStepProps) {
   const [langView, setLangView] = useState<'en' | 'hi' | 'ta'>('en');
 
   const { user } = useAuth();
+  const { t, language } = useLanguage();
 
   const displayPrice = productData.finalPrice || productData.suggestedPrice || '₹0';
   const displayTitle = productData.title || 'Untitled Product';
@@ -121,20 +133,51 @@ export function ReviewStep({ productData, onPublish }: ReviewStepProps) {
         body: JSON.stringify(payload),
       });
 
-      const data = await resp.json();
+      const text = await resp.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(text);
+      } catch (_) {
+        data = { error: text || `Server error ${resp.status}` };
+      }
 
       if (!resp.ok || !data.success) {
-        throw new Error(data.error || `Server error ${resp.status}`);
+        throw new Error(data.error || data.detail || `Server error ${resp.status}`);
       }
 
       console.log('[ReviewStep] Product published:', data.product_id);
       setPublishing(false);
+
+      if (postToIg && onReelTriggered) {
+        try {
+          const reelLang = language === 'ta' ? 'ta-IN' : language === 'hi' ? 'hi-IN' : language === 'te' ? 'te-IN' : 'en-IN';
+          const reelResp = await fetch(`${BACKEND_URL}/api/reels/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              product_id: data.product_id,
+              user_id: user?.id || 'artisan_default',
+              language: reelLang,
+              style: reelStyle,
+              post_to_instagram: true,
+            }),
+          });
+          const reelJson = await reelResp.json();
+          if (reelJson.job_id) {
+            onReelTriggered(reelJson.job_id);
+            return;
+          }
+        } catch (e: any) {
+          console.warn('[ReviewStep] Failed to trigger reel:', e);
+        }
+      }
+
       setPublished(true);
 
       // Navigate after brief success animation
       setTimeout(() => {
         setPublished(false);
-        onPublish();
+        onPublish(data.product_id);
       }, 2200);
     } catch (err: any) {
       console.error('[ReviewStep] Publish error:', err.message);
@@ -283,18 +326,28 @@ export function ReviewStep({ productData, onPublish }: ReviewStepProps) {
 
           {/* Publish button */}
           <TouchableOpacity
-            style={[styles.publishBtn, publishing && styles.publishBtnLoading]}
+            style={[
+              styles.publishBtn,
+              postToIg && { backgroundColor: '#C13584' },
+              publishing && styles.publishBtnLoading,
+            ]}
             onPress={handlePublish}
             activeOpacity={0.88}
             disabled={publishing}
           >
             {publishing ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : postToIg ? (
+              <InstagramIcon size={18} color="#FFFFFF" />
             ) : (
               <Send size={18} color="#FFFFFF" />
             )}
             <Text style={styles.publishBtnText}>
-              {publishing ? 'Publishing...' : 'Publish Listing'}
+              {publishing
+                ? 'Publishing...'
+                : postToIg
+                  ? (t('reel.publishBtn') || 'Publish & Create Reel')
+                  : (t('reel.publishBtnPlain') || 'Publish Listing')}
             </Text>
           </TouchableOpacity>
         </View>

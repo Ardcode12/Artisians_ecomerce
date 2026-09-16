@@ -34,7 +34,7 @@ import { Fonts, Shadow, Radius } from '@/constants/artisan-theme';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 
 export default function CartScreen() {
   const insets = useSafeAreaInsets();

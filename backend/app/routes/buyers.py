@@ -4,6 +4,7 @@ Buyer Profile Routes
 
 from fastapi import APIRouter, HTTPException, Query, status
 from app.models.profile import BuyerProfileUpsertRequest
+from app.models import dump_model
 from app.services.profile_service import (
     check_buyer_phone,
     get_buyer_profile_by_id_or_phone,
@@ -27,7 +28,7 @@ def upsert_buyer_profile_endpoint(req: BuyerProfileUpsertRequest):
     if not req.phone:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="phone is required")
 
-    profile = upsert_buyer_profile(req.model_dump(exclude_unset=False))
+    profile = upsert_buyer_profile(dump_model(req, exclude_unset=False))
     return {
         "success": True,
         "message": "Buyer profile saved successfully",

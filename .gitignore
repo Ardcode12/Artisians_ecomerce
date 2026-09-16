@@ -27,3 +27,8 @@ __pycache__/
 
 # AI test files
 backend/ai/studio_test.jpg
+
+/backend/ai/venv/
+/backend/ai/.venv/
+**/__pycache__/
+*.pyc

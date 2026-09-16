@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   StatusBar,
   Image,
   Modal,
@@ -25,13 +24,8 @@ import {
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import {
-  Search,
-  SlidersHorizontal,
   Bell,
-  TrendingUp,
-  ArrowUpRight,
   Settings,
-  FileBadge,
   HelpCircle,
   LogOut,
   X,
@@ -40,7 +34,7 @@ import {
   Inbox,
 } from 'lucide-react-native';
 
-import { Fonts, Radius, Shadow, NAV_HEIGHT } from '@/constants/artisan-theme';
+import { Fonts, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { LanguagePicker } from '@/components/artisan/LanguagePicker';
 import { StatsStrip } from '@/components/artisan/StatsStrip';
 import { HeroCards } from '@/components/artisan/HeroCards';
@@ -52,7 +46,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import WelcomeScreen from './welcome';
 import BuyerHomeScreen from './buyer-home';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 
 interface Product {
   id: string;
@@ -80,7 +74,6 @@ function productStatus(p: Product): ListingStatus {
 
 export default function ArtisanHomeScreen() {
   const [activeTab, setActiveTab] = useState<ArtisanTab>('home');
-  const [searchQuery, setSearchQuery] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
   const [listingsLoading, setListingsLoading] = useState(true);
@@ -119,17 +112,10 @@ export default function ArtisanHomeScreen() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      let inqUrl = `${BACKEND_URL}/api/inquiries`;
-      if (user?.id) inqUrl += `?artisan_id=${user.id}`;
       let ordUrl = `${BACKEND_URL}/api/orders`;
       if (user?.id) ordUrl += `?artisan_id=${user.id}`;
-
-      const [inqRes, ordRes] = await Promise.all([fetch(inqUrl), fetch(ordUrl)]);
+      const ordRes = await fetch(ordUrl);
       let count = 0;
-      if (inqRes.ok) {
-        const d = await inqRes.json();
-        if (d.inquiries) count += d.inquiries.length;
-      }
       if (ordRes.ok) {
         const d = await ordRes.json();
         if (d.orders) count += d.orders.length;
@@ -168,49 +154,41 @@ export default function ArtisanHomeScreen() {
     if (tab === 'profile') router.push('/profile');
   };
 
+  const firstName = (profile?.name || 'Artisan').split(' ')[0];
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* ── Top Header ────────────────────────────────────────────── */}
-      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
-        {/* Left: Black circle hamburger icon -> opens side drawer */}
+      {/* ── Minimal Header ────────────────────────────────────────── */}
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity
-          style={styles.menuCircle}
           onPress={() => setDrawerOpen(true)}
           activeOpacity={0.8}
         >
-          <View style={styles.menuLines}>
-            <View style={styles.menuLineLong} />
-            <View style={styles.menuLineShort} />
-            <View style={styles.menuLineMed} />
-          </View>
+          <Image
+            source={{
+              uri: profile?.avatar_url || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&q=80',
+            }}
+            style={styles.headerAvatar}
+          />
         </TouchableOpacity>
 
-        {/* Right: Notification Bell with Red Dot + Profile Avatar */}
-        <View style={styles.headerRightGroup}>
-          <TouchableOpacity
-            style={styles.bellBtn}
-            onPress={() => router.push('/inquiries')}
-            activeOpacity={0.8}
-          >
-            <Bell size={20} color="#0D0D0D" strokeWidth={2} />
-            {unreadNotifsCount > 0 && <View style={styles.unreadRedDot} />}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.avatarWrapper}
-            onPress={() => router.push('/profile')}
-            activeOpacity={0.85}
-          >
-            <Image
-              source={{
-                uri: profile?.avatar_url || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&q=80',
-              }}
-              style={styles.avatarImg}
-            />
-          </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerGreeting}>Hi, {firstName}</Text>
+          <Text style={styles.headerShop} numberOfLines={1}>
+            {profile?.shop_name || `${firstName}'s Studio`}
+          </Text>
         </View>
+
+        <TouchableOpacity
+          style={styles.bellBtn}
+          onPress={() => router.push('/inquiries')}
+          activeOpacity={0.8}
+        >
+          <Bell size={20} color="#0D0D0D" strokeWidth={1.8} />
+          {unreadNotifsCount > 0 && <View style={styles.unreadDot} />}
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -221,49 +199,21 @@ export default function ArtisanHomeScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Accessibility Language Toggle Chip (directly under header) ── */}
+        {/* ── Language Toggle ───────────────────────────────────────── */}
         <View style={styles.langRow}>
           <LanguagePicker />
         </View>
 
-        {/* ── Greeting Block ────────────────────────────────────────── */}
-        <View style={styles.greetingBlock}>
-          <Text style={styles.greetingBold}>{t('home_greeting')}</Text>
-          <Text style={styles.greetingSub}>{profile?.shop_name || (profile?.name ? `${profile.name}'s Studio` : "Artisan Studio")}</Text>
-          <Text style={styles.greetingPrompt}>{t('home_greeting_prompt')}</Text>
-        </View>
-
-        {/* ── Search Bar + Sort/Filter ──────────────────────────────── */}
-        <View style={styles.searchRow}>
-          <View style={styles.searchPill}>
-            <Search size={18} color="#9CA3AF" strokeWidth={2} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder={t('home_search_placeholder')}
-              placeholderTextColor="#9CA3AF"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-          <TouchableOpacity
-            style={styles.filterCircle}
-            onPress={() => router.push('/listings')}
-            activeOpacity={0.85}
-          >
-            <SlidersHorizontal size={18} color="#FFFFFF" strokeWidth={2.5} />
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Stats Strip ───────────────────────────────────────────── */}
+        {/* ── Stats Strip ──────────────────────────────────────────── */}
         <StatsStrip />
 
-        {/* ── Primary Action Card & Hero Cards ──────────────────────── */}
+        {/* ── Quick Actions ────────────────────────────────────────── */}
         <HeroCards
           onAddProduct={() => router.push('/add-product')}
           onViewEarnings={() => router.push('/earnings')}
         />
 
-        {/* ── My Listings Section ───────────────────────────────────── */}
+        {/* ── My Listings ──────────────────────────────────────────── */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>{t('home_my_listings')}</Text>
@@ -271,19 +221,17 @@ export default function ArtisanHomeScreen() {
               onPress={() => router.push('/listings')}
               activeOpacity={0.7}
             >
-              <Text style={styles.viewAllText}>{t('home_see_all')}</Text>
+              <Text style={styles.seeAllText}>{t('home_see_all')}</Text>
             </TouchableOpacity>
           </View>
 
-          {/* 2-Column Product Grid — real data from backend */}
           {listingsLoading ? (
             <View style={styles.listingsLoader}>
-              <ActivityIndicator size="small" color="#0D0D0D" />
-              <Text style={styles.listingsLoaderText}>Loading your products...</Text>
+              <ActivityIndicator size="small" color="#9CA3AF" />
             </View>
           ) : recentProducts.length === 0 ? (
             <View style={styles.listingsEmpty}>
-              <Inbox size={40} color="#9CA3AF" strokeWidth={1.5} />
+              <Inbox size={36} color="#D1D5DB" strokeWidth={1.5} />
               <Text style={styles.listingsEmptyTitle}>No products yet</Text>
               <Text style={styles.listingsEmptyText}>Add your first product to start selling</Text>
               <TouchableOpacity
@@ -330,7 +278,7 @@ export default function ArtisanHomeScreen() {
           )}
         </View>
 
-        {/* ── Orders & Inquiries Section ────────────────────────────── */}
+        {/* ── Orders & Reviews ─────────────────────────────────────── */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>{t('home_orders_inquiries')}</Text>
@@ -338,45 +286,21 @@ export default function ArtisanHomeScreen() {
               onPress={() => router.push('/inquiries')}
               activeOpacity={0.7}
             >
-              <Text style={styles.viewAllText}>{t('home_view_all')}</Text>
+              <Text style={styles.seeAllText}>{t('home_view_all')}</Text>
             </TouchableOpacity>
           </View>
           <OrdersAndInquiries />
         </View>
-
-        {/* ── Earnings Summary Card ─────────────────────────────────── */}
-        <View style={styles.section}>
-          <View style={styles.earningsCard}>
-            <View style={styles.earningsLeft}>
-              <Text style={styles.earningsLabel}>{t('home_your_earnings')}</Text>
-              <View style={styles.earningsNumRow}>
-                <Text style={styles.earningsAmount}>₹8,450</Text>
-                <Text style={styles.earningsSub}>{t('home_this_month')}</Text>
-              </View>
-              <View style={styles.growthRow}>
-                <TrendingUp size={13} color="#10B981" strokeWidth={2.5} />
-                <Text style={styles.growthText}>{t('home_growth')}</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.earningsBtn}
-              onPress={() => router.push('/earnings')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.earningsBtnText}>{t('home_view_details')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
 
-      {/* ── Persistent 5-Tab Bottom Nav (Home, Listings, Add, Inquiries, Profile) ── */}
+      {/* ── Bottom Nav ─────────────────────────────────────────────── */}
       <ArtisanBottomNav activeTab={activeTab} onTabChange={handleTabChange} />
 
-      {/* ── Side Drawer Modal ─────────────────────────────────────── */}
+      {/* ── Side Drawer ────────────────────────────────────────────── */}
       <Modal visible={drawerOpen} transparent animationType="fade">
         <Pressable style={styles.drawerOverlay} onPress={() => setDrawerOpen(false)}>
           <View style={styles.drawerContent} onStartShouldSetResponder={() => true}>
+            {/* Drawer Header */}
             <View style={styles.drawerHeader}>
               <View style={styles.drawerUserRow}>
                 <Image
@@ -385,27 +309,23 @@ export default function ArtisanHomeScreen() {
                   }}
                   style={styles.drawerAvatar}
                 />
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.drawerName}>{profile?.name || 'Artisan'}</Text>
-                  <Text style={styles.drawerShop}>{profile?.shop_name || (profile?.name ? `${profile.name}'s Studio` : 'Artisan Studio')}</Text>
+                  <Text style={styles.drawerShop}>
+                    {profile?.shop_name || `${firstName}'s Studio`}
+                  </Text>
                 </View>
               </View>
               <TouchableOpacity
                 style={styles.drawerCloseBtn}
                 onPress={() => setDrawerOpen(false)}
               >
-                <X size={20} color="#0D0D0D" />
+                <X size={18} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
-            {/* Cluster ID card */}
-            <View style={styles.clusterCard}>
-              <FileBadge size={16} color="#B5502F" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.clusterLabel}>Scheme / Cluster ID</Text>
-                <Text style={styles.clusterValue}>{profile?.scheme_id || 'Not Registered'}</Text>
-              </View>
-            </View>
+            {/* Divider */}
+            <View style={styles.drawerDivider} />
 
             {/* Menu Items */}
             <View style={styles.drawerMenu}>
@@ -413,34 +333,36 @@ export default function ArtisanHomeScreen() {
                 style={styles.drawerMenuItem}
                 onPress={() => { setDrawerOpen(false); router.push('/profile'); }}
               >
-                <Settings size={18} color="#0D0D0D" />
+                <Settings size={18} color="#374151" strokeWidth={1.8} />
                 <Text style={styles.drawerMenuText}>{t('drawer_settings')}</Text>
-                <ChevronRight size={16} color="#9CA3AF" />
+                <ChevronRight size={16} color="#D1D5DB" />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.drawerMenuItem}
                 onPress={() => { setDrawerOpen(false); router.push('/profile'); }}
               >
-                <HelpCircle size={18} color="#0D0D0D" />
+                <HelpCircle size={18} color="#374151" strokeWidth={1.8} />
                 <Text style={styles.drawerMenuText}>{t('drawer_help')}</Text>
-                <ChevronRight size={16} color="#9CA3AF" />
+                <ChevronRight size={16} color="#D1D5DB" />
               </TouchableOpacity>
 
+              <View style={styles.drawerDivider} />
+
               <TouchableOpacity
-                style={[styles.drawerMenuItem, styles.drawerLogoutItem]}
+                style={styles.drawerMenuItem}
                 onPress={async () => {
                   setDrawerOpen(false);
                   await signOut();
                   router.push('/welcome');
                 }}
               >
-                <LogOut size={18} color="#EF4444" />
+                <LogOut size={18} color="#EF4444" strokeWidth={1.8} />
                 <Text style={styles.drawerLogoutText}>{t('drawer_logout')}</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.drawerFooter}>ArtisanLink • Govt Supported</Text>
+            <Text style={styles.drawerFooter}>ArtisanLink</Text>
           </View>
         </Pressable>
       </Modal>
@@ -453,149 +375,72 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+
+  /* ── Header ─────────────────────────────────────────────────────── */
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 4,
+    paddingBottom: 8,
     backgroundColor: '#FFFFFF',
+    gap: 12,
   },
-  menuCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#0D0D0D',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Shadow.card,
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
   },
-  menuLines: {
-    gap: 4,
-    width: 18,
-    alignItems: 'flex-start',
+  headerCenter: {
+    flex: 1,
   },
-  menuLineLong: {
-    width: 18,
-    height: 2.2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
+  headerGreeting: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+    letterSpacing: -0.3,
   },
-  menuLineShort: {
-    width: 11,
-    height: 2.2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
-  menuLineMed: {
-    width: 15,
-    height: 2.2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
-  headerRightGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  headerShop: {
+    fontSize: 13,
+    fontFamily: Fonts.body,
+    color: '#9CA3AF',
+    marginTop: 1,
   },
   bellBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F9FAFB',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
-  unreadRedDot: {
+  unreadDot: {
     position: 'absolute',
-    top: 9,
-    right: 9,
-    width: 8,
-    height: 8,
+    top: 10,
+    right: 10,
+    width: 7,
+    height: 7,
     borderRadius: 4,
     backgroundColor: '#EF4444',
   },
-  avatarWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3F4F6',
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-  },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
-  },
+
+  /* ── Scroll ─────────────────────────────────────────────────────── */
   scroll: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 4,
   },
   langRow: {
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  greetingBlock: {
-    marginBottom: 16,
-  },
-  greetingBold: {
-    fontSize: 28,
-    fontWeight: '800',
-    fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
-    letterSpacing: -0.5,
-  },
-  greetingSub: {
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: Fonts.headingBold,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  greetingPrompt: {
-    fontSize: 13,
-    fontWeight: '500',
-    fontFamily: Fonts.bodyMedium,
-    color: '#B5502F',
-    marginTop: 4,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 14,
-  },
-  searchPill: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F7',
-    borderRadius: 30,
-    paddingHorizontal: 16,
-    height: 50,
-    gap: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: Fonts.bodyMedium,
-    color: '#0D0D0D',
-  },
-  filterCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#0D0D0D',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Shadow.card,
-  },
+
+  /* ── Sections ───────────────────────────────────────────────────── */
   section: {
-    marginTop: 22,
+    marginTop: 24,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -604,17 +449,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
-  },
-  viewAllText: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
-    color: '#B5502F',
+    color: '#0D0D0D',
+    letterSpacing: -0.2,
   },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: Fonts.bodyMedium,
+    color: '#9CA3AF',
+  },
+
+  /* ── Listings Grid ──────────────────────────────────────────────── */
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -623,200 +471,25 @@ const styles = StyleSheet.create({
   gridCell: {
     width: '47.8%',
   },
-  earningsCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    ...Shadow.card,
-    elevation: 2,
-  },
-  earningsLeft: {
-    gap: 3,
-  },
-  earningsLabel: {
-    fontSize: 12,
-    color: '#8E8E93',
-    fontFamily: Fonts.bodyMedium,
-  },
-  earningsNumRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
-  },
-  earningsAmount: {
-    fontSize: 24,
-    fontWeight: '800',
-    fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
-  },
-  earningsSub: {
-    fontSize: 12,
-    color: '#8E8E93',
-    fontFamily: Fonts.body,
-  },
-  growthRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  growthText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#10B981',
-    fontFamily: Fonts.headingBold,
-  },
-  earningsBtn: {
-    backgroundColor: '#0D0D0D',
-    borderRadius: 20,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-  },
-  earningsBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: Fonts.headingBold,
-    color: '#FFFFFF',
-  },
-
-  /* Drawer styles */
-  drawerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    flexDirection: 'row',
-  },
-  drawerContent: {
-    width: '78%',
-    backgroundColor: '#FFFFFF',
-    height: '100%',
-    paddingHorizontal: 22,
-    paddingTop: 60,
-    paddingBottom: 30,
-    justifyContent: 'space-between',
-  },
-  drawerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  drawerUserRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  drawerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  drawerName: {
-    fontSize: 16,
-    fontWeight: '800',
-    fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
-  },
-  drawerShop: {
-    fontSize: 12,
-    fontFamily: Fonts.body,
-    color: '#8E8E93',
-  },
-  drawerCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  clusterCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF3E9',
-    borderRadius: 14,
-    padding: 12,
-    gap: 10,
-    marginBottom: 24,
-  },
-  clusterLabel: {
-    fontSize: 10,
-    fontFamily: Fonts.body,
-    color: '#746558',
-  },
-  clusterValue: {
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
-  },
-  drawerMenu: {
-    flex: 1,
-    gap: 8,
-  },
-  drawerMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  drawerMenuText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: Fonts.heading,
-    color: '#0D0D0D',
-  },
-  drawerLogoutItem: {
-    borderBottomWidth: 0,
-    marginTop: 10,
-  },
-  drawerLogoutText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: Fonts.headingBold,
-    color: '#EF4444',
-  },
-  drawerFooter: {
-    textAlign: 'center',
-    fontSize: 11,
-    color: '#9CA3AF',
-    fontFamily: Fonts.body,
-  },
   listingsLoader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
     paddingVertical: 32,
-  },
-  listingsLoaderText: {
-    fontSize: 13,
-    fontFamily: Fonts.body,
-    color: '#6B7280',
+    alignItems: 'center',
   },
   listingsEmpty: {
     alignItems: 'center',
     paddingVertical: 32,
-    gap: 8,
+    gap: 6,
   },
   listingsEmptyTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: Fonts.heading,
+    color: '#6B7280',
   },
   listingsEmptyText: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: Fonts.body,
-    color: '#8E8E93',
+    color: '#9CA3AF',
     textAlign: 'center',
   },
   addFirstBtn: {
@@ -827,11 +500,100 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    marginTop: 6,
+    marginTop: 8,
   },
   addFirstBtnText: {
     fontSize: 13,
-    fontFamily: Fonts.headingBold,
+    fontFamily: Fonts.heading,
     color: '#FFFFFF',
+  },
+
+  /* ── Drawer ─────────────────────────────────────────────────────── */
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    flexDirection: 'row',
+  },
+  drawerContent: {
+    width: '75%',
+    backgroundColor: '#FFFFFF',
+    height: '100%',
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 30,
+    justifyContent: 'space-between',
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  drawerUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  drawerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  drawerName: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+  },
+  drawerShop: {
+    fontSize: 12,
+    fontFamily: Fonts.body,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  drawerCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  drawerDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 12,
+  },
+  drawerMenu: {
+    flex: 1,
+    gap: 4,
+  },
+  drawerMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 14,
+  },
+  drawerMenuText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: Fonts.bodyMedium,
+    color: '#374151',
+  },
+  drawerLogoutText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: Fonts.heading,
+    color: '#EF4444',
+  },
+  drawerFooter: {
+    textAlign: 'center',
+    fontSize: 11,
+    color: '#D1D5DB',
+    fontFamily: Fonts.body,
+    letterSpacing: 0.5,
   },
 });

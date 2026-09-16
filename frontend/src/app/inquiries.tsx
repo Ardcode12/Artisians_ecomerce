@@ -47,7 +47,7 @@ import { Fonts, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
 import { useLanguage } from '@/context/LanguageContext';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 interface Message {
@@ -82,34 +82,7 @@ interface ClientReview {
 const ACTIVITIES: any[] = [];
 const INITIAL_CONVERSATIONS: Conversation[] = [];
 
-const INITIAL_REVIEWS: ClientReview[] = [
-  {
-    id: 'r1',
-    name: 'Malison Aved',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&q=80',
-    date: '20 June, 2024',
-    rating: 5,
-    comment: 'The point of using authentic handcrafted art is the unparalleled soul and story behind each piece. The terracotta finish is spectacular!',
-    reply: 'Thank you Malison! We take immense pride in preserving 3 generations of pottery craft heritage.',
-  },
-  {
-    id: 'r2',
-    name: 'Williams Deo',
-    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=200&q=80',
-    date: '20 June, 2024',
-    rating: 5,
-    comment: 'Super fast delivery and the packaging ensured the delicate terracotta craft arrived without a single scratch. Truly 5 stars!',
-  },
-  {
-    id: 'r3',
-    name: 'Selena Eva',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&q=80',
-    date: '22 June, 2024',
-    rating: 5,
-    comment: 'The silk handloom fabric texture and authentic zari border exceeded all expectations. Exceptional craftsmanship!',
-    reply: 'Thank you Selena! Each motif was hand-woven on traditional pit looms.',
-  },
-];
+const INITIAL_REVIEWS: ClientReview[] = [];
 
 export default function InquiriesScreen() {
   const [currentTab, setCurrentTab] = useState<'messages' | 'reviews'>('messages');

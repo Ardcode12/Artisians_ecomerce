@@ -1,0 +1,19 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
+Style: Main,Segoe UI, Arial, Roboto, Helvetica,68,&H00FFFFFF,&H00000000,&H90000000,-1,0,0,0,100,100,0,0,1,5,3,2,80,80,380,1
+
+[Events]
+Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
+
+Dialogue: 0,0:00:00.00,0:00:05.26,Main,,0,0,0,,{\fad(150,150)}Brighten your home with heritage
+Dialogue: 0,0:00:05.26,0:00:10.52,Main,,0,0,0,,{\fad(150,150)}Handcrafted by rural Indian artisans
+Dialogue: 0,0:00:10.52,0:00:15.78,Main,,0,0,0,,{\fad(150,150)}Perfect for auspicious festive gifting
+Dialogue: 0,0:00:15.78,0:00:21.04,Main,,0,0,0,,{\fad(150,150)}Own true heritage for ₹400
+Dialogue: 0,0:00:21.04,0:00:26.30,Main,,0,0,0,,{\fad(150,150)}Tap below to bring joy home

@@ -5,6 +5,7 @@ Product Routes
 from fastapi import APIRouter, HTTPException, Query, status
 from typing import Optional
 from app.models.product import ProductCreateRequest, ProductUpdateRequest
+from app.models import dump_model
 from app.services.product_service import (
     create_product,
     get_products,
@@ -22,12 +23,20 @@ def create_product_endpoint(req: ProductCreateRequest):
     if not req.title:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="title is required")
 
-    product = create_product(req.model_dump())
-    return {
-        "success": True,
-        "product_id": product.get("id"),
-        "product": product
-    }
+    try:
+        product = create_product(dump_model(req))
+        return {
+            "success": True,
+            "product_id": product.get("id"),
+            "product": product
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create product: {str(e)}"
+        )
 
 
 @router.get("")
@@ -67,7 +76,7 @@ def get_single_product_endpoint(id: str):
 @router.patch("/{id}")
 def update_product_endpoint(id: str, req: ProductUpdateRequest):
     """Update product details."""
-    updated = update_product(id, req.model_dump(exclude_unset=True))
+    updated = update_product(id, dump_model(req, exclude_unset=True))
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product with ID '{id}' not found")
     return {

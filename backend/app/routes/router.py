@@ -12,7 +12,10 @@ from app.routes.products import router as products_router
 from app.routes.artisans import router as artisans_router
 from app.routes.inquiries import router as inquiries_router
 from app.routes.orders import router as orders_router
+from app.routes.reviews import router as reviews_router
 from app.routes.ai import router as ai_router
+from app.routes.instagram import router as instagram_router
+from app.routes.reels import router as reels_router
 
 api_router = APIRouter()
 
@@ -24,4 +27,11 @@ api_router.include_router(products_router)
 api_router.include_router(artisans_router)
 api_router.include_router(inquiries_router)
 api_router.include_router(orders_router)
+api_router.include_router(reviews_router)
 api_router.include_router(ai_router)
+
+# Mount Instagram & Reels under /api and also root aliases for spec compatibility
+api_router.include_router(instagram_router, prefix="/api")
+api_router.include_router(reels_router, prefix="/api")
+api_router.include_router(instagram_router, prefix="", include_in_schema=False)
+api_router.include_router(reels_router, prefix="", include_in_schema=False)

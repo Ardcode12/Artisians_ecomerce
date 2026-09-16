@@ -57,8 +57,9 @@ import { useLanguage } from '@/context/LanguageContext';
 import { LanguagePicker } from '@/components/artisan/LanguagePicker';
 import { useCart } from '@/context/CartContext';
 import AsyncStorage from '@/utils/storage';
+import LinkInstagramCard from '@/components/profile/LinkInstagramCard';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 
 const BADGES = [
   { Icon: Award, label: 'GI Tagged', color: '#D97706' },
@@ -1262,6 +1263,12 @@ export default function ProfileScreen() {
               </View>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Instagram Auto-Publish & Ad-Reels Section */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.sectionTitle}>INSTAGRAM & SOCIAL REACH</Text>
+          <LinkInstagramCard />
         </View>
 
         {/* App Settings section */}

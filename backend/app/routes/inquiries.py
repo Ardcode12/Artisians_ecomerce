@@ -5,6 +5,7 @@ Inquiry & Chat Messaging Routes
 from fastapi import APIRouter, HTTPException, Query, status
 from typing import Optional
 from app.models.inquiry import InquiryCreateRequest, MessageCreateRequest, ReplyCreateRequest
+from app.models import dump_model
 from app.services.inquiry_service import (
     create_inquiry,
     get_inquiry_by_id,
@@ -22,7 +23,7 @@ def create_inquiry_endpoint(req: InquiryCreateRequest):
     if not req.product_id and not req.order_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="product_id or order_id is required")
 
-    inq = create_inquiry(req.model_dump())
+    inq = create_inquiry(dump_model(req))
     return {
         "success": True,
         "inquiry": inq

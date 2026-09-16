@@ -26,7 +26,7 @@ import { requireOptionalNativeModule } from 'expo-modules-core';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 
 async function readFileAsBase64(uri: string): Promise<string> {
   if (!uri) return '';

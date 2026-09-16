@@ -58,18 +58,18 @@ def verify_otp(phone: str, token: str, role: str = "artisan") -> Dict[str, Any]:
     with get_db() as conn:
         cursor = conn.cursor()
         if role == "buyer":
-            cursor.execute("SELECT * FROM buyer_profiles WHERE phone = ?", (clean_phone,))
+            cursor.execute("SELECT * FROM buyer_profiles WHERE phone = ? OR phone = ?", (clean_phone, phone))
             row = cursor.fetchone()
             if row:
                 existing_profile = dict(row)
                 if existing_profile.get("buyer_type") or existing_profile.get("address_line") or existing_profile.get("name"):
                     is_existing = True
         else:
-            cursor.execute("SELECT * FROM profiles WHERE phone = ?", (clean_phone,))
+            cursor.execute("SELECT * FROM profiles WHERE phone = ? OR phone = ?", (clean_phone, phone))
             row = cursor.fetchone()
             if row:
                 existing_profile = dict(row)
-                if existing_profile.get("name"):
+                if existing_profile.get("name") and existing_profile.get("name").strip():
                     is_existing = True
 
     logger.info(f"[OTP VERIFIED] Phone: {clean_phone} | Role: {role} | Existing: {is_existing}")

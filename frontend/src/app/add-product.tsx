@@ -27,18 +27,26 @@ import {
   Send,
   Check,
 } from 'lucide-react-native';
+import { InstagramIcon } from '@/components/ui/InstagramIcon';
 
 import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
 import { CameraStep } from '@/components/artisan/add-product/CameraStep';
 import { VoiceStep } from '@/components/artisan/add-product/VoiceStep';
 import { PriceStep } from '@/components/artisan/add-product/PriceStep';
 import { ReviewStep } from '@/components/artisan/add-product/ReviewStep';
+import { SocialReachStep } from '@/components/artisan/add-product/SocialReachStep';
+import { ReelProgressModal } from '@/components/artisan/add-product/ReelProgressModal';
 import { useLanguage } from '@/context/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
 export default function AddProductScreen() {
   const [currentStep, setCurrentStep] = useState(0);
+  const [postToIg, setPostToIg] = useState(true);
+  const [reelStyle, setReelStyle] = useState('heritage');
+  const [reelJobId, setReelJobId] = useState<string | null>(null);
+  const [showReelModal, setShowReelModal] = useState(false);
+
   const [productData, setProductData] = useState({
     imageUri: '',
     title: '',
@@ -62,6 +70,7 @@ export default function AddProductScreen() {
     { label: t('add_product_step_photo'), Icon: Camera },
     { label: t('add_product_step_describe'), Icon: Mic },
     { label: t('add_product_step_price'), Icon: Tag },
+    { label: t('add_product_step_social') || 'Social Reach', Icon: InstagramIcon },
     { label: t('add_product_step_publish'), Icon: Send },
   ];
 
@@ -174,12 +183,38 @@ export default function AddProductScreen() {
           />
         )}
         {currentStep === 3 && (
+          <SocialReachStep
+            postToIg={postToIg}
+            setPostToIg={setPostToIg}
+            reelStyle={reelStyle}
+            setReelStyle={setReelStyle}
+            previewImage={productData.imageUri}
+            onNext={goNext}
+          />
+        )}
+        {currentStep === 4 && (
           <ReviewStep
             productData={productData}
+            postToIg={postToIg}
+            reelStyle={reelStyle}
+            onReelTriggered={(jobId) => {
+              setReelJobId(jobId);
+              setShowReelModal(true);
+            }}
             onPublish={() => router.push('/listings')}
           />
         )}
       </View>
+
+      {/* Reel Generation and Instagram Auto-Publish Progress Modal */}
+      <ReelProgressModal
+        jobId={reelJobId}
+        visible={showReelModal}
+        onClose={() => {
+          setShowReelModal(false);
+          router.push('/listings');
+        }}
+      />
     </View>
   );
 }

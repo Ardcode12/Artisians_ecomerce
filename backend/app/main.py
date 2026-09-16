@@ -2,14 +2,23 @@
 Main FastAPI Application Entrypoint
 """
 
+import sys
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.config import UPLOADS_DIR, PORT
+from app.config import UPLOADS_DIR, PORT, BACKEND_DIR
 from app.db.schema import init_db
 from app.routes.router import api_router
+
+# Ensure UTF-8 output on Windows consoles to prevent UnicodeEncodeError with ₹, etc.
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # Configure logging
 logging.basicConfig(
@@ -36,6 +45,15 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Global exception on {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"success": False, "error": str(exc), "detail": str(exc)}
+    )
+
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
@@ -47,9 +65,18 @@ app.add_middleware(
 
 # Serve uploaded avatars and media statically
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+media_dir = BACKEND_DIR / "media"
+media_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=str(media_dir)), name="media")
 
 # Mount all modular routes
 app.include_router(api_router)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "Artisans Marketplace & AI Backend"}
+
 
 
 if __name__ == "__main__":

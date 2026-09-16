@@ -97,8 +97,8 @@ const defaultBuyerOnboarding: BuyerOnboardingData = {
 // ─── Backend URL ──────────────────────────────────────────────────────────────
 // The app tries multiple hosts in order (LAN IP first, then localhost).
 const BACKEND_HOSTS = [
-  process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000',
-  'http://10.29.208.1:5000',
+  process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000',
+  'http://10.42.0.129:5000',
   'http://localhost:5000',
   'http://127.0.0.1:5000',
 ];
@@ -183,14 +183,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (isMounted) setUserRoleState(savedRole);
         }
 
-        const { data } = await supabase.auth.getSession();
-        if (isMounted) {
-          setSession(data.session);
-          setUser(data.session?.user ?? null);
-          if (data.session?.user) {
-            const phoneVal = data.session.user.phone || '';
-            await fetchProfile(data.session.user.id, phoneVal);
-            await fetchBuyerProfile(data.session.user.id, phoneVal);
+        // 1. Check local persistent session first (for fast, offline-capable login)
+        const savedUserStr = await AsyncStorage.getItem('@artisanlink_auth_user');
+        const savedSessionStr = await AsyncStorage.getItem('@artisanlink_auth_session');
+        const savedPhone = await AsyncStorage.getItem('@artisanlink_auth_phone');
+        const savedArtisanProfile = await AsyncStorage.getItem('@artisanlink_artisan_profile');
+        const savedBuyerProfile = await AsyncStorage.getItem('@artisanlink_buyer_profile');
+
+        if (savedUserStr && isMounted) {
+          try {
+            const parsedUser = JSON.parse(savedUserStr);
+            const parsedSession = savedSessionStr ? JSON.parse(savedSessionStr) : null;
+            setUser(parsedUser);
+            if (parsedSession) setSession(parsedSession);
+            if (savedPhone) setPhone(savedPhone);
+
+            if (savedArtisanProfile) {
+              const p = JSON.parse(savedArtisanProfile) as ArtisanProfile;
+              setProfile(p);
+              setOnboardingData({
+                name: p.name || '',
+                craftType: p.craft_type || '',
+                craftCustom: p.craft_custom || '',
+                language: p.language || 'English',
+                schemeId: p.scheme_id || '',
+              });
+            }
+
+            if (savedBuyerProfile) {
+              const bp = JSON.parse(savedBuyerProfile) as BuyerProfile;
+              setBuyerProfile(bp);
+            }
+
+            const phoneToFetch = savedPhone || parsedUser.phone || '';
+            if (phoneToFetch) {
+              fetchProfile(parsedUser.id, phoneToFetch).catch(() => {});
+              fetchBuyerProfile(parsedUser.id, phoneToFetch).catch(() => {});
+            }
+          } catch (_) {}
+        } else {
+          // 2. Fallback to Supabase getSession
+          const { data } = await supabase.auth.getSession();
+          if (isMounted && data.session) {
+            setSession(data.session);
+            setUser(data.session.user ?? null);
+            if (data.session.user) {
+              const phoneVal = data.session.user.phone || '';
+              await fetchProfile(data.session.user.id, phoneVal);
+              await fetchBuyerProfile(data.session.user.id, phoneVal);
+            }
           }
         }
       } catch (err) {
@@ -203,17 +244,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getInitialSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
+      async (event, newSession) => {
         if (!isMounted) return;
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
         if (newSession?.user) {
+          setSession(newSession);
+          setUser(newSession.user);
           const phoneVal = newSession.user.phone || '';
           await fetchProfile(newSession.user.id, phoneVal);
           await fetchBuyerProfile(newSession.user.id, phoneVal);
-        } else {
-          setProfile(null);
-          setBuyerProfile(null);
+        } else if (event === 'SIGNED_OUT') {
+          const localUser = await AsyncStorage.getItem('@artisanlink_auth_user');
+          if (!localUser) {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setBuyerProfile(null);
+          }
         }
         setIsLoading(false);
       }
@@ -246,6 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             language: p.language || 'English',
             schemeId: p.scheme_id || '',
           });
+          AsyncStorage.setItem('@artisanlink_artisan_profile', JSON.stringify(p)).catch(() => {});
           // Sync language preference to AsyncStorage for LanguageContext
           const langCode = mapLegacyLanguage(p.language);
           AsyncStorage.setItem('@artisanlink_language', langCode).catch(() => {});
@@ -254,7 +301,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (e) {}
 
-    // Fallback: Supabase
+    // Fallback: Supabase — only if no existing profile or name is missing
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -262,20 +309,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', userId)
         .maybeSingle();
 
-      if (!error && data) {
-        setProfile(data as ArtisanProfile);
-        if (data.name) {
-          setOnboardingData({
+      if (!error && data && data.name) {
+        setProfile(prev => {
+          if (prev?.name && prev.name !== 'Artisan') return prev;
+          return data as ArtisanProfile;
+        });
+        setOnboardingData(prev => {
+          if (prev?.name && prev.name !== 'Artisan') return prev;
+          return {
             name: data.name,
             craftType: data.craft_type || '',
             craftCustom: data.craft_custom || '',
             language: data.language || 'English',
             schemeId: data.scheme_id || '',
-          });
-          // Sync language to AsyncStorage for LanguageContext
-          const langCode = mapLegacyLanguage(data.language);
-          AsyncStorage.setItem('@artisanlink_language', langCode).catch(() => {});
-        }
+          };
+        });
+        const langCode = mapLegacyLanguage(data.language);
+        AsyncStorage.setItem('@artisanlink_language', langCode).catch(() => {});
       }
     } catch (e) {
       console.warn('Error fetching profile:', e);
@@ -395,7 +445,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Master code fallback: create a deterministic synthetic user
     if (isMasterCode && !authenticatedUser) {
       const last10 = rawPhone.replace(/[^0-9]/g, '').slice(-10).padStart(10, '0');
-      const deterministicId = `11111111-2222-3333-4444-91${last10}`;
+      const prefix = userRole === 'buyer' ? '22222222-3333-4444-5555-91' : '11111111-2222-3333-4444-91';
+      const deterministicId = `${prefix}${last10}`;
 
       authenticatedUser = {
         id: deterministicId,
@@ -487,6 +538,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(authenticatedUser);
     setSession(authSession);
 
+    try {
+      await AsyncStorage.setItem('@artisanlink_auth_user', JSON.stringify(authenticatedUser));
+      if (authSession) {
+        await AsyncStorage.setItem('@artisanlink_auth_session', JSON.stringify(authSession));
+      }
+      await AsyncStorage.setItem('@artisanlink_auth_phone', formattedPhone);
+    } catch (_) {}
+
     if (userRole === 'buyer') {
       if (foundBuyerProfile && isExistingProfile) {
         setBuyerProfile(foundBuyerProfile);
@@ -500,6 +559,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           state: foundBuyerProfile.state || '',
           pincode: foundBuyerProfile.pincode || '',
         });
+        AsyncStorage.setItem('@artisanlink_buyer_profile', JSON.stringify(foundBuyerProfile)).catch(() => {});
       }
     } else {
       if (foundArtisanProfile && isExistingProfile) {
@@ -511,6 +571,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           language: foundArtisanProfile.language || 'English',
           schemeId: foundArtisanProfile.scheme_id || '',
         });
+        AsyncStorage.setItem('@artisanlink_artisan_profile', JSON.stringify(foundArtisanProfile)).catch(() => {});
       }
     }
 
@@ -775,6 +836,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await supabase.auth.signOut();
     } catch (e) {}
+    // Clear persisted session data
+    try {
+      await AsyncStorage.removeItem('@artisanlink_auth_user');
+      await AsyncStorage.removeItem('@artisanlink_auth_session');
+      await AsyncStorage.removeItem('@artisanlink_auth_phone');
+      await AsyncStorage.removeItem('@artisanlink_artisan_profile');
+      await AsyncStorage.removeItem('@artisanlink_buyer_profile');
+      await AsyncStorage.removeItem('@artisanlink_user_role');
+    } catch (_) {}
     setUser(null);
     setSession(null);
     setProfile(null);

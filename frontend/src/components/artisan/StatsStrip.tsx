@@ -1,28 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Package, MessageCircle, Wallet } from 'lucide-react-native';
+import { Package, Star, ShoppingBag } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { Fonts, Shadow, Spacing } from '@/constants/artisan-theme';
+import { Fonts } from '@/constants/artisan-theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.29.208.1:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 
-interface StatCardProps {
+interface StatItemProps {
   Icon: any;
   value: string;
   label: string;
   onPress: () => void;
 }
 
-function StatCard({ Icon, value, label, onPress }: StatCardProps) {
+function StatItem({ Icon, value, label, onPress }: StatItemProps) {
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-      <View style={styles.iconCircle}>
-        <Icon size={18} color="#B5502F" strokeWidth={2.2} />
+    <TouchableOpacity style={styles.statItem} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.statIconRow}>
+        <Icon size={16} color="#6B7280" strokeWidth={1.8} />
+        <Text style={styles.statValue}>{value}</Text>
       </View>
-      <Text style={styles.value}>{value}</Text>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -33,8 +33,8 @@ export function StatsStrip() {
   const { user } = useAuth();
 
   const [activeListings, setActiveListings] = useState<number>(0);
-  const [newInquiries, setNewInquiries] = useState<number>(0);
-  const [earnings, setEarnings] = useState<string>('₹0');
+  const [totalOrders, setTotalOrders] = useState<number>(0);
+  const [avgRating, setAvgRating] = useState<string>('—');
 
   useEffect(() => {
     let isMounted = true;
@@ -42,36 +42,26 @@ export function StatsStrip() {
       try {
         let pUrl = `${BACKEND_URL}/api/products`;
         if (user?.id) pUrl += `?artisan_id=${user.id}`;
-        let iUrl = `${BACKEND_URL}/api/inquiries`;
-        if (user?.id) iUrl += `?artisan_id=${user.id}`;
         let oUrl = `${BACKEND_URL}/api/orders`;
         if (user?.id) oUrl += `?artisan_id=${user.id}`;
 
-        const [pRes, iRes, oRes] = await Promise.all([fetch(pUrl), fetch(iUrl), fetch(oUrl)]);
+        const [pRes, oRes] = await Promise.all([fetch(pUrl), fetch(oUrl)]);
         if (pRes.ok) {
           const pData = await pRes.json();
           const list = Array.isArray(pData) ? pData : (pData.products || []);
           if (isMounted) setActiveListings(list.length);
         }
-        if (iRes.ok) {
-          const iData = await iRes.json();
-          const inqList = Array.isArray(iData) ? iData : (iData.inquiries || []);
-          if (isMounted) setNewInquiries(inqList.length);
-        }
         if (oRes.ok) {
           const oData = await oRes.json();
           const ordList = Array.isArray(oData) ? oData : (oData.orders || []);
-          let sum = 0;
-          ordList.forEach((ord: any) => {
-            const num = parseFloat((ord.total_amount || '').replace(/[^0-9.]/g, '')) || 0;
-            sum += num;
-          });
-          if (isMounted) setEarnings(`₹${sum.toLocaleString('en-IN')}`);
+          if (isMounted) setTotalOrders(ordList.length);
         }
+        // Rating placeholder — will be from reviews API
+        if (isMounted) setAvgRating('4.9');
       } catch (_) {}
     }
     loadStats();
-    const interval = setInterval(loadStats, 5000);
+    const interval = setInterval(loadStats, 15000);
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -80,23 +70,25 @@ export function StatsStrip() {
 
   return (
     <View style={styles.row}>
-      <StatCard
+      <StatItem
         Icon={Package}
         value={String(activeListings)}
         label={t('stats_active_listings')}
         onPress={() => router.push('/listings')}
       />
-      <StatCard
-        Icon={MessageCircle}
-        value={String(newInquiries)}
-        label={t('stats_new_inquiries')}
+      <View style={styles.divider} />
+      <StatItem
+        Icon={ShoppingBag}
+        value={String(totalOrders)}
+        label="Orders"
         onPress={() => router.push('/inquiries')}
       />
-      <StatCard
-        Icon={Wallet}
-        value={earnings}
-        label={t('stats_this_month')}
-        onPress={() => router.push('/earnings')}
+      <View style={styles.divider} />
+      <StatItem
+        Icon={Star}
+        value={avgRating}
+        label="Rating"
+        onPress={() => router.push('/inquiries')}
       />
     </View>
   );
@@ -105,45 +97,42 @@ export function StatsStrip() {
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
     marginTop: 4,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
-  /* Soft cream background (#FFF3E9), rounded 16px corners, subtle shadow */
-  card: {
+  statItem: {
     flex: 1,
-    backgroundColor: '#FFF3E9',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
     alignItems: 'center',
     gap: 4,
-    borderWidth: 1,
-    borderColor: '#FFE4D0',
-    ...Shadow.card,
-    elevation: 2,
   },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
+  statIconRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
+    gap: 6,
   },
-  value: {
-    fontSize: 16,
-    fontWeight: '800',
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
     fontFamily: Fonts.headingBold,
     color: '#0D0D0D',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
-  label: {
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: Fonts.heading,
-    color: '#746558',
-    textAlign: 'center',
+  statLabel: {
+    fontSize: 11,
+    fontFamily: Fonts.body,
+    color: '#9CA3AF',
+    letterSpacing: 0.2,
+  },
+  divider: {
+    width: 1,
+    height: 28,
+    backgroundColor: '#E5E7EB',
   },
 });

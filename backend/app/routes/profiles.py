@@ -4,7 +4,13 @@ Artisan Profile Routes
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from typing import Optional
-from app.models.profile import ProfileUpsertRequest, ProfileUpdateRequest, BankUpdateRequest, AvatarUpdateRequest
+from app.models.profile import (
+    ProfileUpsertRequest,
+    ProfileUpdateRequest,
+    BankUpdateRequest,
+    AvatarUpdateRequest,
+)
+from app.models import dump_model
 from app.services.profile_service import (
     check_artisan_phone,
     get_profile_by_id_or_phone,
@@ -40,7 +46,7 @@ def upsert_profile_endpoint(req: ProfileUpsertRequest):
     if not req.phone:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="phone is required")
 
-    profile = upsert_artisan_profile(req.model_dump(exclude_unset=False))
+    profile = upsert_artisan_profile(dump_model(req, exclude_unset=False))
     return {
         "success": True,
         "message": "Profile saved successfully",
@@ -53,7 +59,7 @@ def upsert_profile_endpoint(req: ProfileUpsertRequest):
 @router.patch("/{id}")
 def update_profile_endpoint(id: str, req: ProfileUpdateRequest):
     """Update artisan profile details."""
-    updated = update_artisan_profile(id, req.model_dump(exclude_unset=True))
+    updated = update_artisan_profile(id, dump_model(req, exclude_unset=True))
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
     return {
@@ -68,7 +74,7 @@ def update_profile_endpoint(id: str, req: ProfileUpdateRequest):
 def update_bank_endpoint(id: str, req: BankUpdateRequest):
     """Save and verify bank account details."""
     try:
-        updated = update_bank_details(id, req.model_dump())
+        updated = update_bank_details(id, dump_model(req))
         return {
             "success": True,
             "message": "Bank details saved successfully",

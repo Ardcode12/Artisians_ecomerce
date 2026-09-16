@@ -7,7 +7,7 @@ const STORAGE_KEY = '@artisanlink_language';
 interface LanguageContextType {
   language: LanguageCode;
   setLanguage: (code: LanguageCode) => void;
-  t: (key: keyof TranslationKeys) => string;
+  t: (key: string) => string;
   languageMeta: typeof LANGUAGE_META;
 }
 

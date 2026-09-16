@@ -149,6 +149,68 @@ def init_db():
         );
         """)
 
+        # 7. Client Reviews table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS reviews (
+            id TEXT PRIMARY KEY,
+            artisan_id TEXT,
+            product_id TEXT,
+            product_title TEXT,
+            reviewer_name TEXT NOT NULL,
+            reviewer_phone TEXT,
+            rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+            comment TEXT NOT NULL,
+            reply TEXT,
+            replied_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        """)
+
+        # 8. Instagram Accounts Linkage
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS instagram_accounts (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id             TEXT NOT NULL UNIQUE,
+            ig_user_id          TEXT NOT NULL,
+            ig_username         TEXT,
+            access_token        TEXT NOT NULL,
+            token_expires_at    TEXT,
+            account_type        TEXT,
+            auto_post_enabled   INTEGER DEFAULT 0,
+            consent_granted_at  TEXT,
+            linked_at           TEXT DEFAULT CURRENT_TIMESTAMP,
+            last_error          TEXT
+        );
+        """)
+
+        # 9. Reel Generation Jobs
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS reel_jobs (
+            id                  TEXT PRIMARY KEY,
+            user_id             TEXT NOT NULL,
+            product_id          TEXT NOT NULL,
+            status              TEXT NOT NULL,
+            stage               TEXT,
+            progress            INTEGER DEFAULT 0,
+            style               TEXT DEFAULT 'heritage',
+            language            TEXT DEFAULT 'ta-IN',
+            script_native       TEXT,
+            script_english      TEXT,
+            caption             TEXT,
+            hashtags            TEXT,
+            local_path          TEXT,
+            video_url           TEXT,
+            ig_creation_id      TEXT,
+            ig_media_id         TEXT,
+            ig_permalink        TEXT,
+            error_message       TEXT,
+            duration_seconds    REAL,
+            created_at          TEXT DEFAULT CURRENT_TIMESTAMP,
+            completed_at        TEXT
+        );
+        """)
+
         # Indexes for fast lookup
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_profiles_phone ON profiles(phone);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_buyer_profiles_phone ON buyer_profiles(phone);")
@@ -158,6 +220,9 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_inquiries_buyer_phone ON inquiries(buyer_phone);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_buyer_phone ON orders(buyer_phone);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_artisan_id ON orders(artisan_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_reviews_artisan_id ON reviews(artisan_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_instagram_accounts_user ON instagram_accounts(user_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_reel_jobs_user ON reel_jobs(user_id, created_at DESC);")
 
     # Run one-time migration from existing JSON stores if tables are empty
     _migrate_json_data()

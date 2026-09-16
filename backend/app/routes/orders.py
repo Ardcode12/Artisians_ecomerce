@@ -5,6 +5,7 @@ Order Routes
 from fastapi import APIRouter, HTTPException, Query, status
 from typing import Optional
 from app.models.order import OrderCreateRequest
+from app.models import dump_model
 from app.services.order_service import create_order, list_orders
 
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
@@ -13,7 +14,7 @@ router = APIRouter(prefix="/api/orders", tags=["Orders"])
 @router.post("")
 def create_order_endpoint(req: OrderCreateRequest):
     """Place a new order and create linked communication thread."""
-    order = create_order(req.model_dump())
+    order = create_order(dump_model(req))
     return {
         "success": True,
         "order": order

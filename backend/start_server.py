@@ -9,6 +9,13 @@ import sys
 import uvicorn
 from pathlib import Path
 
+# Ensure UTF-8 output on Windows consoles
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # Ensure backend root is in PYTHONPATH
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 

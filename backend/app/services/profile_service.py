@@ -38,10 +38,18 @@ def check_artisan_phone(phone: str) -> Dict[str, Any]:
 
 def get_profile_by_id_or_phone(id_or_phone: str) -> Optional[Dict[str, Any]]:
     """Find artisan profile by either UUID ID or phone number."""
-    clean_phone = normalize_phone(id_or_phone)
+    if not id_or_phone:
+        return None
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM profiles WHERE id = ? OR phone = ?", (id_or_phone, clean_phone))
+        # Direct check by id or exact match
+        cursor.execute("SELECT * FROM profiles WHERE id = ? OR phone = ?", (id_or_phone, id_or_phone))
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+        # Normalized phone check
+        clean_phone = normalize_phone(id_or_phone)
+        cursor.execute("SELECT * FROM profiles WHERE phone = ?", (clean_phone,))
         row = cursor.fetchone()
         if row:
             return dict(row)
@@ -58,8 +66,17 @@ def upsert_artisan_profile(data: Dict[str, Any]) -> Dict[str, Any]:
     now_iso = datetime.now(timezone.utc).isoformat()
     existing = get_profile_by_id_or_phone(clean_phone) or {}
 
-    name = data.get("name") if data.get("name") is not None else existing.get("name", "Artisan")
-    shop_name = data.get("shop_name") if data.get("shop_name") is not None else existing.get("shop_name", f"{name}'s Studio")
+    # Protect existing custom name: if incoming name is empty or default 'Artisan' while existing has a custom name, preserve it!
+    incoming_name = (data.get("name") or "").strip()
+    existing_name = (existing.get("name") or "").strip()
+    if incoming_name and incoming_name != "Artisan":
+        name = incoming_name
+    elif existing_name:
+        name = existing_name
+    else:
+        name = incoming_name or "Artisan"
+
+    shop_name = data.get("shop_name") or existing.get("shop_name") or f"{name}'s Studio"
     craft_type = data.get("craft_type") if data.get("craft_type") is not None else existing.get("craft_type", "Handicraft & Art")
     craft_custom = data.get("craft_custom") if data.get("craft_custom") is not None else existing.get("craft_custom")
     bio = data.get("bio") if data.get("bio") is not None else existing.get("bio", "")

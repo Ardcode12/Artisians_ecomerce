@@ -183,6 +183,7 @@ export interface TranslationKeys {
   common_error_retry: string;
   common_no_data: string;
   common_done: string;
+  [key: string]: any;
 }
 
 type Translations = Record<LanguageCode, TranslationKeys>;
@@ -345,6 +346,40 @@ export const translations: Translations = {
     common_error_retry: 'Something went wrong. Tap to retry.',
     common_no_data: 'Nothing here yet',
     common_done: 'Done',
+
+    // Instagram & Reels
+    'ig.title': 'Instagram',
+    'ig.subtitle': 'Not connected',
+    'ig.connected': 'Connected',
+    'ig.pitch': 'Connect your Instagram and we will turn every product you upload into a professional ad reel — with your voice, in your language.',
+    'ig.connectBtn': 'Connect Instagram',
+    'ig.businessNote': 'Requires a Professional (Business or Creator) Instagram account',
+    'ig.autoPost': 'Auto-post reels',
+    'ig.autoPostSub': 'Let the app post AI-made ad reels for your products to your Instagram',
+    'ig.consentTitle': 'Allow posting?',
+    'ig.consentBody': 'The app will post a short video ad to your Instagram each time you publish a product with Instagram turned on. You can switch this off at any time.',
+    'ig.allow': 'Allow',
+    'ig.unlink': 'Disconnect',
+    'ig.unlinkTitle': 'Disconnect Instagram?',
+    'ig.unlinkBody': 'We will stop posting reels. Posts already on Instagram stay there.',
+
+    add_product_step_social: 'Social',
+    'reel.stepTitle': 'Reach more buyers',
+    'reel.stepSubtitle': 'Turn this product into a 20-second ad reel',
+    'reel.postToIg': 'Post reel to Instagram',
+    'reel.styleLabel': 'Choose a mood',
+    'reel.style.heritage': 'Heritage',
+    'reel.style.festive': 'Festive',
+    'reel.style.minimal': 'Minimal',
+    'reel.linkPrompt': 'Connect Instagram in your profile to enable this',
+    'reel.creating': 'Creating your reel…',
+    'reel.done': 'Your reel is live!',
+    'reel.viewOnIg': 'View on Instagram',
+    'reel.share': 'Share on WhatsApp',
+    'reel.failed': 'Could not post to Instagram',
+    'reel.savedAnyway': 'Your reel is saved — you can share it yourself',
+    'reel.publishBtn': 'Publish & Create Reel',
+    'reel.publishBtnPlain': 'Publish Product',
   },
 
   // ════════════════════════════════════════════════════════════════════
@@ -504,6 +539,40 @@ export const translations: Translations = {
     common_error_retry: 'कुछ गलत हुआ। दोबारा करें।',
     common_no_data: 'अभी यहाँ कुछ नहीं है',
     common_done: 'हो गया',
+
+    // Instagram & Reels
+    'ig.title': 'इंस्टाग्राम',
+    'ig.subtitle': 'जुड़ा नहीं है',
+    'ig.connected': 'सफलतापूर्वक जुड़ा',
+    'ig.pitch': 'अपना इंस्टाग्राम जोड़ें और हर उत्पाद के लिए अपनी भाषा में आकर्षक AI विज्ञापन रील बनाएं।',
+    'ig.connectBtn': 'इंस्टाग्राम जोड़ें',
+    'ig.businessNote': 'प्रोफेशनल (बिजनेस या क्रिएटर) इंस्टाग्राम अकाउंट आवश्यक है',
+    'ig.autoPost': 'रील्स ऑटो-पोस्ट करें',
+    'ig.autoPostSub': 'उत्पाद प्रकाशित करते ही इंस्टाग्राम पर रील पोस्ट करने की अनुमति दें',
+    'ig.consentTitle': 'पोस्ट करने की अनुमति दें?',
+    'ig.consentBody': 'जब भी इंस्टाग्राम चालू रखकर उत्पाद प्रकाशित करेंगे, ऐप आपके इंस्टाग्राम पर वीडियो विज्ञापन पोस्ट करेगा। आप इसे कभी भी बंद कर सकते हैं।',
+    'ig.allow': 'अनुमति दें',
+    'ig.unlink': 'हटाएं',
+    'ig.unlinkTitle': 'इंस्टाग्राम हटाएं?',
+    'ig.unlinkBody': 'हम रील्स पोस्ट करना बंद कर देंगे। पहले से पोस्ट की गई रील्स वहीं रहेंगी।',
+
+    add_product_step_social: 'सोशल रीच',
+    'reel.stepTitle': 'अधिक खरीदारों तक पहुंचें',
+    'reel.stepSubtitle': 'इस उत्पाद का 15-20 सेकंड का आकर्षक विज्ञापन रील बनाएं',
+    'reel.postToIg': 'इंस्टाग्राम पर रील पोस्ट करें',
+    'reel.styleLabel': 'मूड चुनें',
+    'reel.style.heritage': 'विरासत (Heritage)',
+    'reel.style.festive': 'उत्सव (Festive)',
+    'reel.style.minimal': 'सादगी (Minimal)',
+    'reel.linkPrompt': 'इसे सक्षम करने के लिए प्रोफ़ाइल में इंस्टाग्राम जोड़ें',
+    'reel.creating': 'आपकी रील बनाई जा रही है…',
+    'reel.done': 'आपकी रील लाइव हो गई!',
+    'reel.viewOnIg': 'इंस्टाग्राम पर देखें',
+    'reel.share': 'व्हाट्सएप पर साझा करें',
+    'reel.failed': 'इंस्टाग्राम पर पोस्ट नहीं हो सका',
+    'reel.savedAnyway': 'आपकी रील सुरक्षित है — आप इसे स्वयं साझा कर सकते हैं',
+    'reel.publishBtn': 'प्रकाशित करें और रील बनाएं',
+    'reel.publishBtnPlain': 'उत्पाद प्रकाशित करें',
   },
 
   // ════════════════════════════════════════════════════════════════════
@@ -663,6 +732,40 @@ export const translations: Translations = {
     common_error_retry: 'தவறு நேர்ந்தது. மீண்டும் முயற்சிக்கவும்.',
     common_no_data: 'இன்னும் ஒன்றும் இல்லை',
     common_done: 'முடிந்தது',
+
+    // Instagram & Reels
+    'ig.title': 'இன்ஸ்டாகிராம்',
+    'ig.subtitle': 'இணைக்கப்படவில்லை',
+    'ig.connected': 'இணைக்கப்பட்டது',
+    'ig.pitch': 'உங்கள் இன்ஸ்டாகிராமை இணைக்கவும், உங்கள் தயாரிப்புகளுக்கு உங்கள் சொந்தக் குரலில் அழகான AI விளம்பர ரீல்களை உருவாக்குங்கள்.',
+    'ig.connectBtn': 'இன்ஸ்டாகிராம் இணைக்கவும்',
+    'ig.businessNote': 'தொழில்முறை (Business/Creator) இன்ஸ்டாகிராம் கணக்கு தேவைப்படுகிறது',
+    'ig.autoPost': 'ரீல்ஸ் தானாகப் பகிர்க',
+    'ig.autoPostSub': 'தயாரிப்பு பதிவிடும்போது இன்ஸ்டாகிராமில் ரீல்களை தானாகப் பதிவிட அனுமதிக்கவும்',
+    'ig.consentTitle': 'பதிவிட அனுமதிக்கவா?',
+    'ig.consentBody': 'இன்ஸ்டாகிராம் இயக்கப்பட்டு தயாரிப்பு வெளியிடப்படும் போது, உங்கள் இன்ஸ்டாகிராமில் குறுகிய வீடியோ விளம்பரம் பகிரப்படும். இதை எப்போது வேண்டுமானாலும் மாற்றலாம்.',
+    'ig.allow': 'அனுமதி',
+    'ig.unlink': 'இணைப்பை நீக்கு',
+    'ig.unlinkTitle': 'இன்ஸ்டாகிராம் இணைப்பை நீக்கவா?',
+    'ig.unlinkBody': 'நாங்கள் ரீல்களைப் பகிர்வதை நிறுத்துவோம். ஏற்கனவே பதிவிட்ட ரீல்கள் அங்கேயே இருக்கும்.',
+
+    add_product_step_social: 'சமூக ரீச்',
+    'reel.stepTitle': 'அதிக வாடிக்கையாளர்களை அடையுங்கள்',
+    'reel.stepSubtitle': 'இந்தத் தயாரிப்பை 15-20 வினாடி விளம்பர ரீலாக மாற்றுங்கள்',
+    'reel.postToIg': 'இன்ஸ்டாகிராமில் ரீல் பதிவிடுக',
+    'reel.styleLabel': 'பாணியைத் தேர்வுசெய்க',
+    'reel.style.heritage': 'பாரம்பரியம் (Heritage)',
+    'reel.style.festive': 'பண்டிகை (Festive)',
+    'reel.style.minimal': 'எளிமை (Minimal)',
+    'reel.linkPrompt': 'இதை இயக்க உங்கள் சுயவிவரத்தில் இன்ஸ்டாகிராமை இணைக்கவும்',
+    'reel.creating': 'உங்கள் ரீல் உருவாக்கப்படுகிறது…',
+    'reel.done': 'உங்கள் ரீல் நேரலையானது!',
+    'reel.viewOnIg': 'இன்ஸ்டாகிராமில் பார்க்கவும்',
+    'reel.share': 'வாட்ஸ்அப்பில் பகிரவும்',
+    'reel.failed': 'இன்ஸ்டாகிராமில் பதிவிட முடியவில்லை',
+    'reel.savedAnyway': 'உங்கள் ரீல் சேமிக்கப்பட்டது — நீங்களே பகிரலாம்',
+    'reel.publishBtn': 'வெளியிட்டு ரீல் உருவாக்குக',
+    'reel.publishBtnPlain': 'தயாரிப்பை வெளியிடுக',
   },
 
   // ════════════════════════════════════════════════════════════════════
