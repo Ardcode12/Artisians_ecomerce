@@ -97,8 +97,8 @@ const defaultBuyerOnboarding: BuyerOnboardingData = {
 // ─── Backend URL ──────────────────────────────────────────────────────────────
 // The app tries multiple hosts in order (LAN IP first, then localhost).
 const BACKEND_HOSTS = [
-  process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000',
-  'http://10.42.0.129:5000',
+  process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000',
+  'http://10.45.69.254:5000',
   'http://localhost:5000',
   'http://127.0.0.1:5000',
 ];
@@ -183,7 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (isMounted) setUserRoleState(savedRole);
         }
 
-        // 1. Check local persistent session first (for fast, offline-capable login)
+        // 1. Check local persistent session
         const savedUserStr = await AsyncStorage.getItem('@artisanlink_auth_user');
         const savedSessionStr = await AsyncStorage.getItem('@artisanlink_auth_session');
         const savedPhone = await AsyncStorage.getItem('@artisanlink_auth_phone');
@@ -194,44 +194,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const parsedUser = JSON.parse(savedUserStr);
             const parsedSession = savedSessionStr ? JSON.parse(savedSessionStr) : null;
-            setUser(parsedUser);
-            if (parsedSession) setSession(parsedSession);
-            if (savedPhone) setPhone(savedPhone);
 
-            if (savedArtisanProfile) {
-              const p = JSON.parse(savedArtisanProfile) as ArtisanProfile;
-              setProfile(p);
-              setOnboardingData({
-                name: p.name || '',
-                craftType: p.craft_type || '',
-                craftCustom: p.craft_custom || '',
-                language: p.language || 'English',
-                schemeId: p.scheme_id || '',
-              });
-            }
+            // ── Session validation ───────────────────────────────────────
+            // Reject dev/test tokens — always require real login
+            const isDevToken =
+              parsedSession?.access_token?.startsWith('dev_token_') ||
+              parsedSession?.access_token?.startsWith('dev_refresh_');
 
-            if (savedBuyerProfile) {
-              const bp = JSON.parse(savedBuyerProfile) as BuyerProfile;
-              setBuyerProfile(bp);
-            }
+            // Reject expired real sessions (Supabase stores expires_at as Unix timestamp)
+            const isExpired =
+              parsedSession?.expires_at &&
+              parsedSession.expires_at < Math.floor(Date.now() / 1000);
 
-            const phoneToFetch = savedPhone || parsedUser.phone || '';
-            if (phoneToFetch) {
-              fetchProfile(parsedUser.id, phoneToFetch).catch(() => {});
-              fetchBuyerProfile(parsedUser.id, phoneToFetch).catch(() => {});
+            if (isDevToken || isExpired) {
+              // Wipe stored data — user must log in again
+              await AsyncStorage.removeItem('@artisanlink_auth_user');
+              await AsyncStorage.removeItem('@artisanlink_auth_session');
+              await AsyncStorage.removeItem('@artisanlink_auth_phone');
+              await AsyncStorage.removeItem('@artisanlink_artisan_profile');
+              await AsyncStorage.removeItem('@artisanlink_buyer_profile');
+              await AsyncStorage.removeItem('@artisanlink_user_role');
+              // Fall through to Supabase check below
+            } else {
+              // Valid session — restore it
+              setUser(parsedUser);
+              if (parsedSession) setSession(parsedSession);
+              if (savedPhone) setPhone(savedPhone);
+
+              if (savedArtisanProfile) {
+                const p = JSON.parse(savedArtisanProfile) as ArtisanProfile;
+                setProfile(p);
+                setOnboardingData({
+                  name: p.name || '',
+                  craftType: p.craft_type || '',
+                  craftCustom: p.craft_custom || '',
+                  language: p.language || 'English',
+                  schemeId: p.scheme_id || '',
+                });
+              }
+
+              if (savedBuyerProfile) {
+                const bp = JSON.parse(savedBuyerProfile) as BuyerProfile;
+                setBuyerProfile(bp);
+              }
+
+              const phoneToFetch = savedPhone || parsedUser.phone || '';
+              if (phoneToFetch) {
+                fetchProfile(parsedUser.id, phoneToFetch).catch(() => {});
+                fetchBuyerProfile(parsedUser.id, phoneToFetch).catch(() => {});
+              }
+
+              // Session restored — no need to check Supabase
+              return;
             }
           } catch (_) {}
-        } else {
-          // 2. Fallback to Supabase getSession
-          const { data } = await supabase.auth.getSession();
-          if (isMounted && data.session) {
-            setSession(data.session);
-            setUser(data.session.user ?? null);
-            if (data.session.user) {
-              const phoneVal = data.session.user.phone || '';
-              await fetchProfile(data.session.user.id, phoneVal);
-              await fetchBuyerProfile(data.session.user.id, phoneVal);
-            }
+        }
+
+        // 2. Fallback to Supabase getSession (real production sessions)
+        const { data } = await supabase.auth.getSession();
+        if (isMounted && data.session) {
+          setSession(data.session);
+          setUser(data.session.user ?? null);
+          if (data.session.user) {
+            const phoneVal = data.session.user.phone || '';
+            await fetchProfile(data.session.user.id, phoneVal);
+            await fetchBuyerProfile(data.session.user.id, phoneVal);
           }
         }
       } catch (err) {

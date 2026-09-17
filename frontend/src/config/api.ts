@@ -17,7 +17,7 @@ const getDevHost = () => {
 export const BACKEND_URL =
   process.env.EXPO_PUBLIC_BACKEND_URL ||
   getDevHost() ||
-  'http://10.42.0.129:5000';
+  'http://10.45.69.254:5000';
 
 /**
  * Normalizes any image URL so old/stale IP addresses (e.g. 192.168.137.205)

@@ -28,7 +28,7 @@ def build_authorize_url(state: str) -> str:
     if not app_id or app_id == "xxxxx":
         # Mock auth URL for local dev/demo
         port = os.getenv("PORT", "5000")
-        return f"http://10.42.0.129:{port}/api/instagram/callback?code=mock_code_123&state={state}"
+        return f"http://10.45.69.254:{port}/api/instagram/callback?code=mock_code_123&state={state}"
 
     return (
         "https://www.instagram.com/oauth/authorize"

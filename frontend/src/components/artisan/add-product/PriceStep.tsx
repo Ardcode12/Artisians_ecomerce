@@ -7,39 +7,38 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
-  Alert,
+  Image,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import {
-  Sparkles,
   Package,
-  TrendingUp,
-  RotateCcw,
-  BarChart3,
   ShoppingBag,
+  BarChart3,
+  TrendingUp,
   RefreshCw,
-  ChevronRight,
-  DollarSign,
   AlertCircle,
 } from 'lucide-react-native';
-import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
+import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+const BG          = '#F5F0E8';
+const GREEN       = '#2D6A4F';
+const CARD_BG     = '#FFFFFF';
+const SUGGEST_BG  = '#EDE8DF';   // warm cream for "We suggest" box
+const TEXT_MAIN   = '#1A1A1A';
+const TEXT_SUB    = '#6B7280';
+const { width }   = Dimensions.get('window');
 
-interface PriceStepProps {
-  suggestedPrice: string;
-  finalPrice: string;
-  units: number;
-  productTitle?: string;
-  craftType?: string;
-  onUpdate: (fields: {
-    finalPrice?: string;
-    units?: number;
-    suggestedPrice?: string;
-    materialCost?: number;
-    priceData?: PriceData | null;
-  }) => void;
-  onNext: () => void;
-}
+const SLIDER_W = width - 64;
+
+// ── "Based on" items (matching reference) ─────────────────────────────────
+const BASED_ON = [
+  { Icon: Package,    label: 'Similar products' },
+  { Icon: ShoppingBag, label: 'Material cost' },
+  { Icon: BarChart3,  label: 'Craft type' },
+  { Icon: TrendingUp, label: 'Market trends' },
+];
 
 interface PriceData {
   suggested_price: number;
@@ -50,10 +49,26 @@ interface PriceData {
   note: string;
   formula?: string;
   success: boolean;
-  warning?: boolean;
 }
 
-type PriceStage = 'input' | 'loading' | 'done' | 'error';
+interface PriceStepProps {
+  suggestedPrice: string;
+  finalPrice:     string;
+  units:          number;
+  productTitle?:  string;
+  craftType?:     string;
+  imageUri?:      string;
+  onUpdate: (fields: {
+    finalPrice?:   string;
+    units?:        number;
+    suggestedPrice?: string;
+    materialCost?: number;
+    priceData?:    PriceData | null;
+  }) => void;
+  onNext: () => void;
+}
+
+type Stage = 'input' | 'loading' | 'done' | 'error';
 
 export function PriceStep({
   suggestedPrice,
@@ -61,609 +76,421 @@ export function PriceStep({
   units,
   productTitle,
   craftType,
+  imageUri,
   onUpdate,
   onNext,
 }: PriceStepProps) {
-  const [materialCostInput, setMaterialCostInput] = useState('');
-  const [localPrice, setLocalPrice] = useState(finalPrice || suggestedPrice || '');
-  const [localUnits, setLocalUnits] = useState(units || 1);
-  const [priceEdited, setPriceEdited] = useState(false);
-  const [stage, setStage] = useState<PriceStage>('input');
-  const [priceData, setPriceData] = useState<PriceData | null>(null);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [localPrice, setLocalPrice]         = useState(finalPrice || suggestedPrice || '');
+  const [localUnits, setLocalUnits]         = useState(units || 1);
+  const [stage, setStage]                   = useState<Stage>('input');
+  const [priceData, setPriceData]           = useState<PriceData | null>(null);
+  const [errorMsg, setErrorMsg]             = useState('');
+  const [showCustom, setShowCustom]         = useState(false);
+  const [customPrice, setCustomPrice]       = useState('');
+  const [materialCostInput]                 = useState('');
 
-  const numericPrice = parseInt(localPrice.replace(/[^\d]/g, '')) || 0;
-  const totalValue = numericPrice * localUnits;
+  const numericPrice   = parseInt((localPrice || '').replace(/[^\d]/g, '')) || 0;
+  const suggested      = priceData?.suggested_price || numericPrice;
+  const rangeMin       = priceData ? Math.round((priceData.median_competitor_price || suggested) * 0.82) : Math.round(suggested * 0.82);
+  const rangeMax       = priceData ? Math.round((priceData.median_competitor_price || suggested) * 1.12) : Math.round(suggested * 1.12);
+  const sliderPos      = rangeMax > rangeMin ? Math.min(1, Math.max(0, (suggested - rangeMin) / (rangeMax - rangeMin))) : 0.5;
 
-  useEffect(() => {
-    fetchSuggestedPrice();
-  }, [productTitle, craftType]);
+  useEffect(() => { fetchPrice(); }, [productTitle, craftType]);
 
-  const fetchSuggestedPrice = async () => {
+  const fetchPrice = async () => {
     const matCost = parseFloat(materialCostInput) || 0;
-    const title = productTitle || 'Handmade craft product';
-    const craft = craftType || 'Handicraft';
-
     setStage('loading');
     setErrorMsg('');
-
     try {
       const resp = await fetch(`${BACKEND_URL}/api/suggest-price`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
-          product_title: title,
-          craft_type: craft,
+          product_title: productTitle || 'Handmade craft',
+          craft_type:    craftType    || 'Handicraft',
           material_cost: matCost,
         }),
       });
-
       const data: PriceData = await resp.json();
-
-      if (!resp.ok) {
-        throw new Error((data as any).error || `Server error ${resp.status}`);
-      }
-
+      if (!resp.ok) throw new Error((data as any).error || `Server error ${resp.status}`);
       setPriceData(data);
-      const priceStr = `₹${data.suggested_price}`;
-      setLocalPrice(priceStr);
-      onUpdate({
-        suggestedPrice: priceStr,
-        finalPrice: priceStr,
-        materialCost: matCost,
-        priceData: data,
-      });
+      const ps = `₹${data.suggested_price}`;
+      setLocalPrice(ps);
+      onUpdate({ suggestedPrice: ps, finalPrice: ps, materialCost: matCost, priceData: data });
       setStage('done');
     } catch (err: any) {
-      console.warn('[PriceStep] API error:', err.message);
       setErrorMsg(err.message || 'Could not fetch price suggestion');
       setStage('error');
     }
   };
 
-  const applyAI = () => {
-    if (priceData) {
-      const priceStr = `₹${priceData.suggested_price}`;
-      setLocalPrice(priceStr);
-      onUpdate({ finalPrice: priceStr });
-      setPriceEdited(false);
-    }
-  };
+  const handleUsePrice = () => { onUpdate({ finalPrice: localPrice }); onNext(); };
 
-  const renderCompetitorSection = () => {
-    if (!priceData) return null;
-    const median = priceData.median_competitor_price;
-    const costFloor = priceData.cost_floor;
-    const sample = priceData.sample_size;
-    const suggested = priceData.suggested_price;
-
-    return (
-      <View style={styles.compareCard}>
-        <View style={styles.compareHeader}>
-          <BarChart3 size={16} color="#0D0D0D" />
-          <Text style={styles.compareTitle}>Market Comparison</Text>
-          {sample > 0 && (
-            <View style={styles.sampleBadge}>
-              <Text style={styles.sampleText}>{sample} listings</Text>
-            </View>
-          )}
-        </View>
-
-        {median > 0 ? (
-          <>
-            <View style={styles.compareRow}>
-              <Text style={styles.compareItem}>Median competitor price</Text>
-              <Text style={styles.comparePrice}>₹{median.toLocaleString('en-IN')}</Text>
-            </View>
-            <View style={styles.compareRow}>
-              <Text style={styles.compareItem}>85% of competitor (your edge)</Text>
-              <Text style={styles.comparePrice}>
-                ₹{Math.round(median * 0.85).toLocaleString('en-IN')}
-              </Text>
-            </View>
-          </>
-        ) : (
-          <View style={styles.compareRow}>
-            <Text style={styles.compareItem}>No competitor listings found</Text>
-            <Text style={styles.comparePrice}>—</Text>
-          </View>
-        )}
-
-        {costFloor > 0 && (
-          <View style={styles.compareRow}>
-            <Text style={styles.compareItem}>Fair cost floor (1.6× materials)</Text>
-            <Text style={styles.comparePrice}>₹{costFloor.toLocaleString('en-IN')}</Text>
-          </View>
-        )}
-
-        <View style={[styles.compareRow, styles.compareRowHighlight]}>
-          <Text style={styles.compareItemHighlight}>AI Suggested price</Text>
-          <Text style={[styles.comparePrice, { fontWeight: '800', color: '#0D0D0D' }]}>
-            ₹{suggested.toLocaleString('en-IN')}
-          </Text>
-        </View>
-
-        {priceData.note ? (
-          <Text style={styles.noteText}>ℹ {priceData.note}</Text>
-        ) : null}
-      </View>
-    );
+  const handleApplyCustom = () => {
+    const val = `₹${customPrice.replace(/[^\d]/g, '')}`;
+    setLocalPrice(val);
+    onUpdate({ finalPrice: val });
+    setShowCustom(false);
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Material cost input + fetch */}
-      <View style={styles.inputSection}>
-        <View style={styles.inputSectionHeader}>
-          <Package size={18} color={Colors.primary} />
-          <Text style={styles.inputSectionTitle}>Raw Material Cost</Text>
-        </View>
-        <Text style={styles.inputSectionSub}>
-          Enter what you spent on materials — AI will suggest a fair selling price
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+      {/* ── Product row ─────────────────────────────────────────── */}
+      <View style={styles.productRow}>
+        {imageUri ? (
+          <Image source={{ uri: imageUri }} style={styles.productThumb} resizeMode="cover" />
+        ) : (
+          <View style={styles.productThumbEmpty} />
+        )}
+        <Text style={styles.productName} numberOfLines={1}>
+          {productTitle || 'Your product'}
         </Text>
-        <View style={styles.matCostRow}>
-          <View style={styles.rupeeBox}>
-            <Text style={styles.rupeeSign}>₹</Text>
-          </View>
-          <TextInput
-            style={styles.matCostInput}
-            value={materialCostInput}
-            onChangeText={setMaterialCostInput}
-            keyboardType="numeric"
-            placeholder="e.g. 200"
-            placeholderTextColor={Colors.textSecondary}
-          />
-          <TouchableOpacity
-            style={[styles.fetchBtn, (!materialCostInput && stage !== 'done') && styles.fetchBtnDim]}
-            onPress={fetchSuggestedPrice}
-            activeOpacity={0.85}
-            disabled={stage === 'loading'}
-          >
-            {stage === 'loading' ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Sparkles size={16} color="#FFFFFF" />
-                <Text style={styles.fetchBtnText}>
-                  {stage === 'done' ? 'Refresh' : 'Get AI Price'}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Error state */}
-        {stage === 'error' && (
-          <View style={styles.errorBox}>
-            <AlertCircle size={16} color="#F59E0B" />
-            <Text style={styles.errorText}>{errorMsg}</Text>
-            <TouchableOpacity onPress={fetchSuggestedPrice} style={styles.retrySmall}>
-              <RefreshCw size={13} color="#0D0D0D" />
-              <Text style={styles.retrySmallText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
 
-      {/* AI suggested price card */}
-      {stage === 'done' && priceData && (
-        <View style={styles.aiPriceCard}>
-          <View style={styles.aiPriceHeader}>
-            <View>
-              <View style={styles.aiTitleRow}>
-                <Sparkles size={16} color={Colors.gold} />
-                <Text style={styles.aiPriceLabel}>AI Suggested Price</Text>
-              </View>
-              <Text style={styles.aiPriceSub}>
-                {priceData.sample_size > 0
-                  ? `Based on ${priceData.sample_size} similar market listings`
-                  : 'Based on fair cost-margin formula'}
-              </Text>
-            </View>
-            {priceData.sample_size > 0 && (
-              <View style={styles.confidenceBadge}>
-                <TrendingUp size={12} color="#4ADE80" />
-                <Text style={styles.confidenceText}>Live data</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.aiPriceValue}>₹{priceData.suggested_price.toLocaleString('en-IN')}</Text>
-          {priceData.formula && (
-            <Text style={styles.formulaText}>Formula: {priceData.formula}</Text>
-          )}
-        </View>
-      )}
-
-      {/* Loading state for the AI card */}
+      {/* ── Loading ─────────────────────────────────────────────── */}
       {stage === 'loading' && (
-        <View style={styles.loadingCard}>
-          <ActivityIndicator size="large" color="#FFFFFF" />
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color={GREEN} />
           <Text style={styles.loadingText}>Scanning market prices...</Text>
-          <Text style={styles.loadingSubtext}>
-            Checking Google Shopping & Amazon for similar handmade items
-          </Text>
         </View>
       )}
 
-      {/* Your price input */}
-      <View style={styles.priceInputCard}>
-        <Text style={styles.inputCardTitle}>Set Your Price</Text>
-        <Text style={styles.inputCardSub}>You are in control — adjust anytime</Text>
-
-        <View style={styles.priceInputRow}>
-          <View style={styles.rupeeBox}>
-            <Text style={styles.rupeeSign}>₹</Text>
-          </View>
-          <TextInput
-            style={styles.priceInput}
-            value={localPrice.replace('₹', '')}
-            onChangeText={(t) => {
-              const val = `₹${t.replace(/[^\d]/g, '')}`;
-              setLocalPrice(val);
-              onUpdate({ finalPrice: val });
-              setPriceEdited(true);
-            }}
-            keyboardType="numeric"
-            placeholder={stage === 'done' && priceData ? String(priceData.suggested_price) : '650'}
-            placeholderTextColor={Colors.textSecondary}
-          />
-        </View>
-
-        {priceEdited && stage === 'done' && priceData && (
-          <TouchableOpacity style={styles.resetAI} onPress={applyAI} activeOpacity={0.8}>
-            <RotateCcw size={14} color="#0D0D0D" />
-            <Text style={styles.resetAIText}>
-              Reset to AI suggestion (₹{priceData.suggested_price})
-            </Text>
+      {/* ── Error ───────────────────────────────────────────────── */}
+      {stage === 'error' && (
+        <View style={styles.errorBox}>
+          <AlertCircle size={20} color={Colors.error} />
+          <Text style={styles.errorText}>{errorMsg}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={fetchPrice} activeOpacity={0.8}>
+            <RefreshCw size={13} color="#FFF" />
+            <Text style={styles.retryBtnText}>Retry</Text>
           </TouchableOpacity>
-        )}
-
-        {/* Units stepper */}
-        <View style={styles.unitRow}>
-          <Text style={styles.unitLabel}>Available Units</Text>
-          <View style={styles.stepper}>
-            <TouchableOpacity
-              style={styles.stepperBtn}
-              onPress={() => {
-                const v = Math.max(1, localUnits - 1);
-                setLocalUnits(v);
-                onUpdate({ units: v });
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.stepperBtnText}>−</Text>
-            </TouchableOpacity>
-            <Text style={styles.stepperCount}>{localUnits}</Text>
-            <TouchableOpacity
-              style={styles.stepperBtn}
-              onPress={() => {
-                const v = localUnits + 1;
-                setLocalUnits(v);
-                onUpdate({ units: v });
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.stepperBtnText}>+</Text>
-            </TouchableOpacity>
-          </View>
         </View>
+      )}
 
-        {numericPrice > 0 && (
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total inventory value</Text>
-            <Text style={styles.totalValue}>₹{totalValue.toLocaleString('en-IN')}</Text>
+      {/* ── Smart Pricing layout ────────────────────────────────── */}
+      {stage === 'done' && priceData && (
+        <>
+          {/* "We suggest" box */}
+          <View style={styles.suggestBox}>
+            <Text style={styles.suggestLabel}>We suggest</Text>
+            <Text style={styles.suggestPrice}>
+              ₹ {priceData.suggested_price.toLocaleString('en-IN')}
+            </Text>
           </View>
-        )}
+
+          {/* Market range + slider */}
+          <View style={styles.rangeSection}>
+            <Text style={styles.rangeTitle}>Market range</Text>
+            <View style={styles.rangeRow}>
+              <Text style={styles.rangeVal}>₹ {rangeMin.toLocaleString('en-IN')}</Text>
+              <Text style={styles.rangeVal}>₹ {rangeMax.toLocaleString('en-IN')}</Text>
+            </View>
+            {/* Slider track */}
+            <View style={styles.sliderTrack}>
+              <View style={[styles.sliderFill, { width: SLIDER_W * sliderPos }]} />
+              <View style={[styles.sliderKnob, { left: SLIDER_W * sliderPos - 10 }]} />
+            </View>
+          </View>
+
+          {/* Based on */}
+          <View style={styles.basedOnSection}>
+            <Text style={styles.basedOnTitle}>Based on</Text>
+            {BASED_ON.map(({ Icon, label }) => (
+              <View key={label} style={styles.basedOnRow}>
+                <Icon size={18} color={TEXT_SUB} strokeWidth={1.6} />
+                <Text style={styles.basedOnLabel}>{label}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Custom price input */}
+          {showCustom && (
+            <View style={styles.customBox}>
+              <Text style={styles.customLabel}>Enter your price (₹)</Text>
+              <View style={styles.customInputRow}>
+                <Text style={styles.rupeeSymbol}>₹</Text>
+                <TextInput
+                  style={styles.customInput}
+                  value={customPrice}
+                  onChangeText={setCustomPrice}
+                  keyboardType="numeric"
+                  placeholder={String(suggested)}
+                  placeholderTextColor={Colors.textMuted}
+                  autoFocus
+                />
+              </View>
+
+              {/* Units stepper */}
+              <View style={styles.unitRow}>
+                <Text style={styles.unitLabel}>Units available</Text>
+                <View style={styles.stepper}>
+                  <TouchableOpacity style={styles.stepBtn} onPress={() => { const v = Math.max(1, localUnits - 1); setLocalUnits(v); onUpdate({ units: v }); }} activeOpacity={0.8}>
+                    <Text style={styles.stepBtnText}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.stepCount}>{localUnits}</Text>
+                  <TouchableOpacity style={styles.stepBtn} onPress={() => { const v = localUnits + 1; setLocalUnits(v); onUpdate({ units: v }); }} activeOpacity={0.8}>
+                    <Text style={styles.stepBtnText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.applyBtn} onPress={handleApplyCustom} activeOpacity={0.88}>
+                <Text style={styles.applyBtnText}>Apply price</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </>
+      )}
+
+      {/* ── CTA buttons ─────────────────────────────────────────── */}
+      <View style={styles.ctaArea}>
+        {/* Primary: Use ₹X,XXX */}
+        <TouchableOpacity
+          style={[styles.usePriceBtn, (stage !== 'done' || !numericPrice) && styles.usePriceBtnDim]}
+          onPress={handleUsePrice}
+          disabled={stage !== 'done' || !numericPrice}
+          activeOpacity={0.88}
+        >
+          {stage === 'loading' ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Text style={styles.usePriceBtnText}>
+              Use {numericPrice > 0 ? `₹ ${numericPrice.toLocaleString('en-IN')}` : 'AI price'}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Secondary: Change price */}
+        <TouchableOpacity style={styles.changePriceBtn} onPress={() => setShowCustom(p => !p)} activeOpacity={0.8}>
+          <Text style={styles.changePriceBtnText}>
+            {showCustom ? 'Cancel' : 'Change price'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Real market comparison */}
-      {renderCompetitorSection()}
-
-      <TouchableOpacity
-        style={[styles.nextBtn, !localPrice && styles.nextBtnDim]}
-        onPress={() => {
-          if (!localPrice || numericPrice === 0) {
-            Alert.alert('Set a price', 'Please enter your selling price before continuing.');
-            return;
-          }
-          onNext();
-        }}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.nextBtnText}>Review & Publish →</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: Spacing.base,
-    paddingBottom: Spacing.xxxl,
-    gap: Spacing.lg,
+  scroll:  { flex: 1, backgroundColor: BG },
+  content: { padding: 20, gap: 16, paddingBottom: 52 },
+
+  // Product row
+  productRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: CARD_BG,
+    borderRadius: 14,
+    padding: 12,
+    ...Platform.select({
+      ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
+      android: { elevation: 2 },
+    }),
+  },
+  productThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: Colors.surfaceGray,
+  },
+  productThumbEmpty: {
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: Colors.surfaceGray,
+  },
+  productName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: Fonts.heading,
+    color: TEXT_MAIN,
   },
 
-  // Material cost input section
-  inputSection: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-    ...Shadow.card,
+  // Loading / Error
+  loadingBox:  { alignItems: 'center', gap: 12, paddingVertical: 28 },
+  loadingText: { fontSize: 14, fontFamily: Fonts.body, color: TEXT_SUB },
+  errorBox:    {
+    backgroundColor: Colors.errorBg,
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    gap: 10,
   },
-  inputSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  inputSectionTitle: {
-    fontSize: 17,
-    fontFamily: Fonts.heading,
-    color: '#0D0D0D',
-    fontWeight: '700',
-  },
-  inputSectionSub: {
-    fontSize: 13,
-    fontFamily: Fonts.body,
-    color: Colors.textSecondary,
-    lineHeight: 19,
-  },
-  matCostRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  matCostInput: {
-    flex: 1,
-    height: 52,
-    backgroundColor: '#F3F4F6',
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.base,
-    fontSize: 20,
-    fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  fetchBtn: {
+  errorText: { fontSize: 13, fontFamily: Fonts.body, color: Colors.error, textAlign: 'center' },
+  retryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#0D0D0D',
-    borderRadius: Radius.pill,
+    backgroundColor: Colors.error,
+    borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    ...Shadow.card,
+    paddingVertical: 8,
   },
-  fetchBtnDim: { backgroundColor: '#6B7280' },
-  fetchBtnText: { fontSize: 13, fontFamily: Fonts.heading, color: '#FFFFFF', fontWeight: '700' },
+  retryBtnText: { fontSize: 13, fontFamily: Fonts.heading, color: '#FFF', fontWeight: '600' },
 
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FFF8ED',
-    borderRadius: Radius.md,
-    padding: Spacing.sm,
-    borderWidth: 1,
-    borderColor: '#F59E0B33',
-    flexWrap: 'wrap',
-  },
-  errorText: { flex: 1, fontSize: 12, fontFamily: Fonts.body, color: '#92400E' },
-  retrySmall: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  // "We suggest" box
+  suggestBox: {
+    backgroundColor: SUGGEST_BG,
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
     gap: 4,
-    backgroundColor: '#F3F4F6',
-    borderRadius: Radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
   },
-  retrySmallText: { fontSize: 12, fontFamily: Fonts.bodyMedium, color: '#0D0D0D' },
+  suggestLabel: {
+    fontSize: 14,
+    fontFamily: Fonts.body,
+    color: TEXT_SUB,
+  },
+  suggestPrice: {
+    fontSize: 42,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: TEXT_MAIN,
+    letterSpacing: -1,
+  },
 
-  // AI price card
-  aiPriceCard: {
-    backgroundColor: '#0D0D0D',
-    borderRadius: Radius.xl,
-    padding: Spacing.xl,
-    gap: Spacing.base,
-    ...Shadow.hero,
-  },
-  aiPriceHeader: {
+  // Market range + slider
+  rangeSection: { gap: 6 },
+  rangeTitle:   { fontSize: 14, fontFamily: Fonts.body, color: TEXT_SUB },
+  rangeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    marginBottom: 2,
   },
-  aiTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  aiPriceLabel: {
-    fontSize: 14,
-    fontFamily: Fonts.heading,
-    color: Colors.gold,
-    fontWeight: '700',
+  rangeVal: { fontSize: 13, fontFamily: Fonts.body, color: TEXT_SUB },
+  sliderTrack: {
+    height: 6,
+    backgroundColor: '#D6E8D8',
+    borderRadius: 3,
+    marginVertical: 6,
+    position: 'relative',
+    width: SLIDER_W,
   },
-  aiPriceSub: {
-    fontSize: 12,
-    fontFamily: Fonts.body,
-    color: 'rgba(255,255,255,0.55)',
-    marginTop: 2,
+  sliderFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    height: 6,
+    backgroundColor: GREEN,
+    borderRadius: 3,
   },
-  confidenceBadge: {
-    backgroundColor: 'rgba(74, 222, 128, 0.2)',
-    borderRadius: Radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  confidenceText: {
-    fontSize: 12,
-    fontFamily: Fonts.bodyMedium,
-    color: '#4ADE80',
-    fontWeight: '700',
-  },
-  aiPriceValue: {
-    fontSize: 48,
-    fontFamily: Fonts.headingBold,
-    color: '#FFFFFF',
-    letterSpacing: -2,
-  },
-  formulaText: {
-    fontSize: 11,
-    fontFamily: Fonts.body,
-    color: 'rgba(255,255,255,0.4)',
-    fontStyle: 'italic',
+  sliderKnob: {
+    position: 'absolute',
+    top: -7,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: GREEN,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    ...Platform.select({
+      ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
+      android: { elevation: 3 },
+    }),
   },
 
-  loadingCard: {
-    backgroundColor: '#0D0D0D',
-    borderRadius: Radius.xl,
-    padding: Spacing.xxl,
-    alignItems: 'center',
-    gap: Spacing.md,
-    ...Shadow.hero,
-  },
-  loadingText: {
+  // Based on
+  basedOnSection: { gap: 12, paddingTop: 4 },
+  basedOnTitle: {
     fontSize: 16,
+    fontWeight: '600',
     fontFamily: Fonts.heading,
-    color: '#FFFFFF',
-    fontWeight: '700',
+    color: TEXT_MAIN,
+    marginBottom: 2,
   },
-  loadingSubtext: {
-    fontSize: 12,
-    fontFamily: Fonts.body,
-    color: 'rgba(255,255,255,0.55)',
-    textAlign: 'center',
-  },
+  basedOnRow:   { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  basedOnLabel: { fontSize: 14, fontFamily: Fonts.body, color: TEXT_SUB },
 
-  // Price input card
-  priceInputCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-    ...Shadow.card,
+  // Custom price box
+  customBox: {
+    backgroundColor: CARD_BG,
+    borderRadius: 14,
+    padding: 16,
+    gap: 12,
+    ...Platform.select({
+      ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
+      android: { elevation: 2 },
+    }),
   },
-  inputCardTitle: {
-    fontSize: 18,
-    fontFamily: Fonts.heading,
-    color: '#0D0D0D',
-    fontWeight: '700',
-  },
-  inputCardSub: {
-    fontSize: 13,
-    fontFamily: Fonts.body,
-    color: Colors.textSecondary,
-    marginTop: -8,
-  },
-  priceInputRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  rupeeBox: {
-    width: 52,
-    height: 56,
-    backgroundColor: '#F3F4F6',
-    borderRadius: Radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  rupeeSign: { fontSize: 22, fontFamily: Fonts.headingBold, color: '#0D0D0D' },
-  priceInput: {
-    flex: 1,
-    height: 56,
-    backgroundColor: '#F3F4F6',
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.base,
-    fontSize: 28,
-    fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  resetAI: {
+  customLabel: { fontSize: 13, fontFamily: Fonts.bodyMedium, color: TEXT_SUB },
+  customInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
+    gap: 10,
+    backgroundColor: BG,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 14,
+    height: 54,
   },
-  resetAIText: { fontSize: 13, fontFamily: Fonts.bodyMedium, color: '#0D0D0D', fontWeight: '600' },
-  unitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  unitLabel: { fontSize: 14, fontFamily: Fonts.bodyMedium, color: Colors.textWarm },
+  rupeeSymbol: { fontSize: 22, fontFamily: Fonts.headingBold, color: TEXT_MAIN },
+  customInput: {
+    flex: 1,
+    fontSize: 24,
+    fontFamily: Fonts.headingBold,
+    color: TEXT_MAIN,
+  },
+  unitRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  unitLabel: { fontSize: 13, fontFamily: Fonts.body, color: TEXT_SUB },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: Radius.pill,
+    backgroundColor: BG,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Colors.border,
   },
-  stepperBtn: {
-    width: 42,
-    height: 42,
+  stepBtn:      { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+  stepBtnText:  { fontSize: 20, fontFamily: Fonts.heading, color: TEXT_MAIN },
+  stepCount:    { width: 30, textAlign: 'center', fontSize: 15, fontFamily: Fonts.headingBold, color: TEXT_MAIN },
+  applyBtn: {
+    backgroundColor: GREEN,
+    borderRadius: 12,
+    height: 48,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  stepperBtnText: { fontSize: 22, fontFamily: Fonts.heading, color: '#0D0D0D' },
-  stepperCount: {
-    width: 36,
-    textAlign: 'center',
-    fontSize: 16,
+  applyBtnText: { fontSize: 14, fontFamily: Fonts.headingBold, color: '#FFF', fontWeight: '700' },
+
+  // CTA
+  ctaArea: { gap: 10, marginTop: 4 },
+  usePriceBtn: {
+    backgroundColor: GREEN,
+    borderRadius: 16,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios:     { shadowColor: GREEN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10 },
+      android: { elevation: 6 },
+    }),
+  },
+  usePriceBtnDim:  { backgroundColor: Colors.border },
+  usePriceBtnText: {
+    fontSize: 17,
+    fontWeight: '700',
     fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
+    color: '#FFF',
+    letterSpacing: 0.3,
   },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  changePriceBtn: {
+    height: 48,
     alignItems: 'center',
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    justifyContent: 'center',
   },
-  totalLabel: { fontSize: 13, fontFamily: Fonts.body, color: Colors.textSecondary },
-  totalValue: { fontSize: 18, fontFamily: Fonts.headingBold, color: '#0D0D0D' },
-
-  // Market comparison card (real data)
-  compareCard: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: Radius.lg,
-    padding: Spacing.base,
-    gap: Spacing.sm,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+  changePriceBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: Fonts.heading,
+    color: TEXT_MAIN,
   },
-  compareHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  compareTitle: { fontSize: 14, fontFamily: Fonts.heading, color: '#0D0D0D', fontWeight: '700' },
-  sampleBadge: {
-    marginLeft: 'auto',
-    backgroundColor: '#E5E7EB',
-    borderRadius: Radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  sampleText: { fontSize: 11, fontFamily: Fonts.bodyMedium, color: '#6B7280' },
-  compareRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
-  compareRowHighlight: {
-    backgroundColor: 'rgba(0,0,0,0.06)',
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.sm,
-    marginHorizontal: -Spacing.sm,
-    paddingVertical: 10,
-  },
-  compareItem: { fontSize: 13, fontFamily: Fonts.body, color: Colors.textSecondary },
-  compareItemHighlight: { fontSize: 13, fontFamily: Fonts.heading, color: '#0D0D0D', fontWeight: '700' },
-  comparePrice: { fontSize: 13, fontFamily: Fonts.bodyMedium, color: Colors.textWarm },
-  noteText: {
-    fontSize: 11,
-    fontFamily: Fonts.body,
-    color: Colors.textSecondary,
-    fontStyle: 'italic',
-    lineHeight: 16,
-  },
-
-  nextBtn: {
-    backgroundColor: '#0D0D0D',
-    borderRadius: Radius.pill,
-    paddingVertical: 18,
-    alignItems: 'center',
-    ...Shadow.hero,
-  },
-  nextBtnDim: { backgroundColor: '#6B7280' },
-  nextBtnText: { fontSize: 16, fontFamily: Fonts.heading, color: '#FFFFFF', fontWeight: '700' },
 });

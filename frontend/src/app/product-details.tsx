@@ -37,7 +37,7 @@ import {
   MapPin,
   CheckCircle2,
 } from 'lucide-react-native';
-import { Fonts, Shadow } from '@/constants/artisan-theme';
+import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { EditProductModal, EditableProduct } from '@/components/artisan/EditProductModal';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
@@ -47,7 +47,7 @@ export interface DetailedProduct extends EditableProduct {
   artisan_name?: string;
 }
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
 
 const LANG_OPTIONS = ['EN', 'हिं', 'தமிழ்', 'తెలుగు'];
 
@@ -709,14 +709,14 @@ export default function ProductDetailsScreen() {
                   <Image source={{ uri: heroImage }} style={styles.checkoutThumb} resizeMode="cover" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.checkoutTitle} numberOfLines={1}>{product.title}</Text>
-                    <Text style={styles.checkoutArtisan}>{product.craft_type || 'Handmade'}</Text>
+                    <Text style={styles.checkoutMeta}>{product.craft_type || 'Handmade'}</Text>
                     <Text style={styles.checkoutPrice}>{product.price} × {quantity} = {formattedOrderTotal}</Text>
                   </View>
                 </View>
 
                 {/* Delivery Address */}
                 <Text style={styles.inputLabel}>Delivery Address</Text>
-                <View style={styles.addressInputWrap}>
+                <View style={styles.addressInputWrapper}>
                   <MapPin size={18} color="#8E8E93" style={{ marginTop: 2 }} />
                   <TextInput
                     style={styles.addressInput}
@@ -1107,7 +1107,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F7',
   },
   langCircleSelected: {
-    backgroundColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
   },
   langCircleText: {
     fontSize: 12,
@@ -1254,7 +1254,7 @@ const styles = StyleSheet.create({
   editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
     borderRadius: 30,
     paddingVertical: 13,
     paddingHorizontal: 18,
@@ -1289,7 +1289,7 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#0D0D0D',
+    borderColor: Colors.primary,
     borderRadius: 30,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -1298,10 +1298,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
+    color: Colors.primary,
   },
   buyNowBtn: {
-    backgroundColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
     borderRadius: 30,
     paddingVertical: 13,
     paddingHorizontal: 22,
@@ -1349,17 +1349,21 @@ const styles = StyleSheet.create({
   checkoutItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9F9FB',
-    borderRadius: 16,
-    padding: 12,
-    gap: 12,
+    paddingBottom: 16,
     marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    gap: 12,
   },
   checkoutThumb: {
     width: 54,
     height: 54,
-    borderRadius: 10,
-    backgroundColor: '#E5E5EA',
+    borderRadius: 12,
+    backgroundColor: '#F5F5F7',
+  },
+  checkoutInfo: {
+    flex: 1,
+    gap: 3,
   },
   checkoutTitle: {
     fontSize: 14,
@@ -1367,19 +1371,40 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.headingBold,
     color: '#0D0D0D',
   },
-  checkoutArtisan: {
+  checkoutMeta: {
     fontSize: 12,
-    fontWeight: '500',
     fontFamily: Fonts.body,
     color: '#8E8E93',
-    marginTop: 2,
   },
   checkoutPrice: {
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+  },
+  sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
     color: '#0D0D0D',
-    marginTop: 4,
+    marginBottom: 10,
+  },
+  addressInputWrapper: {
+    flexDirection: 'row',
+    backgroundColor: '#F9F9FB',
+    borderRadius: 14,
+    padding: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#EFEFF2',
+    marginBottom: 16,
+  },
+  addressInput: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: Fonts.body,
+    color: '#0D0D0D',
+    minHeight: 40,
   },
   inputLabel: {
     fontSize: 12,
@@ -1388,26 +1413,9 @@ const styles = StyleSheet.create({
     color: '#0D0D0D',
     marginBottom: 8,
   },
-  addressInputWrap: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#F5F5F7',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-    marginBottom: 16,
-  },
-  addressInput: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: Fonts.body,
-    color: '#0D0D0D',
-    lineHeight: 18,
-  },
   paymentMethodsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     marginBottom: 20,
   },
   paymentPill: {
@@ -1420,8 +1428,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   paymentPillActive: {
-    backgroundColor: '#0D0D0D',
-    borderColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   paymentPillText: {
     fontSize: 11,
@@ -1431,6 +1439,31 @@ const styles = StyleSheet.create({
   },
   paymentPillTextActive: {
     color: '#FFFFFF',
+  },
+  paymentCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#F9F9FB',
+    borderRadius: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#EFEFF2',
+  },
+  paymentCardSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: '#E8F5E9',
+  },
+  paymentCardText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: Fonts.heading,
+    color: '#6B7280',
+  },
+  paymentCardTextSelected: {
+    color: Colors.primary,
   },
   modalFooterRow: {
     flexDirection: 'row',
@@ -1452,8 +1485,28 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.headingBold,
     color: '#0D0D0D',
   },
+  checkoutTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  checkoutTotalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: Fonts.bodyMedium,
+    color: '#6B7280',
+  },
+  checkoutTotalVal: {
+    fontSize: 20,
+    fontWeight: '800',
+    fontFamily: Fonts.headingBold,
+    color: '#0D0D0D',
+  },
   confirmOrderBtn: {
-    backgroundColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
     borderRadius: 30,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -1535,7 +1588,7 @@ const styles = StyleSheet.create({
   },
   primaryDoneBtn: {
     flex: 1.2,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
     borderRadius: 26,
     paddingVertical: 13,
     alignItems: 'center',
@@ -1565,7 +1618,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sendInquiryBtn: {
-    backgroundColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
     borderRadius: 28,
     paddingVertical: 14,
     alignItems: 'center',

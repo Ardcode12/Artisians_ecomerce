@@ -33,8 +33,8 @@ import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-them
 import { CameraStep } from '@/components/artisan/add-product/CameraStep';
 import { VoiceStep } from '@/components/artisan/add-product/VoiceStep';
 import { PriceStep } from '@/components/artisan/add-product/PriceStep';
-import { ReviewStep } from '@/components/artisan/add-product/ReviewStep';
 import { SocialReachStep } from '@/components/artisan/add-product/SocialReachStep';
+import { ReviewStep } from '@/components/artisan/add-product/ReviewStep';
 import { ReelProgressModal } from '@/components/artisan/add-product/ReelProgressModal';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -67,11 +67,11 @@ export default function AddProductScreen() {
   const { t } = useLanguage();
 
   const STEPS = [
-    { label: t('add_product_step_photo'), Icon: Camera },
-    { label: t('add_product_step_describe'), Icon: Mic },
-    { label: t('add_product_step_price'), Icon: Tag },
+    { label: t('add_product_step_photo') || 'Photo', Icon: Camera },
+    { label: t('add_product_step_describe') || 'Describe', Icon: Mic },
+    { label: t('add_product_step_price') || 'Price', Icon: Tag },
     { label: t('add_product_step_social') || 'Social Reach', Icon: InstagramIcon },
-    { label: t('add_product_step_publish'), Icon: Send },
+    { label: t('add_product_step_publish') || 'Publish', Icon: Send },
   ];
 
   const [fontsLoaded] = useFonts({
@@ -95,7 +95,7 @@ export default function AddProductScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F5F0E8" />
 
       {/* ── Top bar ──────────────────────────────────────────────────────── */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
@@ -104,9 +104,9 @@ export default function AddProductScreen() {
           onPress={goBack}
           activeOpacity={0.8}
         >
-          <ArrowLeft size={20} color="#FFFFFF" strokeWidth={2.5} />
+          <ArrowLeft size={20} color={Colors.textPrimary} strokeWidth={2.2} />
         </TouchableOpacity>
-        <Text style={styles.screenTitle}>{t('add_product_title')}</Text>
+        <Text style={styles.screenTitle}>{t('add_product_title') || 'Add New Product'}</Text>
         <View style={styles.stepCount}>
           <Text style={styles.stepCountText}>{currentStep + 1}/{STEPS.length}</Text>
         </View>
@@ -178,6 +178,7 @@ export default function AddProductScreen() {
             units={productData.units}
             productTitle={productData.title}
             craftType={productData.category}
+            imageUri={productData.imageUri}
             onUpdate={(fields) => setProductData((d) => ({ ...d, ...fields }))}
             onNext={goNext}
           />
@@ -220,76 +221,78 @@ export default function AddProductScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  root: { flex: 1, backgroundColor: '#F5F0E8' },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 22,
+    paddingHorizontal: 20,
     paddingBottom: 12,
   },
   backCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#0D0D0D',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E8E2D9',
   },
   screenTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: Fonts.headingBold,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#0D0D0D',
   },
   stepCount: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    backgroundColor: '#D6E8D8',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   stepCountText: {
     fontSize: 12,
     fontFamily: Fonts.headingBold,
     fontWeight: '700',
-    color: '#0D0D0D',
+    color: '#2D6A4F',
   },
   progressRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#EDE8DF',
   },
   stepDot: { alignItems: 'center', gap: 4 },
   dot: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  dotActive: { backgroundColor: '#0D0D0D' },
-  dotDone: { backgroundColor: '#10B981' },
+  dotActive: { backgroundColor: '#2D6A4F' },
+  dotDone: { backgroundColor: '#2D6A4F' },
   stepLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: Fonts.bodyMedium,
     color: '#8E8E93',
   },
   stepLabelActive: {
-    color: '#0D0D0D',
+    color: '#2D6A4F',
     fontFamily: Fonts.headingBold,
     fontWeight: '700',
   },
   connector: {
     flex: 1,
     height: 2,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#EDE8DF',
     marginBottom: 16,
   },
-  connectorDone: { backgroundColor: '#10B981' },
+  connectorDone: { backgroundColor: '#2D6A4F' },
   stepContent: { flex: 1 },
 });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, Switch, StyleSheet, Image } from 'react-native';
+import { View, Text, Pressable, Switch, StyleSheet, Image, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Play,
@@ -63,7 +63,7 @@ export function SocialReachStep({
   const canPost = ig.linked && ig.auto_post_enabled;
 
   return (
-    <View style={s.wrap}>
+    <ScrollView style={s.scroll} contentContainerStyle={s.wrap} showsVerticalScrollIndicator={false}>
       <Text style={s.h1}>{t('reel.stepTitle') || 'Reach more buyers'}</Text>
       <Text style={s.h2}>{t('reel.stepSubtitle') || 'Turn this product into a 15–20 second AI ad reel'}</Text>
 
@@ -94,7 +94,7 @@ export function SocialReachStep({
             { Icon: Clock, label: '15–20s reel for Instagram' },
           ].map(({ Icon, label }) => (
             <View key={label} style={s.featRow}>
-              <Icon size={16} color="#C2410C" />
+              <Icon size={16} color="#1B6B3C" />
               <Text style={s.featText}>{label}</Text>
             </View>
           ))}
@@ -150,12 +150,13 @@ export function SocialReachStep({
           <ChevronRight size={18} color="#FFFFFF" />
         </Pressable>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  wrap: { padding: 20 },
+  scroll: { flex: 1, backgroundColor: '#F5F0E8' },
+  wrap: { padding: 20, paddingBottom: 40 },
   h1: { fontSize: 22, fontWeight: '800', color: '#1A1A1A' },
   h2: { fontSize: 14, color: '#6B6B6B', marginTop: 4, marginBottom: 20 },
   previewRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
@@ -197,6 +198,7 @@ const s = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: '#E5E0D8',
+    backgroundColor: '#FFFFFF',
     gap: 6,
   },
   styleText: { fontSize: 12, color: '#6B6B6B' },
@@ -207,7 +209,7 @@ const s = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#F0EBE3',
+    borderColor: '#E8E2D9',
   },
   igIcon: {
     width: 38,
@@ -228,9 +230,9 @@ const s = StyleSheet.create({
   linkBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   continueBtn: {
     flexDirection: 'row',
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#2D6A4F',
     borderRadius: 16,
-    paddingVertical: 15,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 24,

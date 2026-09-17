@@ -1,225 +1,433 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ImageBackground,
   StatusBar,
+  Dimensions,
+  ScrollView,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Fonts } from '@/constants/artisan-theme';
-import { useAuth } from '@/context/AuthContext';
-import { useLanguage } from '@/context/LanguageContext';
+import {
+  useFonts,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+} from '@expo-google-fonts/inter';
+import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 
-export default function WelcomeScreen() {
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { setFlowMode, userRole, setUserRole } = useAuth();
-  const { t } = useLanguage();
+const { width } = Dimensions.get('window');
+const BG = '#F5F0E8';
 
-  const handleAuth = (mode: 'login' | 'signup') => {
-    setFlowMode(mode);
-    router.push('/auth/phone');
-  };
-
+// ── Plant / Leaf Logo (SVG-style shapes) ─────────────────────────────────────
+function PlantLogo({ size = 80 }: { size?: number }) {
+  const s = size / 80;
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-
-      {/* Dark monochrome portrait background image */}
-      <ImageBackground
-        source={{
-          uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=1000&q=85',
-        }}
-        style={styles.bgImage}
-        resizeMode="cover"
-      >
-        {/* Subtle dark gradient / overlay */}
-        <View style={styles.overlay} />
-
-        {/* Center Logo / Branding */}
-        <View style={styles.centerBranding}>
-          <Text style={styles.brandTitle}>Fashions</Text>
-          <Text style={styles.brandSubtitle}>Craft to Market</Text>
-        </View>
-
-        {/* Bottom Auth Buttons */}
-        <View
-          style={[
-            styles.bottomSection,
-            { paddingBottom: Math.max(insets.bottom, 32) },
-          ]}
-        >
-          {/* Segmented Role Toggle: Sell Your Craft | Shop Handmade */}
-          <View style={styles.roleToggleContainer}>
-            <TouchableOpacity
-              style={[
-                styles.roleOption,
-                userRole === 'artisan' ? styles.roleOptionActive : styles.roleOptionInactive,
-              ]}
-              onPress={() => setUserRole('artisan')}
-              activeOpacity={0.85}
-            >
-              <Text
-                style={[
-                  styles.roleOptionText,
-                  userRole === 'artisan' ? styles.roleOptionTextActive : styles.roleOptionTextInactive,
-                ]}
-              >
-                Sell Your Craft
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.roleOption,
-                userRole === 'buyer' ? styles.roleOptionActive : styles.roleOptionInactive,
-              ]}
-              onPress={() => setUserRole('buyer')}
-              activeOpacity={0.85}
-            >
-              <Text
-                style={[
-                  styles.roleOptionText,
-                  userRole === 'buyer' ? styles.roleOptionTextActive : styles.roleOptionTextInactive,
-                ]}
-              >
-                Shop Handmade
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            style={styles.loginBtn}
-            onPress={() => handleAuth('login')}
-            activeOpacity={0.88}
-          >
-            <Text style={styles.loginText}>{t('welcome_login')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.signupBtn}
-            onPress={() => handleAuth('signup')}
-            activeOpacity={0.88}
-          >
-            <Text style={styles.signupText}>{t('welcome_signup')}</Text>
-          </TouchableOpacity>
-        </View>
-      </ImageBackground>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      {/* Stem */}
+      <View style={{
+        position: 'absolute',
+        bottom: size * 0.1,
+        width: 3 * s,
+        height: size * 0.55,
+        backgroundColor: Colors.primary,
+        borderRadius: 4,
+      }} />
+      {/* Left big leaf */}
+      <View style={{
+        position: 'absolute',
+        bottom: size * 0.35,
+        left: size * 0.08,
+        width: size * 0.38,
+        height: size * 0.22,
+        backgroundColor: Colors.primary,
+        borderRadius: size * 0.12,
+        transform: [{ rotate: '-35deg' }],
+      }} />
+      {/* Right big leaf */}
+      <View style={{
+        position: 'absolute',
+        bottom: size * 0.5,
+        right: size * 0.08,
+        width: size * 0.38,
+        height: size * 0.22,
+        backgroundColor: Colors.primary,
+        borderRadius: size * 0.12,
+        transform: [{ rotate: '35deg' }],
+      }} />
+      {/* Top small leaf */}
+      <View style={{
+        position: 'absolute',
+        top: size * 0.04,
+        width: size * 0.22,
+        height: size * 0.14,
+        backgroundColor: '#C0392B',
+        borderRadius: size * 0.08,
+        transform: [{ rotate: '-10deg' }],
+      }} />
+      {/* Pot base */}
+      <View style={{
+        position: 'absolute',
+        bottom: 0,
+        width: size * 0.42,
+        height: size * 0.18,
+        backgroundColor: Colors.primarySoft,
+        borderRadius: size * 0.06,
+      }} />
     </View>
   );
 }
 
+// ── Artisan Illustration (loom + fabric) ─────────────────────────────────────
+function ArtisanIllustration() {
+  return (
+    <View style={illStyles.container}>
+      {/* Blob 1 — terracotta */}
+      <View style={illStyles.blob1} />
+      {/* Blob 2 — beige */}
+      <View style={illStyles.blob2} />
+      {/* Loom frame */}
+      <View style={illStyles.loom}>
+        <View style={illStyles.loomTop} />
+        <View style={illStyles.loomBottom} />
+        <View style={illStyles.loomLeft} />
+        <View style={illStyles.loomRight} />
+        {/* Warp threads */}
+        {[0, 1, 2, 3, 4].map(i => (
+          <View
+            key={i}
+            style={[illStyles.warpThread, { left: 14 + i * 10 }]}
+          />
+        ))}
+      </View>
+      {/* Fabric swatch */}
+      <View style={illStyles.fabric} />
+      {/* Hand shape left */}
+      <View style={illStyles.handLeft} />
+    </View>
+  );
+}
+
+const illStyles = StyleSheet.create({
+  container: {
+    width: width * 0.72,
+    height: width * 0.52,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blob1: {
+    position: 'absolute',
+    bottom: 10,
+    left: 0,
+    width: 110,
+    height: 80,
+    backgroundColor: '#E8C4A0',
+    borderRadius: 60,
+    opacity: 0.6,
+  },
+  blob2: {
+    position: 'absolute',
+    bottom: 20,
+    right: 10,
+    width: 80,
+    height: 60,
+    backgroundColor: '#D4A080',
+    borderRadius: 50,
+    opacity: 0.4,
+  },
+  loom: {
+    width: 90,
+    height: 70,
+    position: 'relative',
+    marginBottom: 10,
+  },
+  loomTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 6,
+    backgroundColor: Colors.primary,
+    borderRadius: 3,
+  },
+  loomBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 6,
+    backgroundColor: Colors.primary,
+    borderRadius: 3,
+  },
+  loomLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 6,
+    bottom: 0,
+    backgroundColor: Colors.primary,
+    borderRadius: 3,
+  },
+  loomRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 6,
+    bottom: 0,
+    backgroundColor: Colors.primary,
+    borderRadius: 3,
+  },
+  warpThread: {
+    position: 'absolute',
+    top: 6,
+    bottom: 6,
+    width: 2,
+    backgroundColor: Colors.primaryLight,
+  },
+  fabric: {
+    position: 'absolute',
+    right: 20,
+    top: 10,
+    width: 50,
+    height: 90,
+    backgroundColor: '#C0392B',
+    borderRadius: 8,
+    opacity: 0.75,
+    transform: [{ skewX: '-5deg' }],
+  },
+  handLeft: {
+    position: 'absolute',
+    left: 10,
+    bottom: 12,
+    width: 40,
+    height: 28,
+    backgroundColor: '#D4956A',
+    borderRadius: 14,
+    opacity: 0.8,
+  },
+});
+
+// ── Slide data ────────────────────────────────────────────────────────────────
+const SLIDES = [
+  {
+    key: 'slide1',
+    title: 'KALA UDYAM',
+    subtitle: 'Your Craft.\nOur Support.',
+  },
+  {
+    key: 'slide2',
+    title: 'KALA UDYAM',
+    subtitle: 'Sell your craft\nto the world.',
+  },
+  {
+    key: 'slide3',
+    title: 'KALA UDYAM',
+    subtitle: 'AI tools that\nwork for you.',
+  },
+];
+
+export default function WelcomeScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [activeSlide, setActiveSlide] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const [fontsLoaded] = useFonts({
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+  });
+
+  if (!fontsLoaded) return null;
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+    setActiveSlide(idx);
+  };
+
+  const handleGetStarted = () => {
+    router.push('/auth/language');
+  };
+
+  return (
+    <View style={[styles.root, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={BG} />
+
+      {/* Paged slides */}
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={handleScroll}
+        style={styles.slidesScroll}
+        contentContainerStyle={styles.slidesContent}
+      >
+        {SLIDES.map((slide, idx) => (
+          <View key={slide.key} style={[styles.slide, { width }]}>
+
+            {/* Logo */}
+            <View style={[styles.logoArea, { paddingTop: insets.top + 40 }]}>
+              <PlantLogo size={80} />
+              <Text style={styles.brandName}>{slide.title}</Text>
+              <Text style={styles.tagline}>{slide.subtitle}</Text>
+            </View>
+
+            {/* Illustration */}
+            <View style={styles.illustrationArea}>
+              <ArtisanIllustration />
+            </View>
+          </View>
+        ))}
+      </ScrollView>
+
+      {/* Pagination dots */}
+      <View style={styles.dotsRow}>
+        {SLIDES.map((_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.dot,
+              i === activeSlide ? styles.dotActive : styles.dotInactive,
+            ]}
+          />
+        ))}
+      </View>
+
+      {/* Get Started button */}
+      <View style={styles.bottomSection}>
+        <TouchableOpacity
+          style={styles.getStartedBtn}
+          onPress={handleGetStarted}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.getStartedText}>Get Started</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.loginLink}
+          onPress={() => router.push('/auth/phone')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.loginLinkText}>
+            Already have an account?{' '}
+            <Text style={styles.loginLinkBold}>Log in</Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: BG,
   },
-  bgImage: {
+  slidesScroll: {
     flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
   },
-  overlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  slidesContent: {
+    // paging handled by ScrollView
   },
-  centerBranding: {
+  slide: {
+    flex: 1,
+    alignItems: 'center',
+  },
+
+  /* Logo Area */
+  logoArea: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  brandName: {
+    fontSize: 32,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '700',
+    color: Colors.primary,
+    letterSpacing: 2,
+    marginTop: 8,
+  },
+  tagline: {
+    fontSize: 17,
+    fontFamily: Fonts.body,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 26,
+  },
+
+  /* Illustration */
+  illustrationArea: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  brandTitle: {
-    fontSize: 48,
-    fontWeight: '300',
-    fontStyle: 'italic',
-    color: '#FFFFFF',
-    fontFamily: Fonts.heading,
-    letterSpacing: 1,
-  },
-  brandSubtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.8)',
-    letterSpacing: 1.5,
-    marginTop: 2,
-    textTransform: 'uppercase',
-  },
-  bottomSection: {
-    gap: 14,
-    width: '100%',
-  },
-  /* Role Toggle Pill */
-  roleToggleContainer: {
+
+  /* Dots */
+  dotsRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(15, 15, 15, 0.72)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.28)',
-    borderRadius: 30,
-    padding: 4,
-    marginBottom: 4,
-  },
-  roleOption: {
-    flex: 1,
-    height: 44,
-    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 8,
+    marginBottom: 28,
   },
-  roleOptionActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
+  dot: {
+    height: 8,
+    borderRadius: 4,
   },
-  roleOptionInactive: {
-    backgroundColor: 'transparent',
+  dotActive: {
+    width: 20,
+    backgroundColor: Colors.primary,
   },
-  roleOptionText: {
-    fontSize: 14,
-    fontFamily: Fonts.heading,
+  dotInactive: {
+    width: 8,
+    backgroundColor: Colors.border,
   },
-  roleOptionTextActive: {
-    color: '#0D0D0D',
-    fontWeight: '700',
+
+  /* Bottom */
+  bottomSection: {
+    paddingHorizontal: 24,
+    gap: 14,
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  roleOptionTextInactive: {
-    color: 'rgba(255, 255, 255, 0.82)',
-    fontWeight: '500',
-  },
-  /* Exact Figma white pill Login button */
-  loginBtn: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 30,
+  getStartedBtn: {
+    width: '100%',
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
+    ...Shadow.hero,
   },
-  loginText: {
-    color: '#0D0D0D',
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: Fonts.headingBold,
-  },
-  /* Exact Figma outlined pill Sign Up button */
-  signupBtn: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    borderRadius: 30,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  signupText: {
+  getStartedText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
+    letterSpacing: 0.3,
+  },
+  loginLink: {
+    paddingVertical: 8,
+  },
+  loginLinkText: {
+    fontSize: 14,
+    fontFamily: Fonts.body,
+    color: Colors.textSecondary,
+  },
+  loginLinkBold: {
+    color: Colors.primary,
+    fontFamily: Fonts.heading,
+    fontWeight: '600',
   },
 });

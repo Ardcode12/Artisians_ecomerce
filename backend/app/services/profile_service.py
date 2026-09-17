@@ -263,6 +263,17 @@ def save_avatar_image(id_or_phone: str, image_data: str, base_url: str) -> str:
                 f.write(base64.b64decode(b64_str))
 
             final_url = f"{base_url}/uploads/{filename}"
+    elif len(image_data) > 200 and not image_data.startswith(("http://", "https://")):
+        try:
+            b64_str = image_data.strip()
+            sanitized_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(existing["id"]))
+            filename = f"avatar-{sanitized_id}-{int(time.time())}.jpg"
+            file_path = UPLOADS_DIR / filename
+            with open(file_path, "wb") as f:
+                f.write(base64.b64decode(b64_str))
+            final_url = f"{base_url}/uploads/{filename}"
+        except Exception:
+            pass
 
     now_iso = datetime.now(timezone.utc).isoformat()
     with get_db() as conn:

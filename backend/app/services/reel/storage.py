@@ -49,7 +49,7 @@ def upload_reel(local_path: str, job_id: str) -> str:
     # Local fallback URL
     public_base = os.getenv("PUBLIC_BASE_URL", "")
     port = os.getenv("PORT", "5000")
-    host_ip = "10.42.0.129"
+    host_ip = "10.45.69.254"
 
     if public_base and not public_base.startswith("https://your-domain"):
         base = public_base.rstrip("/")

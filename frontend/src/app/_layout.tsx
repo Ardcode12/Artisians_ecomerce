@@ -39,6 +39,12 @@ export default function RootLayout() {
               <Stack.Screen name="profile" />
               <Stack.Screen name="earnings" />
               <Stack.Screen name="inquiries" />
+              {/* New Seller Screens */}
+              <Stack.Screen name="seller-orders" />
+              <Stack.Screen name="order-tracking" />
+              <Stack.Screen name="inventory-alerts" />
+              <Stack.Screen name="help-support" />
+              <Stack.Screen name="manage-stock" />
             </Stack>
           </CartProvider>
         </LanguageProvider>
