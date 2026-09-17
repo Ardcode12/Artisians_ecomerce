@@ -1,0 +1,35 @@
+# Virtual environment
+venv/
+.venv/
+
+# Model cache / weights (do NOT commit weights to git)
+.cache/
+models/
+*.bin
+*.safetensors
+*.gguf
+*.pt
+*.pth
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# Environment files (contain secrets)
+.env
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Audio test files (optional: comment out if you want to commit test audio)
+# tests/audio/**/*.wav
+# tests/audio/**/*.mp3
+# tests/audio/**/*.m4a
+# tests/audio/**/*.flac

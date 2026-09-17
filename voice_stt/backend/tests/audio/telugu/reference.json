@@ -1,0 +1,8 @@
+{
+  "_comment": "Add your Telugu audio filenames and their correct reference transcriptions here.",
+  "_format": {
+    "filename.wav": "reference transcript in Telugu script"
+  },
+  "telugu_01.wav": "",
+  "telugu_02.wav": ""
+}

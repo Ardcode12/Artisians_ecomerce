@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "402444847821",
+    "project_id": "sih26-86379",
+    "storage_bucket": "sih26-86379.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:402444847821:android:a7c8f751aafccb53933784",
+        "android_client_info": {
+          "package_name": "artisan.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAuV-8aO7LhFkNyxkvywGlUcKawfm94zSc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

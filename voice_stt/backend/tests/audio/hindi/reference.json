@@ -1,0 +1,8 @@
+{
+  "_comment": "Add your Hindi audio filenames and their correct reference transcriptions here.",
+  "_format": {
+    "filename.wav": "reference transcript in Hindi (Devanagari) script"
+  },
+  "hindi_01.wav": "",
+  "hindi_02.wav": ""
+}

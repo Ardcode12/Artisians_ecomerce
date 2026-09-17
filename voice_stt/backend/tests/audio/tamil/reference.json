@@ -1,0 +1,8 @@
+{
+  "_comment": "Add your Tamil audio filenames and their correct reference transcriptions here.",
+  "_format": {
+    "filename.wav": "reference transcript in Tamil script"
+  },
+  "tamil_01.wav": "",
+  "tamil_02.wav": ""
+}
