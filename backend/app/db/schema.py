@@ -143,11 +143,40 @@ def init_db():
             buyer_address TEXT,
             quantity INTEGER DEFAULT 1,
             total_amount TEXT NOT NULL,
-            status TEXT DEFAULT 'confirmed' CHECK (status IN ('pending', 'confirmed', 'shipped', 'delivered', 'cancelled')),
+            status TEXT DEFAULT 'PENDING_CONFIRMATION',
+            confirmation_attempts INTEGER DEFAULT 0,
+            confirmed_at TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
         """)
+
+        # 7. Call Logs table (Voice Confirmation IVR attempts)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS call_logs (
+            id TEXT PRIMARY KEY,
+            order_id TEXT NOT NULL,
+            seller_id TEXT,
+            call_sid TEXT,
+            status TEXT NOT NULL CHECK (status IN ('initiated', 'ringing', 'answered', 'no-answer', 'failed', 'completed')),
+            dtmf_response TEXT CHECK (dtmf_response IN ('1', '2', 'null', NULL)),
+            attempt_number INTEGER DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+        );
+        """)
+
+        # Dynamic Schema Alterations for Existing SQLite Databases
+        try:
+            cursor.execute("ALTER TABLE orders ADD COLUMN confirmation_attempts INTEGER DEFAULT 0;")
+        except Exception:
+            pass
+
+        try:
+            cursor.execute("ALTER TABLE orders ADD COLUMN confirmed_at TEXT;")
+        except Exception:
+            pass
 
         # Indexes for fast lookup
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_profiles_phone ON profiles(phone);")
@@ -158,6 +187,8 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_inquiries_buyer_phone ON inquiries(buyer_phone);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_buyer_phone ON orders(buyer_phone);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_artisan_id ON orders(artisan_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_call_logs_order_id ON call_logs(order_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_call_logs_seller_id ON call_logs(seller_id);")
 
     # Run one-time migration from existing JSON stores if tables are empty
     _migrate_json_data()

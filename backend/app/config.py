@@ -30,3 +30,13 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY", "")
+
+# Voice Order Confirmation Settings
+ENABLE_VOICE_CONFIRMATION = os.getenv("ENABLE_VOICE_CONFIRMATION", "true").lower() == "true"
+TELEPHONY_PROVIDER = os.getenv("TELEPHONY_PROVIDER", "twilio").lower() # twilio | mock
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "").strip()
+WEBHOOK_BASE_URL = os.getenv("WEBHOOK_BASE_URL", f"http://localhost:{PORT}").rstrip("/")
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "artisans_voice_webhook_secret_key")
+

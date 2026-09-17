@@ -67,11 +67,11 @@ export function OrdersAndInquiries() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Reply modal state
-  const [replyModalOpen, setReplyModalOpen] = useState(false);
-  const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
-  const [replyText, setReplyText] = useState('');
-  const [isReplying, setIsReplying] = useState(false);
+  // Call logs modal state
+  const [logsModalOpen, setLogsModalOpen] = useState(false);
+  const [selectedOrderForLogs, setSelectedOrderForLogs] = useState<Order | null>(null);
+  const [callLogs, setCallLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   const router = useRouter();
   const { user } = useAuth();
@@ -103,9 +103,83 @@ export function OrdersAndInquiries() {
     }
   }, [user?.id]);
 
+  // Connect WebSocket for live real-time order status updates
   useEffect(() => {
     fetchData();
+
+    let ws: WebSocket | null = null;
+    try {
+      const wsHost = BACKEND_URL.replace(/^http/, 'ws');
+      ws = new WebSocket(`${wsHost}/ws/orders`);
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg?.type === 'order_status_update' && msg?.order_id) {
+            setOrders((prevOrders) =>
+              prevOrders.map((o) =>
+                o.id === msg.order_id ? { ...o, status: msg.status } : o
+              )
+            );
+          }
+        } catch (e) {}
+      };
+    } catch (e) {}
+
+    return () => {
+      if (ws) ws.close();
+    };
   }, [fetchData]);
+
+  // Manual Confirm / Reject fallback
+  const handleManualAction = async (orderId: str, dtmf: '1' | '2') => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/webhooks/call-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, dtmf_response: dtmf }),
+      });
+      if (res.ok) {
+        const statusName = dtmf === '1' ? 'Confirmed' : 'Rejected';
+        Alert.alert('Order Updated', `Order #${orderId.slice(0, 8)} marked as ${statusName}.`);
+        fetchData();
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update order status.');
+    }
+  };
+
+  // Manual Retry confirmation call
+  const handleRetryCall = async (orderId: string) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/orders/${orderId}/retry-call`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        Alert.alert('Call Initiated', 'An automated confirmation call is dialing your seller phone number.');
+        fetchData();
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to trigger retry call.');
+    }
+  };
+
+  // Fetch call logs for modal
+  const handleOpenCallLogs = async (ord: Order) => {
+    setSelectedOrderForLogs(ord);
+    setLogsModalOpen(true);
+    setLoadingLogs(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/orders/${ord.id}/call-logs`);
+      if (res.ok) {
+        const data = await res.json();
+        setCallLogs(data?.call_logs || []);
+      }
+    } catch (e) {
+      setCallLogs([]);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
 
   // Submit reply to inquiry
   const handleSendReply = async () => {
@@ -251,12 +325,23 @@ export function OrdersAndInquiries() {
             </View>
           ) : (
             orders.map((ord) => {
-              const statusColor =
-                (ord.status || '').toLowerCase() === 'delivered'
-                  ? '#10B981'
-                  : (ord.status || '').toLowerCase() === 'shipped'
-                  ? '#2563EB'
-                  : '#D97706';
+              const st = (ord.status || 'CONFIRMED').toUpperCase();
+              let statusColor = '#10B981';
+              let statusLabel = st;
+
+              if (st === 'PENDING_CONFIRMATION') {
+                statusColor = '#D97706';
+                statusLabel = 'AWAITING CALL...';
+              } else if (st === 'REJECTED') {
+                statusColor = '#EF4444';
+              } else if (st === 'MISSED') {
+                statusColor = '#F97316';
+                statusLabel = 'MISSED CALL';
+              } else if (st === 'EXPIRED') {
+                statusColor = '#6B7280';
+              }
+
+              const isPending = st === 'PENDING_CONFIRMATION' || st === 'MISSED';
 
               return (
                 <View key={ord.id} style={styles.orderCard}>
@@ -281,9 +366,49 @@ export function OrdersAndInquiries() {
                     <View style={[styles.statusPill, { backgroundColor: statusColor + '1A' }]}>
                       <Package size={12} color={statusColor} strokeWidth={2.2} />
                       <Text style={[styles.statusText, { color: statusColor }]}>
-                        {(ord.status || 'CONFIRMED').toUpperCase()}
+                        {statusLabel}
                       </Text>
                     </View>
+                  </View>
+
+                  {/* Manual Voice Confirmation & Retry Action Controls */}
+                  <View style={styles.orderActionsRow}>
+                    {isPending && (
+                      <View style={styles.pendingActionBtns}>
+                        <TouchableOpacity
+                          style={styles.confirmBtn}
+                          onPress={() => handleManualAction(ord.id, '1')}
+                          activeOpacity={0.8}
+                        >
+                          <CheckCircle2 size={12} color="#FFFFFF" />
+                          <Text style={styles.confirmBtnText}>Confirm (1)</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.rejectBtn}
+                          onPress={() => handleManualAction(ord.id, '2')}
+                          activeOpacity={0.8}
+                        >
+                          <X size={12} color="#EF4444" />
+                          <Text style={styles.rejectBtnText}>Reject (2)</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.retryCallBtn}
+                          onPress={() => handleRetryCall(ord.id)}
+                          activeOpacity={0.8}
+                        >
+                          <Clock size={12} color="#0D0D0D" />
+                          <Text style={styles.retryCallBtnText}>Call Me Again</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    <TouchableOpacity
+                      style={styles.callLogsLink}
+                      onPress={() => handleOpenCallLogs(ord)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.callLogsLinkText}>Call Logs History</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               );
@@ -328,6 +453,67 @@ export function OrdersAndInquiries() {
           )
         )}
       </View>
+
+      {/* ── MODAL: Call Logs History Drawer ─────────────────────── */}
+      <Modal visible={logsModalOpen} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Voice Confirmation Call Logs</Text>
+              <TouchableOpacity onPress={() => setLogsModalOpen(false)}>
+                <X size={20} color="#0D0D0D" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedOrderForLogs && (
+              <View style={styles.modalInqBox}>
+                <Text style={styles.modalInqBuyer}>
+                  Order #{selectedOrderForLogs.id.slice(0, 10).toUpperCase()}
+                </Text>
+                <Text style={styles.modalInqMsg}>
+                  Product: {selectedOrderForLogs.product_title} ({selectedOrderForLogs.total_amount})
+                </Text>
+              </View>
+            )}
+
+            {loadingLogs ? (
+              <ActivityIndicator size="small" color="#0D0D0D" style={{ marginVertical: 20 }} />
+            ) : callLogs.length === 0 ? (
+              <Text style={{ fontSize: 13, color: '#6B7280', marginVertical: 16, textAlign: 'center' }}>
+                No call attempts recorded yet.
+              </Text>
+            ) : (
+              <ScrollView style={{ maxHeight: 240, marginVertical: 8 }}>
+                {callLogs.map((cl, idx) => (
+                  <View key={cl.id || idx} style={styles.logItemRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.logAttemptText}>Attempt #{cl.attempt_number || idx + 1}</Text>
+                      <Text style={styles.logSidText}>SID: {cl.call_sid || 'N/A'}</Text>
+                      <Text style={styles.logTimeText}>
+                        {cl.created_at ? new Date(cl.created_at).toLocaleString() : ''}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={styles.logStatusBadge}>{(cl.status || 'initiated').toUpperCase()}</Text>
+                      {cl.dtmf_response && (
+                        <Text style={styles.logDtmfText}>Keypad DTMF: '{cl.dtmf_response}'</Text>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+
+            <TouchableOpacity
+              style={styles.sendReplyBtn}
+              onPress={() => setLogsModalOpen(false)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.sendReplyBtnText}>Close History</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── MODAL: Reply to Buyer Message ─────────────────────────── */}
       <Modal visible={replyModalOpen} animationType="slide" transparent>
@@ -690,5 +876,108 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
+  },
+  orderActionsRow: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    gap: 8,
+  },
+  pendingActionBtns: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 4,
+  },
+  confirmBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#10B981',
+    borderRadius: Radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  confirmBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+  },
+  rejectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: Radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  rejectBtnText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+  },
+  retryCallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: Radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  retryCallBtnText: {
+    color: '#0D0D0D',
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: Fonts.heading,
+  },
+  callLogsLink: {
+    alignSelf: 'flex-start',
+  },
+  callLogsLinkText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#2563EB',
+    textDecorationLine: 'underline',
+  },
+  logItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  logAttemptText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0D0D0D',
+  },
+  logSidText: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontFamily: Fonts.body,
+  },
+  logTimeText: {
+    fontSize: 10,
+    color: '#9CA3AF',
+  },
+  logStatusBadge: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#2563EB',
+  },
+  logDtmfText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#10B981',
   },
 });

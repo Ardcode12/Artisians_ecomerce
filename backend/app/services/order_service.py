@@ -29,7 +29,9 @@ def create_order(data: Dict[str, Any]) -> Dict[str, Any]:
     buyer_address = data.get("buyer_address") or ""
     quantity = int(data.get("quantity") or 1)
     total_amount = str(data.get("total_amount") or "₹650")
-    status = "confirmed"
+    
+    from app.config import ENABLE_VOICE_CONFIRMATION
+    status = "PENDING_CONFIRMATION" if ENABLE_VOICE_CONFIRMATION else "confirmed"
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -37,12 +39,12 @@ def create_order(data: Dict[str, Any]) -> Dict[str, Any]:
         INSERT INTO orders (
             id, product_id, product_title, product_image, artisan_id, artisan_name,
             buyer_phone, buyer_name, buyer_address, quantity, total_amount,
-            status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            status, confirmation_attempts, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             order_id, product_id, product_title, product_image, artisan_id, artisan_name,
             buyer_phone, buyer_name, buyer_address, quantity, total_amount,
-            status, now_iso, now_iso
+            status, 0, now_iso, now_iso
         ))
 
     # Auto-link inquiry thread
@@ -102,4 +104,15 @@ def list_orders(buyer_phone: Optional[str] = None, artisan_id: Optional[str] = N
         cursor = conn.cursor()
         cursor.execute(query, params)
         rows = cursor.fetchall()
-        return [dict(r) for r in rows]
+        return [dict(row) for row in rows]
+
+
+def update_order_status(order_id: str, status: str) -> bool:
+    """Update order status."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+        UPDATE orders SET status = ?, updated_at = ? WHERE id = ?
+        """, (status, now_iso, order_id))
+        return cursor.rowcount > 0

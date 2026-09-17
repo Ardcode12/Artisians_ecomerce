@@ -13,6 +13,10 @@ from app.routes.artisans import router as artisans_router
 from app.routes.inquiries import router as inquiries_router
 from app.routes.orders import router as orders_router
 from app.routes.ai import router as ai_router
+from app.routes.webhooks import router as webhooks_router
+from app.routes.websocket import router as websocket_router
+from app.routes.analytics import router as analytics_router
+from app.routes.schemes import router as schemes_router
 
 api_router = APIRouter()
 
@@ -25,3 +29,7 @@ api_router.include_router(artisans_router)
 api_router.include_router(inquiries_router)
 api_router.include_router(orders_router)
 api_router.include_router(ai_router)
+api_router.include_router(webhooks_router)
+api_router.include_router(websocket_router)
+api_router.include_router(analytics_router)
+api_router.include_router(schemes_router)
