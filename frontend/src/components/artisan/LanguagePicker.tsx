@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, ScrollView,
 } from 'react-native';
 import { Globe, Check } from 'lucide-react-native';
-import { Fonts, Shadow, Spacing } from '@/constants/artisan-theme';
+import { Colors, Fonts, Shadow, Spacing } from '@/constants/artisan-theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { LanguageCode, LANGUAGE_META } from '@/i18n/translations';
 
@@ -45,7 +45,7 @@ export function LanguagePicker({ autoOpen, onClose }: { autoOpen?: boolean; onCl
         onPress={() => setOpen(true)}
         activeOpacity={0.8}
       >
-        <Globe size={13} color="#0D0D0D" strokeWidth={2.2} />
+        <Globe size={13} color={Colors.primary} strokeWidth={2.2} />
         <Text style={styles.chipText}>{current.short}</Text>
         <Text style={styles.chipNative}>{current.native}</Text>
       </TouchableOpacity>
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   langRowSelected: {
-    backgroundColor: '#F5F5F7',
+    backgroundColor: '#E8F5E9',
   },
   langInfo: {
     gap: 2,
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     color: '#0D0D0D',
   },
   langNativeSelected: {
-    color: '#B5502F',
+    color: Colors.primary,
   },
   langLabel: {
     fontSize: 12,
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },

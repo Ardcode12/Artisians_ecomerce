@@ -27,7 +27,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { InstagramIcon } from '@/components/ui/InstagramIcon';
 
-import { BACKEND_URL } from '@/constants/api';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
 
 interface ProductData {
   imageUri: string;
@@ -87,8 +87,8 @@ export function ReviewStep({
     langView === 'hi' && displayDescHi
       ? displayDescHi
       : langView === 'ta' && displayDescTa
-      ? displayDescTa
-      : displayDescEn;
+        ? displayDescTa
+        : displayDescEn;
 
   const toggleMarket = (i: number) => {
     setSelectedMarkets((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
@@ -547,8 +547,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   marketCardActive: {
-    backgroundColor: '#0D0D0D',
-    borderColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   marketName: { fontSize: 13, fontFamily: Fonts.heading, color: '#0D0D0D', fontWeight: '700' },
   marketNameActive: { color: '#FFFFFF' },
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
   },
 
   publishBtn: {
-    backgroundColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
     borderRadius: Radius.pill,
     paddingVertical: 18,
     flexDirection: 'row',

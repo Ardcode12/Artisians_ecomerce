@@ -4,233 +4,228 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Fonts } from '@/constants/artisan-theme';
-import { AuthHeader } from '@/components/auth/AuthHeader';
+import { Check } from 'lucide-react-native';
+import {
+  useFonts,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+} from '@expo-google-fonts/inter';
+import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { LanguageCode, LANGUAGE_META } from '@/i18n/translations';
+import { LanguageCode } from '@/i18n/translations';
 
-const LANGUAGES: Array<{ code: LanguageCode; nativeLabel: string; englishLabel: string }> = [
-  { code: 'en', nativeLabel: 'English',  englishLabel: 'English' },
-  { code: 'hi', nativeLabel: 'हिन्दी',   englishLabel: 'Hindi' },
-  { code: 'ta', nativeLabel: 'தமிழ்',   englishLabel: 'Tamil' },
-  { code: 'te', nativeLabel: 'తెలుగు',  englishLabel: 'Telugu' },
-  { code: 'bn', nativeLabel: 'বাংলা',   englishLabel: 'Bengali' },
-  { code: 'pa', nativeLabel: 'ਪੰਜਾਬੀ',  englishLabel: 'Punjabi' },
-  { code: 'mr', nativeLabel: 'मराठी',   englishLabel: 'Marathi' },
+const BG = '#F5F0E8';
+
+interface LanguageOption {
+  code: LanguageCode;
+  nativeLabel: string;
+}
+
+const LANGUAGES: LanguageOption[] = [
+  { code: 'ta', nativeLabel: 'தமிழ்' },
+  { code: 'hi', nativeLabel: 'हिन्दी' },
+  { code: 'en', nativeLabel: 'English' },
+  { code: 'te', nativeLabel: 'తెలుగు' },
+  { code: 'bn', nativeLabel: 'বাংলা' },
+  { code: 'mr', nativeLabel: 'मराठी' },
 ];
 
 export default function LanguageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { onboardingData, updateOnboardingData } = useAuth();
-  const { language: currentLang, setLanguage, t } = useLanguage();
+  const { language: currentLang, setLanguage } = useLanguage();
 
   const [selectedCode, setSelectedCode] = useState<LanguageCode>(
-    (onboardingData.language as LanguageCode) || currentLang || 'en'
+    (onboardingData.language as LanguageCode) || currentLang || 'ta'
   );
+
+  const [fontsLoaded] = useFonts({
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+  });
+
+  if (!fontsLoaded) return null;
 
   const handleSelect = (code: LanguageCode) => {
     setSelectedCode(code);
-    // Live-preview the selected language immediately
     setLanguage(code);
   };
 
   const handleContinue = () => {
-    // Persist both to context and onboarding data (as language code)
     setLanguage(selectedCode);
     updateOnboardingData({ language: selectedCode });
-    router.push('/auth/scheme');
+    router.push('/auth/phone');
   };
 
+  // Bilingual subtitle based on selected language
+  const subtitle =
+    selectedCode === 'ta' ? 'உங்கள் மொழியை தேர்வு செய்யுங்கள்' :
+    selectedCode === 'hi' ? 'अपनी भाषा चुनें' :
+    selectedCode === 'te' ? 'మీ భాషను ఎంచుకోండి' :
+    selectedCode === 'bn' ? 'আপনার ভাষা বেছে নিন' :
+    selectedCode === 'mr' ? 'तुमची भाषा निवडा' :
+    'Select your language';
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="dark-content" backgroundColor={BG} />
+
       <View style={styles.inner}>
-        {/* Header with Step 3 of 3 indicator */}
-        <AuthHeader step={3} totalSteps={3} />
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {/* Headline & Subtext — translated live as user taps */}
-          <View style={styles.textContainer}>
-            <Text style={styles.headline}>{t('auth_lang_headline')}</Text>
-            <Text style={styles.subtext}>{t('auth_lang_subtext')}</Text>
-          </View>
-
-          {/* Vertical Pill Rows */}
-          <View style={styles.listContainer}>
-            {LANGUAGES.map(lang => {
-              const isSelected = selectedCode === lang.code;
-              return (
-                <TouchableOpacity
-                  key={lang.code}
-                  style={[
-                    styles.languagePill,
-                    isSelected ? styles.languagePillSelected : styles.languagePillUnselected,
-                  ]}
-                  onPress={() => handleSelect(lang.code)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.pillContent}>
-                    <Text
-                      style={[
-                        styles.languageNative,
-                        isSelected ? styles.languageTextSelected : styles.languageTextUnselected,
-                      ]}
-                    >
-                      {lang.nativeLabel}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.languageEnglish,
-                        isSelected ? styles.languageEnglishSelected : styles.languageEnglishUnselected,
-                      ]}
-                    >
-                      {lang.englishLabel}
-                    </Text>
-                  </View>
-                  {isSelected && (
-                    <View style={styles.checkCircle}>
-                      <Text style={styles.checkMark}>✓</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </ScrollView>
-
-        {/* Pinned Bottom Primary Button */}
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={handleContinue}
-            activeOpacity={0.88}
-          >
-            <Text style={styles.btnText}>{t('auth_continue')}</Text>
-          </TouchableOpacity>
+        {/* Header text */}
+        <View style={styles.headerArea}>
+          <Text style={styles.headline}>Choose your language</Text>
+          <Text style={styles.subheadline}>{subtitle}</Text>
         </View>
+
+        {/* Language list */}
+        <View style={styles.list}>
+          {LANGUAGES.map((lang) => {
+            const isSelected = selectedCode === lang.code;
+            return (
+              <TouchableOpacity
+                key={lang.code}
+                style={[
+                  styles.langRow,
+                  isSelected ? styles.langRowSelected : styles.langRowUnselected,
+                ]}
+                onPress={() => handleSelect(lang.code)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.langLabel,
+                    isSelected ? styles.langLabelSelected : styles.langLabelUnselected,
+                  ]}
+                >
+                  {lang.nativeLabel}
+                </Text>
+                {isSelected && (
+                  <View style={styles.checkCircle}>
+                    <Check size={16} color={Colors.primary} strokeWidth={2.5} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Spacer */}
+        <View style={{ flex: 1 }} />
+
+        {/* Continue button */}
+        <TouchableOpacity
+          style={styles.continueBtn}
+          onPress={handleContinue}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.continueBtnText}>Continue</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG,
   },
   inner: {
     flex: 1,
     paddingHorizontal: 24,
-  },
-  scrollContent: {
+    paddingTop: 32,
     paddingBottom: 24,
   },
-  textContainer: {
-    marginTop: 24,
-    marginBottom: 28,
+
+  /* Header */
+  headerArea: {
+    marginBottom: 32,
   },
   headline: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#0D0D0D',
+    fontSize: 26,
     fontFamily: Fonts.headingBold,
-    marginBottom: 8,
-    letterSpacing: -0.5,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 6,
   },
-  subtext: {
-    fontSize: 16,
-    color: '#8E8E93',
+  subheadline: {
+    fontSize: 15,
     fontFamily: Fonts.body,
+    color: Colors.textSecondary,
     lineHeight: 22,
   },
-  listContainer: {
-    gap: 12,
+
+  /* Language list */
+  list: {
+    gap: 10,
   },
-  languagePill: {
-    height: 64,
-    borderRadius: 20,
-    justifyContent: 'center',
+  langRow: {
+    height: 58,
+    borderRadius: 14,
+    flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  pillContent: {
-    flex: 1,
-    gap: 2,
-  },
-  languagePillUnselected: {
+  langRowUnselected: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#E8E8EC',
+    borderColor: Colors.border,
   },
-  languagePillSelected: {
-    backgroundColor: '#0D0D0D',
+  langRowSelected: {
+    backgroundColor: Colors.primaryLight,
     borderWidth: 1.5,
-    borderColor: '#0D0D0D',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
+    borderColor: Colors.primary,
   },
-  languageNative: {
+  langLabel: {
     fontSize: 17,
-    fontWeight: '700',
-    fontFamily: Fonts.headingBold,
+    fontFamily: Fonts.heading,
+    fontWeight: '600',
   },
-  languageEnglish: {
-    fontSize: 12,
-    fontFamily: Fonts.body,
+  langLabelUnselected: {
+    color: Colors.textPrimary,
   },
-  languageTextUnselected: {
-    color: '#0D0D0D',
-  },
-  languageTextSelected: {
-    color: '#FFFFFF',
-  },
-  languageEnglishUnselected: {
-    color: '#8E8E93',
-  },
-  languageEnglishSelected: {
-    color: 'rgba(255,255,255,0.7)',
+  langLabelSelected: {
+    color: Colors.primary,
   },
   checkCircle: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.primaryLight,
   },
-  checkMark: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  bottomBar: {
-    width: '100%',
-    paddingTop: 12,
-  },
-  primaryBtn: {
+
+  /* Continue button */
+  continueBtn: {
     height: 56,
-    borderRadius: 30,
-    backgroundColor: '#0D0D0D',
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    width: '100%',
+    marginTop: 20,
+    ...Shadow.hero,
   },
-  btnText: {
+  continueBtnText: {
     fontSize: 16,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
     color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
 });

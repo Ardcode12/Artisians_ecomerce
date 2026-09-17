@@ -1,47 +1,74 @@
 // Artisan Marketplace Design Tokens
-// Blends warm craft palette (spec) with Figma kit monochrome structure
+// Kala Udyam — Warm cream + deep forest green minimalist palette
 
 export const Colors = {
-  // Primary craft palette
-  primary: '#B5502F',        // terracotta / clay — CTA buttons, highlights
-  primaryDark: '#8A3D22',    // pressed states, headers
-  secondary: '#2F6B4F',      // deep leaf green — success, published
-  gold: '#D4A017',           // AI Suggested badges, bulk request accents
-  goldLight: '#FFF3CD',      // gold badge background
+  // Primary craft palette — Kala Udyam deep forest green
+  primary: '#2D5016',           // deep forest green — CTAs, active states, icons
+  primaryLight: '#E8F0EB',      // light sage tint — selected row bg, chip backgrounds
+  primaryDark: '#1E380F',       // pressed / darker green states
+  primarySoft: '#D6E8D8',       // very light green — banner, soft fills
+  secondary: '#3A6B20',         // mid leaf green — secondary accents
 
-  // Backgrounds
-  background: '#FDF8F3',     // warm off-white — main bg
-  surface: '#FFFFFF',        // cards
-  surfaceGray: '#F0F0F0',   // search bar, image placeholders (Figma)
-  surfaceWarm: '#FFF3E9',    // stat card warm bg
+  // Accent — for regional greeting text (வணக்கம்!)
+  greetingRed: '#C0392B',       // warm red for Tamil/Hindi greeting
+  gold: '#D4A017',              // AI Suggested badges
+  goldLight: '#FFF3CD',         // gold badge background
+
+  // Backgrounds — Kala Udyam warm cream palette
+  background: '#F5F0E8',        // warm cream — main app background
+  surface: '#FFFFFF',           // white cards on cream
+  surfaceCard: '#FFFFFF',       // product card bg
+  surfaceGray: '#F0EEEA',       // subtle input/placeholder bg
+  surfaceWarm: '#EDE8DF',       // slightly darker cream — stats bg
+  surfaceMuted: '#EBEBEB',      // Help card, grey toned cards
+
+  // Quick action card backgrounds
+  myProductsBg: '#F5EDE0',      // warm beige — My Products card
+  helpBg: '#EBEBEB',            // grey — Help card
 
   // Text
-  textPrimary: '#0D0D0D',    // headings — near-black (Figma ink)
-  textWarm: '#2B2118',       // body text — warm near-black
-  textSecondary: '#8E8E93',  // subtitles, secondary (Figma muted)
-  textTertiary: '#746558',   // warm muted
+  textPrimary: '#1A1A1A',       // headings — near-black
+  textDark: '#2B2118',          // body text
+  textSecondary: '#6B7280',     // subtitles, secondary
+  textMuted: '#9CA3AF',         // muted / placeholder
+  textLight: '#B0B0B0',         // very light text
+  textWarm: '#2B2118',          // backward compat alias
 
   // Border
-  border: '#E8DCC8',         // warm dividers
-  borderLight: '#F0EDE8',
+  border: '#E0D9CE',            // standard dividers (warm tone)
+  borderLight: '#EDE8DF',       // subtle dividers
+  borderWarm: '#E0D9CE',        // backward compat alias
+
+  // Backward compatibility aliases mapped to new green theme
+  terracotta: '#2D5016',
+  terracottaDark: '#1E380F',
+  terracottaLight: '#E8F0EB',
+  clay: '#E8F0EB',
 
   // Status chips
-  statusPublished: '#2F6B4F',
-  statusDraft: '#E8DCC8',
-  statusDraftText: '#746558',
-  statusInquiry: '#D4A017',
-  statusSold: '#1B4535',
+  statusActive: '#2D5016',
+  statusActiveBg: '#D6E8D8',
+  statusPending: '#F59E0B',
+  statusPendingBg: '#FEF3C7',
+  statusProcessing: '#3B82F6',
+  statusProcessingBg: '#DBEAFE',
+  statusCompleted: '#10B981',
+  statusCompletedBg: '#D1FAE5',
+  statusDraft: '#9CA3AF',
+  statusDraftBg: '#F3F4F6',
 
   // Functional
-  error: '#C13D3D',
-  success: '#2F6B4F',
-  ratingGold: '#FFC107',     // stars only
-  badgeRed: '#E53E3E',       // cart badge only
+  error: '#EF4444',
+  errorBg: '#FEE2E2',
+  success: '#2D5016',
+  successBg: '#D6E8D8',
+  warning: '#F59E0B',
+  warningBg: '#FEF3C7',
 
-  // Figma nav
-  navActive: '#0D0D0D',      // black capsule active
-  navInactive: '#8E8E93',    // inactive icons
-  navBar: '#FFFFFF',         // floating pill nav background
+  // Nav — Kala Udyam bottom nav (white bar, green active)
+  navActive: '#2D5016',         // active icon/text
+  navInactive: '#9CA3AF',       // inactive icons
+  navBar: '#FFFFFF',            // nav background
 };
 
 // Font family names must match the exact identifiers from @expo-google-fonts
@@ -70,35 +97,42 @@ export const Radius = {
   lg: 16,
   xl: 20,
   xxl: 24,
-  pill: 999,         // Figma fully-rounded pills
+  pill: 999,         // fully-rounded pills
   full: 999,
   circle: 9999,
 };
 
 export const Shadow = {
   card: {
-    shadowColor: '#0D0D0D',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
+  },
+  elevated: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
   hero: {
-    shadowColor: '#B5502F',
+    shadowColor: '#2D5016',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     shadowRadius: 12,
     elevation: 6,
   },
   nav: {
-    shadowColor: '#0D0D0D',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 8,
   },
 };
 
-export const NAV_HEIGHT = 80;
-export const HEADER_HEIGHT = 64;
-export const MIN_TOUCH_TARGET = 56;
+export const NAV_HEIGHT = 72;
+export const HEADER_HEIGHT = 56;
+export const MIN_TOUCH_TARGET = 48;

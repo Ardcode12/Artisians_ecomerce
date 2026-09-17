@@ -53,7 +53,7 @@ import { BuyerBottomNav, BuyerTab } from '@/components/buyer/BuyerBottomNav';
 import AsyncStorage from '@/utils/storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-import { BACKEND_URL } from '@/constants/api';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
 const DEFAULT_PRODUCT_IMG = 'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=600&q=80';
 const DEFAULT_ARTISAN_AVATAR = 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&q=80';
 

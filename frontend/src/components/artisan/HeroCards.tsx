@@ -1,9 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Plus, ArrowUpRight } from 'lucide-react-native';
-import { Fonts } from '@/constants/artisan-theme';
-import { useLanguage } from '@/context/LanguageContext';
-
+import { Camera, BarChart3 } from 'lucide-react-native';
+import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 
 interface HeroCardsProps {
   onAddProduct: () => void;
@@ -11,32 +9,28 @@ interface HeroCardsProps {
 }
 
 export function HeroCards({ onAddProduct, onViewEarnings }: HeroCardsProps) {
-  const { t } = useLanguage();
-
   return (
     <View style={styles.row}>
-      {/* Primary: Add New Product */}
       <TouchableOpacity
-        style={styles.cardPrimary}
+        style={[styles.card, styles.addCard]}
         onPress={onAddProduct}
-        activeOpacity={0.85}
+        activeOpacity={0.88}
       >
         <View style={styles.iconCircle}>
-          <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
+          <Camera size={22} color="#FFFFFF" strokeWidth={2} />
         </View>
-        <Text style={styles.cardPrimaryLabel}>{t('hero_add_product')}</Text>
+        <Text style={styles.cardLabel}>Add Product</Text>
       </TouchableOpacity>
 
-      {/* Secondary: View Earnings */}
       <TouchableOpacity
-        style={styles.cardSecondary}
+        style={[styles.card, styles.earningsCard]}
         onPress={onViewEarnings}
-        activeOpacity={0.85}
+        activeOpacity={0.88}
       >
-        <View style={styles.iconCircleLight}>
-          <ArrowUpRight size={18} color="#0D0D0D" strokeWidth={2.5} />
+        <View style={[styles.iconCircle, { backgroundColor: Colors.primaryLight }]}>
+          <BarChart3 size={22} color={Colors.primary} strokeWidth={2} />
         </View>
-        <Text style={styles.cardSecondaryLabel}>{t('hero_view_details')}</Text>
+        <Text style={[styles.cardLabel, { color: Colors.textPrimary }]}>Analytics</Text>
       </TouchableOpacity>
     </View>
   );
@@ -46,56 +40,36 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: 12,
-    marginVertical: 4,
+    marginBottom: 16,
   },
-  cardPrimary: {
+  card: {
     flex: 1,
-    backgroundColor: '#0D0D0D',
     borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+    padding: 18,
     alignItems: 'center',
     gap: 10,
+    ...Shadow.card,
   },
-  cardSecondary: {
-    flex: 1,
+  addCard: {
+    backgroundColor: Colors.primary,
+  },
+  earningsCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    gap: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Colors.borderLight,
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#B5502F',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  iconCircleLight: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardPrimaryLabel: {
+  cardLabel: {
     fontSize: 13,
     fontWeight: '600',
     fontFamily: Fonts.heading,
     color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  cardSecondaryLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: Fonts.heading,
-    color: '#0D0D0D',
-    textAlign: 'center',
   },
 });

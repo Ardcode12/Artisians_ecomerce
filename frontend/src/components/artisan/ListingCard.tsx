@@ -2,8 +2,8 @@ import React from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Image,
 } from 'react-native';
-import { Fonts, Shadow, Spacing } from '@/constants/artisan-theme';
-import { Pencil, Trash2 } from 'lucide-react-native';
+import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
+import { ChevronRight } from 'lucide-react-native';
 
 export type ListingStatus = 'draft' | 'published' | 'inquiries' | 'sold';
 
@@ -14,23 +14,19 @@ interface ListingCardProps {
   status: ListingStatus;
   inquiryCount?: number;
   imageUri?: string;
+  stockCount?: number;
   onPress?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  /** Use horizontal list layout (image left, info right) */
+  horizontal?: boolean;
 }
 
-const STATUS_DOT: Record<ListingStatus, string> = {
-  published: '#10B981', // green
-  draft:     '#9CA3AF', // gray
-  inquiries: '#D4A017', // gold
-  sold:      '#166534', // dark green
-};
-
-const CHIP_STYLES: Record<ListingStatus, { bg: string; text: string; label: string }> = {
-  draft:     { bg: '#E8DCC8', text: '#746558', label: 'Draft' },
-  published: { bg: '#2F6B4F', text: '#FFFFFF', label: 'Published' },
-  inquiries: { bg: '#D4A017', text: '#FFFFFF', label: '3 Inquiries' },
-  sold:      { bg: '#166534', text: '#FFFFFF', label: 'Sold' },
+const STATUS_CONFIG: Record<ListingStatus, { bg: string; text: string; label: string; dot: string }> = {
+  published: { bg: Colors.statusActiveBg, text: Colors.statusActive, label: 'Active', dot: Colors.statusActive },
+  draft:     { bg: Colors.statusDraftBg, text: Colors.statusDraft, label: 'Draft', dot: Colors.statusDraft },
+  inquiries: { bg: Colors.statusPendingBg, text: Colors.statusPending, label: 'Inquiries', dot: Colors.statusPending },
+  sold:      { bg: Colors.statusCompletedBg, text: Colors.statusCompleted, label: 'Sold', dot: Colors.statusCompleted },
 };
 
 export function ListingCard({
@@ -38,73 +34,73 @@ export function ListingCard({
   subtitle,
   price,
   status,
-  inquiryCount = 3,
+  inquiryCount = 0,
   imageUri,
+  stockCount,
   onPress,
   onEdit,
   onDelete,
+  horizontal = false,
 }: ListingCardProps) {
-  const dotColor = STATUS_DOT[status] || STATUS_DOT.published;
-  const chip = CHIP_STYLES[status] || CHIP_STYLES.published;
-  const chipLabel = status === 'inquiries' ? `${inquiryCount} Inquiries` : chip.label;
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.published;
+  const chipLabel = status === 'inquiries' && inquiryCount > 0 ? `${inquiryCount} Inquiries` : config.label;
 
+  /* ── Horizontal List Layout (My Products screen) ─────────── */
+  if (horizontal) {
+    return (
+      <TouchableOpacity style={styles.hCard} onPress={onPress} activeOpacity={0.88}>
+        {/* Thumbnail */}
+        <View style={styles.hImageWrap}>
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.hImage} resizeMode="cover" />
+          ) : (
+            <View style={styles.hPlaceholder} />
+          )}
+        </View>
+
+        {/* Info */}
+        <View style={styles.hInfo}>
+          <Text style={styles.hTitle} numberOfLines={1}>{title}</Text>
+          <Text style={styles.hPrice}>₹ {price.replace('₹', '').trim()}</Text>
+          {stockCount !== undefined && (
+            <Text style={styles.hStock}>
+              <View style={[styles.stockDot, { backgroundColor: config.dot }]} /> {stockCount} in stock
+            </Text>
+          )}
+        </View>
+
+        {/* Status + Chevron */}
+        <View style={styles.hRight}>
+          <View style={[styles.statusChip, { backgroundColor: config.bg }]}>
+            <Text style={[styles.statusChipText, { color: config.text }]}>{chipLabel}</Text>
+          </View>
+          <ChevronRight size={16} color={Colors.textMuted} />
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  /* ── Grid Card Layout ──────────────────────────────────────── */
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
-      {/* Image tile with subtle gray background */}
+      {/* Image tile */}
       <View style={styles.imageTile}>
         {imageUri ? (
           <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
         ) : (
           <View style={styles.placeholder} />
         )}
-
-        {/* Top-right solid black circle with status dot (heart slot repurposed) */}
-        <View style={styles.statusBadge}>
-          <View style={[styles.statusDot, { backgroundColor: dotColor }]} />
-        </View>
-
-        {/* Quick action overlay if onEdit or onDelete provided */}
-        {(onEdit || onDelete) && (
-          <View style={styles.quickActionRow}>
-            {onEdit && (
-              <TouchableOpacity
-                style={styles.actionCircleBtn}
-                onPress={(e) => {
-                  e.stopPropagation?.();
-                  onEdit();
-                }}
-                activeOpacity={0.8}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <Pencil size={12} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-            {onDelete && (
-              <TouchableOpacity
-                style={[styles.actionCircleBtn, styles.deleteCircleBtn]}
-                onPress={(e) => {
-                  e.stopPropagation?.();
-                  onDelete();
-                }}
-                activeOpacity={0.8}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <Trash2 size={12} color="#FF6B6B" />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
       </View>
 
-      {/* Product Information */}
+      {/* Product Info */}
       <View style={styles.info}>
         <Text style={styles.title} numberOfLines={2}>{title}</Text>
         <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
-        
+
         <View style={styles.priceRow}>
-          <Text style={styles.price}>{price}</Text>
-          <View style={[styles.chip, { backgroundColor: chip.bg }]}>
-            <Text style={[styles.chipText, { color: chip.text }]}>{chipLabel}</Text>
+          <Text style={styles.price}>₹ {price.replace('₹', '').trim()}</Text>
+          <View style={[styles.statusChip, { backgroundColor: config.bg }]}>
+            <Text style={[styles.statusChipText, { color: config.text }]}>{chipLabel}</Text>
           </View>
         </View>
       </View>
@@ -113,19 +109,21 @@ export function ListingCard({
 }
 
 const styles = StyleSheet.create({
+  /* ── Grid Card ─────────────────────────────────────────────── */
   card: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
   },
   imageTile: {
     width: '100%',
     aspectRatio: 1,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 18,
+    backgroundColor: Colors.surfaceGray,
+    borderRadius: 14,
     overflow: 'hidden',
-    position: 'relative',
   },
   image: {
     width: '100%',
@@ -134,44 +132,23 @@ const styles = StyleSheet.create({
   placeholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#F3F4F6',
-  },
-  /* Exact Figma black circle top-right with status dot */
-  statusBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#0D0D0D',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 5,
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    backgroundColor: Colors.surfaceGray,
   },
   info: {
-    paddingTop: 8,
-    paddingBottom: 4,
-    gap: 3,
-    width: '100%',
+    padding: 10,
+    gap: 2,
   },
   title: {
     fontSize: 13,
-    fontWeight: '700',
-    fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
+    fontWeight: '600',
+    fontFamily: Fonts.heading,
+    color: Colors.textPrimary,
     lineHeight: 17,
   },
   subtitle: {
     fontSize: 11,
-    fontWeight: '400',
     fontFamily: Fonts.body,
-    color: '#8E8E93',
+    color: Colors.textSecondary,
   },
   priceRow: {
     flexDirection: 'row',
@@ -180,39 +157,80 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   price: {
-    fontSize: 15,
-    fontWeight: '800',
-    fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
-  },
-  chip: {
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 2.5,
-  },
-  chipText: {
-    fontSize: 9,
+    fontSize: 14,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
+    color: Colors.textPrimary,
   },
-  quickActionRow: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
+
+  /* ── Status Chip ───────────────────────────────────────────── */
+  statusChip: {
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  statusChipText: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: Fonts.heading,
+  },
+
+  /* ── Horizontal List Card ──────────────────────────────────── */
+  hCard: {
     flexDirection: 'row',
-    gap: 6,
-    zIndex: 10,
-  },
-  actionCircleBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(13, 13, 13, 0.78)',
-    justifyContent: 'center',
     alignItems: 'center',
-    ...Shadow.card,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    marginBottom: 10,
   },
-  deleteCircleBtn: {
-    backgroundColor: 'rgba(239, 68, 68, 0.85)',
+  hImageWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.surfaceGray,
+  },
+  hImage: {
+    width: '100%',
+    height: '100%',
+  },
+  hPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: Colors.surfaceGray,
+  },
+  hInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  hTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: Fonts.heading,
+    color: Colors.textPrimary,
+  },
+  hPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: Colors.textPrimary,
+  },
+  hStock: {
+    fontSize: 11,
+    fontFamily: Fonts.body,
+    color: Colors.textSecondary,
+  },
+  stockDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  hRight: {
+    alignItems: 'flex-end',
+    gap: 8,
   },
 });

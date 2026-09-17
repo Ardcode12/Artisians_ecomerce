@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, Package, Plus, MessageCircle, User } from 'lucide-react-native';
-import { Fonts, Shadow } from '@/constants/artisan-theme';
+import { Home, Package, User } from 'lucide-react-native';
+import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 
+// 3-tab nav: Home | Products | Profile (Sell removed per user request)
 export type ArtisanTab = 'home' | 'listings' | 'add' | 'inquiries' | 'profile';
 
 interface ArtisanBottomNavProps {
@@ -11,70 +12,63 @@ interface ArtisanBottomNavProps {
   onTabChange: (tab: ArtisanTab) => void;
 }
 
-const TABS: { key: ArtisanTab; Icon: any; label: string }[] = [
-  { key: 'home',      Icon: Home,          label: 'Home' },
-  { key: 'listings',  Icon: Package,       label: 'Listings' },
-  { key: 'add',       Icon: Plus,          label: 'Add' },
-  { key: 'inquiries', Icon: MessageCircle, label: 'Inquiries' },
-  { key: 'profile',   Icon: User,          label: 'Profile' },
-];
-
 export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      <View style={styles.pill}>
-        {TABS.map(({ key, Icon, label }) => {
-          const isActive = key === activeTab;
-          const isAdd = key === 'add';
+    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      <View style={styles.bar}>
 
-          /* ── Center Raised Add Button ─────────────────────────────── */
-          if (isAdd) {
-            return (
-              <TouchableOpacity
-                key={key}
-                style={styles.addTabContainer}
-                onPress={() => onTabChange(key)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.addCircle}>
-                  <Icon size={24} color="#FFFFFF" strokeWidth={2.8} />
-                </View>
-                <Text style={styles.addLabel}>{label}</Text>
-              </TouchableOpacity>
-            );
-          }
+        {/* Home */}
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => onTabChange('home')}
+          activeOpacity={0.75}
+        >
+          <Home
+            size={22}
+            color={activeTab === 'home' ? Colors.primary : Colors.navInactive}
+            strokeWidth={activeTab === 'home' ? 2.2 : 1.6}
+            fill={activeTab === 'home' ? Colors.primary : 'none'}
+          />
+          <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabLabelActive]}>
+            Home
+          </Text>
+        </TouchableOpacity>
 
-          /* ── Regular Tab with Icon + Label ────────────────────────── */
-          if (isActive) {
-            return (
-              <TouchableOpacity
-                key={key}
-                style={styles.activeCapsule}
-                onPress={() => onTabChange(key)}
-                activeOpacity={0.9}
-              >
-                <View style={styles.activeIconCircle}>
-                  <Icon size={16} color="#FFFFFF" strokeWidth={2.5} />
-                </View>
-                <Text style={styles.activeLabel}>{label}</Text>
-              </TouchableOpacity>
-            );
-          }
+        {/* Products */}
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => onTabChange('listings')}
+          activeOpacity={0.75}
+        >
+          <Package
+            size={22}
+            color={activeTab === 'listings' ? Colors.primary : Colors.navInactive}
+            strokeWidth={activeTab === 'listings' ? 2.2 : 1.6}
+          />
+          <Text style={[styles.tabLabel, activeTab === 'listings' && styles.tabLabelActive]}>
+            Products
+          </Text>
+        </TouchableOpacity>
 
-          return (
-            <TouchableOpacity
-              key={key}
-              style={styles.tab}
-              onPress={() => onTabChange(key)}
-              activeOpacity={0.75}
-            >
-              <Icon size={20} color="#0D0D0D" strokeWidth={1.8} />
-              <Text style={styles.tabLabel}>{label}</Text>
-            </TouchableOpacity>
-          );
-        })}
+        {/* Profile */}
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => onTabChange('profile')}
+          activeOpacity={0.75}
+        >
+          <User
+            size={22}
+            color={activeTab === 'profile' ? Colors.primary : Colors.navInactive}
+            strokeWidth={activeTab === 'profile' ? 2.2 : 1.6}
+            fill={activeTab === 'profile' ? Colors.primary : 'none'}
+          />
+          <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]}>
+            Profile
+          </Text>
+        </TouchableOpacity>
+
       </View>
     </View>
   );
@@ -86,84 +80,37 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    backgroundColor: 'transparent',
+    backgroundColor: Colors.navBar,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
     zIndex: 100,
+    ...Shadow.nav,
   },
-  pill: {
+  bar: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    height: 68,
-    ...Shadow.nav,
-    elevation: 10,
+    paddingTop: 8,
+    paddingHorizontal: 24,
+    height: 60,
   },
+
   tab: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
     gap: 3,
-    minWidth: 50,
+    paddingVertical: 4,
   },
   tabLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: Fonts.heading,
-    color: '#0D0D0D',
+    fontSize: 11,
+    fontFamily: Fonts.bodyMedium,
+    color: Colors.navInactive,
+    marginTop: 1,
   },
-  activeCapsule: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 26,
-    paddingVertical: 4,
-    paddingLeft: 4,
-    paddingRight: 12,
-    gap: 6,
-    height: 44,
-  },
-  activeIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#0D0D0D',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  activeLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+  tabLabelActive: {
+    color: Colors.primary,
     fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
-  },
-  addTabContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -20,
-    gap: 2,
-  },
-  addCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#0D0D0D',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Shadow.hero,
-    elevation: 8,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-  },
-  addLabel: {
-    fontSize: 10,
     fontWeight: '700',
-    fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
   },
 });

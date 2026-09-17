@@ -45,11 +45,10 @@ export default function CategoriesScreen() {
 
   const handleTabChange = (tab: ArtisanTab) => {
     setActiveTab(tab);
-    if (tab === 'home')      router.push('/');
-    if (tab === 'listings')  router.push('/listings');
-    if (tab === 'add')       router.push('/add-product');
-    if (tab === 'inquiries') router.push('/inquiries');
-    if (tab === 'profile')   router.push('/profile');
+    if (tab === 'home')     router.push('/');
+    if (tab === 'listings') router.push('/listings');
+    if (tab === 'add')      router.push('/add-product');
+    if (tab === 'profile')  router.push('/profile');
   };
 
   return (
@@ -181,3 +180,4 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.75)',
   },
 });
+

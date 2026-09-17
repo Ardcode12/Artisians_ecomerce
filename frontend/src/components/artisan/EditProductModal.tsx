@@ -14,11 +14,11 @@ import {
   Dimensions,
 } from 'react-native';
 import { X, Check, Sparkles, Tag, Layers, Globe, PackageCheck, AlertCircle } from 'lucide-react-native';
-import { Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
+import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
 
 const { width, height } = Dimensions.get('window');
 
-import { BACKEND_URL } from '@/constants/api';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
 
 const CATEGORIES = [
   'Handloom Textile',
@@ -573,8 +573,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   catChipActive: {
-    backgroundColor: '#0D0D0D',
-    borderColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   catChipText: {
     fontSize: 12,
@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
   },
   langTabActive: {
-    backgroundColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
   },
   langTabText: {
     fontSize: 11,
@@ -650,7 +650,7 @@ const styles = StyleSheet.create({
     flex: 1.5,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: Colors.primary,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

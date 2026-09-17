@@ -1,138 +1,94 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Package, Star, ShoppingBag } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-import { Fonts } from '@/constants/artisan-theme';
-import { useLanguage } from '@/context/LanguageContext';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { Colors, Fonts } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
-
-import { BACKEND_URL } from '@/constants/api';
-
-interface StatItemProps {
-  Icon: any;
-  value: string;
-  label: string;
-  onPress: () => void;
-}
-
-function StatItem({ Icon, value, label, onPress }: StatItemProps) {
-  return (
-    <TouchableOpacity style={styles.statItem} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.statIconRow}>
-        <Icon size={16} color="#6B7280" strokeWidth={1.8} />
-        <Text style={styles.statValue}>{value}</Text>
-      </View>
-      <Text style={styles.statLabel}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
+import { useFocusEffect } from 'expo-router';
+import { BACKEND_URL } from '@/config/api';
 
 export function StatsStrip() {
-  const router = useRouter();
-  const { t } = useLanguage();
   const { user } = useAuth();
+  const [stats, setStats] = useState({ products: 0, orders: 0, earnings: 0 });
 
-  const [activeListings, setActiveListings] = useState<number>(0);
-  const [totalOrders, setTotalOrders] = useState<number>(0);
-  const [avgRating, setAvgRating] = useState<string>('—');
+  const fetchStats = useCallback(async () => {
+    try {
+      // Fetch products count
+      let pUrl = `${BACKEND_URL}/api/products?limit=100`;
+      if (user?.id) pUrl += `&artisan_id=${user.id}`;
+      const pRes = await fetch(pUrl);
+      if (pRes.ok) {
+        const pData = await pRes.json();
+        setStats(prev => ({ ...prev, products: pData.products?.length || 0 }));
+      }
 
-  useEffect(() => {
-    let isMounted = true;
-    async function loadStats() {
-      try {
-        let pUrl = `${BACKEND_URL}/api/products`;
-        if (user?.id) pUrl += `?artisan_id=${user.id}`;
-        let oUrl = `${BACKEND_URL}/api/orders`;
-        if (user?.id) oUrl += `?artisan_id=${user.id}`;
-
-        const [pRes, oRes] = await Promise.all([fetch(pUrl), fetch(oUrl)]);
-        if (pRes.ok) {
-          const pData = await pRes.json();
-          const list = Array.isArray(pData) ? pData : (pData.products || []);
-          if (isMounted) setActiveListings(list.length);
-        }
-        if (oRes.ok) {
-          const oData = await oRes.json();
-          const ordList = Array.isArray(oData) ? oData : (oData.orders || []);
-          if (isMounted) setTotalOrders(ordList.length);
-        }
-        // Rating placeholder — will be from reviews API
-        if (isMounted) setAvgRating('4.9');
-      } catch (_) {}
-    }
-    loadStats();
-    const interval = setInterval(loadStats, 15000);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
+      // Fetch orders count
+      let oUrl = `${BACKEND_URL}/api/orders`;
+      if (user?.id) oUrl += `?artisan_id=${user.id}`;
+      const oRes = await fetch(oUrl);
+      if (oRes.ok) {
+        const oData = await oRes.json();
+        const orders = oData.orders || [];
+        const total = orders.reduce((sum: number, o: any) => sum + (parseFloat(o.total_amount) || 0), 0);
+        setStats(prev => ({ ...prev, orders: orders.length, earnings: total }));
+      }
+    } catch (_) {}
   }, [user?.id]);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchStats();
+    }, [fetchStats])
+  );
+
   return (
-    <View style={styles.row}>
-      <StatItem
-        Icon={Package}
-        value={String(activeListings)}
-        label={t('stats_active_listings')}
-        onPress={() => router.push('/listings')}
-      />
+    <View style={styles.strip}>
+      <View style={styles.item}>
+        <Text style={styles.number}>{stats.products}</Text>
+        <Text style={styles.label}>Products</Text>
+      </View>
       <View style={styles.divider} />
-      <StatItem
-        Icon={ShoppingBag}
-        value={String(totalOrders)}
-        label="Orders"
-        onPress={() => router.push('/inquiries')}
-      />
+      <View style={styles.item}>
+        <Text style={styles.number}>{stats.orders}</Text>
+        <Text style={styles.label}>Orders</Text>
+      </View>
       <View style={styles.divider} />
-      <StatItem
-        Icon={Star}
-        value={avgRating}
-        label="Rating"
-        onPress={() => router.push('/inquiries')}
-      />
+      <View style={styles.item}>
+        <Text style={styles.number}>₹{stats.earnings.toLocaleString('en-IN')}</Text>
+        <Text style={styles.label}>Earnings</Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
+  strip: {
     flexDirection: 'row',
+    backgroundColor: Colors.surfaceWarm,
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    marginTop: 4,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    marginBottom: 16,
   },
-  statItem: {
+  item: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
-  statIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statValue: {
-    fontSize: 18,
+  number: {
+    fontSize: 16,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
-    color: '#0D0D0D',
-    letterSpacing: -0.3,
+    color: Colors.primary,
   },
-  statLabel: {
+  label: {
     fontSize: 11,
     fontFamily: Fonts.body,
-    color: '#9CA3AF',
-    letterSpacing: 0.2,
+    color: Colors.textSecondary,
   },
   divider: {
     width: 1,
     height: 28,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: Colors.border,
   },
 });
+
+export default StatsStrip;
