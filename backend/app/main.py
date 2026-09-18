@@ -90,7 +90,6 @@ def serve_call_test():
     return {"status": "ok", "message": "Artisans Call Test Hub"}
 
 
-
 if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting server on port {PORT}...")

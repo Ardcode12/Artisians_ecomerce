@@ -163,7 +163,7 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'Artisans E-commerce Backend',
-    ip: '192.168.137.205',
+    ip: '10.45.69.254',
     port: PORT,
     savedProfilesCount: Object.keys(localDb).length,
   });
@@ -849,7 +849,7 @@ app.post('/api/profiles/:id/avatar', async (req, res) => {
 
         // Build reachable server URL
         const protocol = req.protocol || 'http';
-        const host = req.get('host') || `192.168.137.205:${PORT}`;
+        const host = req.get('host') || `10.45.69.254:${PORT}`;
         finalAvatarUrl = `${protocol}://${host}/uploads/${filename}`;
 
         // Attempt upload to Supabase Storage bucket 'avatars'
@@ -997,7 +997,7 @@ app.post('/api/enhance-image', upload.fields([{ name: 'image', maxCount: 1 }, { 
     try {
       const result = await runPython(scriptPath, [inputPath, outputPath], 60000);
       const protocol = req.protocol || 'http';
-      const host = req.get('host') || `192.168.137.205:${PORT}`;
+      const host = req.get('host') || `10.45.69.254:${PORT}`;
       const enhanced_image_url = `${protocol}://${host}/uploads/${outputFilename}`;
 
       console.log(`[ENHANCE IMAGE] Done: ${outputFilename} | Size: ${result.size || '1000x1000'}`);
@@ -1006,9 +1006,10 @@ app.post('/api/enhance-image', upload.fields([{ name: 'image', maxCount: 1 }, { 
       // Graceful fallback: return original upload URL so user isn't blocked
       console.warn(`[ENHANCE IMAGE] Python failed, returning original: ${pyErr.message}`);
       const protocol = req.protocol || 'http';
-      const host = req.get('host') || `192.168.137.205:${PORT}`;
-      const inputFilename = path.basename(inputPath);
-      const original_url = `${protocol}://${host}/uploads/${inputFilename}`;
+      const host = req.get('host') || `10.45.69.254:${PORT}`;
+      const enhanced_image_url = `${protocol}://${host}/uploads/${outputFilename}`;
+      const filename = path.basename(inputPath);
+      const original_url = `${protocol}://${host}/uploads/${filename}`;
       return res.json({
         success: false,
         enhanced_image_url: original_url,
@@ -1846,5 +1847,5 @@ app.get('/api/orders', async (req, res) => {
 // ── Start Server ─────────────────────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
 
-  console.log(`Artisans backend running on http://0.0.0.0:${PORT} (LAN: http://192.168.137.205:${PORT})`);
+  console.log(`Artisans backend running on http://0.0.0.0:${PORT} (LAN: http://10.45.69.254:${PORT})`);
 });

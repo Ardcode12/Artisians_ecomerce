@@ -173,7 +173,7 @@ def init_db():
         # 8. Instagram Accounts Linkage
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS instagram_accounts (
-            id                  SERIAL PRIMARY KEY,
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id             TEXT NOT NULL UNIQUE,
             ig_user_id          TEXT NOT NULL,
             ig_username         TEXT,

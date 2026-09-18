@@ -1,0 +1,19 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
+Style: Main,Segoe UI, Arial, Roboto, Helvetica,68,&H00FFFFFF,&H00000000,&H90000000,-1,0,0,0,100,100,0,0,1,5,3,2,80,80,380,1
+
+[Events]
+Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
+
+Dialogue: 0,0:00:00.00,0:00:04.99,Main,,0,0,0,,{\fad(150,150)}Ancient wisdom in your hands
+Dialogue: 0,0:00:04.99,0:00:09.97,Main,,0,0,0,,{\fad(150,150)}Woven with natural fibers
+Dialogue: 0,0:00:09.97,0:00:14.96,Main,,0,0,0,,{\fad(150,150)}Centuries of Indian heritage
+Dialogue: 0,0:00:14.96,0:00:19.95,Main,,0,0,0,,{\fad(150,150)}Authentic GI craft at ₹250
+Dialogue: 0,0:00:19.95,0:00:24.93,Main,,0,0,0,,{\fad(150,150)}Tap to bring heritage home

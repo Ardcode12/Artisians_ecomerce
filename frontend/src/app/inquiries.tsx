@@ -137,11 +137,6 @@ export default function InquiriesScreen() {
     if (tab === 'home') router.push('/');
     if (tab === 'listings') router.push('/listings');
     if (tab === 'add') router.push('/add-product');
-    if (tab === 'inquiries') {
-      setSelectedConversation(null);
-      setCurrentTab('messages');
-    }
-    if (tab === 'profile') router.push('/profile');
   };
 
   // Open Conversation
