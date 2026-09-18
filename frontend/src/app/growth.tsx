@@ -108,6 +108,7 @@ export default function GrowthHubScreen() {
     if (tab === 'home') router.push('/');
     if (tab === 'listings') router.push('/listings');
     if (tab === 'growth') router.push('/growth');
+    if (tab === 'analytical') router.push('/analytics' as any);
     if (tab === 'profile') router.push('/profile');
   };
 

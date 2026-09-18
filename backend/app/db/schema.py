@@ -1237,5 +1237,133 @@ def _seed_demand_forecasts():
                     ))
             logger.info("Seeded 5 suppliers and their raw materials & tools catalog.")
 
+        # 25. Listing Views table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS listing_views (
+            id TEXT PRIMARY KEY,
+            listing_id TEXT NOT NULL,
+            buyer_id TEXT,
+            viewed_at TEXT NOT NULL
+        );
+        """)
+
+        # 26. Product Price History table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS product_price_history (
+            id TEXT PRIMARY KEY,
+            product_id TEXT NOT NULL,
+            price REAL NOT NULL,
+            is_ai_suggested INTEGER DEFAULT 0,
+            note TEXT,
+            changed_at TEXT NOT NULL
+        );
+        """)
+
+        # 27. Activity Events table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS activity_events (
+            id TEXT PRIMARY KEY,
+            artisan_id TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            subtitle TEXT,
+            detail_id TEXT,
+            time_str TEXT,
+            date_group TEXT,
+            created_at TEXT NOT NULL
+        );
+        """)
+
+        # Seed analytics data if empty
+        cursor.execute("SELECT count(*) FROM activity_events;")
+        act_count = cursor.fetchone()[0]
+        if act_count == 0:
+            now_iso = datetime.now(timezone.utc).isoformat()
+            seeded_activities = [
+                {
+                    "id": "act_1",
+                    "artisan_id": "demo_artisan",
+                    "event_type": "order",
+                    "title": "Order #1042 confirmed",
+                    "subtitle": "Terracotta Vase, ₹1,100",
+                    "detail_id": "ord_1042",
+                    "time_str": "2:30 PM",
+                    "date_group": "Today",
+                },
+                {
+                    "id": "act_2",
+                    "artisan_id": "demo_artisan",
+                    "event_type": "listing",
+                    "title": "Listing published",
+                    "subtitle": "Handloom Dupatta",
+                    "detail_id": "prod_dupatta",
+                    "time_str": "11:15 AM",
+                    "date_group": "Today",
+                },
+                {
+                    "id": "act_3",
+                    "artisan_id": "demo_artisan",
+                    "event_type": "inquiry",
+                    "title": "New inquiry from Priya S.",
+                    "subtitle": '"Is this in blue?"',
+                    "detail_id": "inq_priya_1",
+                    "time_str": "9:02 AM",
+                    "date_group": "Today",
+                },
+                {
+                    "id": "act_4",
+                    "artisan_id": "demo_artisan",
+                    "event_type": "payment",
+                    "title": "Payment settled",
+                    "subtitle": "₹4,200 to your bank account",
+                    "detail_id": "pay_settle_1",
+                    "time_str": "5:20 PM",
+                    "date_group": "Yesterday",
+                },
+                {
+                    "id": "act_5",
+                    "artisan_id": "demo_artisan",
+                    "event_type": "social",
+                    "title": "Reel posted to Instagram",
+                    "subtitle": "Terracotta Vase",
+                    "detail_id": "reel_vase_1",
+                    "time_str": "1:10 PM",
+                    "date_group": "Yesterday",
+                },
+                {
+                    "id": "act_6",
+                    "artisan_id": "demo_artisan",
+                    "event_type": "order",
+                    "title": "Order #1038 delivered",
+                    "subtitle": "Woven Basket, ₹950",
+                    "detail_id": "ord_1038",
+                    "time_str": "4:30 PM",
+                    "date_group": "Sept 12, 2024",
+                },
+            ]
+
+            for a in seeded_activities:
+                cursor.execute("""
+                INSERT INTO activity_events (
+                    id, artisan_id, event_type, title, subtitle, detail_id,
+                    time_str, date_group, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """, (
+                    a["id"], a["artisan_id"], a["event_type"], a["title"], a["subtitle"],
+                    a["detail_id"], a["time_str"], a["date_group"], now_iso
+                ))
+
+            # Seed price history for Terracotta Vase
+            cursor.execute("""
+            INSERT INTO product_price_history (
+                id, product_id, price, is_ai_suggested, note, changed_at
+            ) VALUES 
+            ('pph_1', 'prod_vase', 1100.0, 1, 'Published at ₹1,100 (AI suggested)', 'Aug 28, 2024'),
+            ('pph_2', 'prod_vase', 950.0, 0, 'Changed to ₹950', 'Sept 10, 2024');
+            """)
+
+            logger.info("Seeded initial analytics activities and product price histories.")
+
+
 
 

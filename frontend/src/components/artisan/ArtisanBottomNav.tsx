@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, Package, TrendingUp } from 'lucide-react-native';
+import { Home, Package, TrendingUp, BarChart3 } from 'lucide-react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 
-// 3-tab nav: Home | Products | Growth (Profile is accessible via the top-right header icon)
-export type ArtisanTab = 'home' | 'listings' | 'growth' | 'add' | 'inquiries' | 'profile';
+// 4-tab nav: Home | Products | Growth | Analytical (Profile is accessible via the top-right header icon)
+export type ArtisanTab = 'home' | 'listings' | 'growth' | 'analytical' | 'add' | 'inquiries' | 'profile';
 
 interface ArtisanBottomNavProps {
   activeTab: ArtisanTab;
@@ -68,6 +68,22 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
           </Text>
         </TouchableOpacity>
 
+        {/* Analytical */}
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => onTabChange('analytical')}
+          activeOpacity={0.75}
+        >
+          <BarChart3
+            size={22}
+            color={activeTab === 'analytical' ? Colors.primary : Colors.navInactive}
+            strokeWidth={activeTab === 'analytical' ? 2.2 : 1.6}
+          />
+          <Text style={[styles.tabLabel, activeTab === 'analytical' && styles.tabLabelActive]}>
+            Analytical
+          </Text>
+        </TouchableOpacity>
+
       </View>
     </View>
   );
@@ -90,7 +106,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingTop: 8,
-    paddingHorizontal: 24,
+    paddingHorizontal: 12,
     height: 60,
   },
 

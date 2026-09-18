@@ -47,7 +47,7 @@ const DAILY_DATA = [
 const maxAmount = Math.max(...DAILY_DATA.map((d) => d.amount));
 
 export default function EarningsScreen() {
-  const [activeTab, setActiveTab] = useState<ArtisanTab>('home');
+  const [activeTab, setActiveTab] = useState<ArtisanTab>('analytical');
   const [activePeriod, setActivePeriod] = useState('7 Days');
   const [totalSales, setTotalSales] = useState(32500);
   const [totalOrders, setTotalOrders] = useState(18);
@@ -95,6 +95,7 @@ export default function EarningsScreen() {
     if (tab === 'home') router.push('/');
     if (tab === 'listings') router.push('/listings');
     if (tab === 'growth') router.push('/growth' as any);
+    if (tab === 'analytical') router.push('/earnings' as any);
     if (tab === 'add') router.push('/add-product');
     if (tab === 'profile') router.push('/profile');
   };

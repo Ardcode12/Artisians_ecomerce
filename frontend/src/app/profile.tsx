@@ -101,6 +101,7 @@ export default function ProfileScreen() {
     if (tab === 'home') router.push('/');
     if (tab === 'listings') router.push('/listings');
     if (tab === 'growth') router.push('/growth' as any);
+    if (tab === 'analytical') router.push('/analytics' as any);
   };
 
   const handleSignOut = async () => {
