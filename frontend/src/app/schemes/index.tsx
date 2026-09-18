@@ -27,11 +27,15 @@ import {
   Lightbulb,
   X,
   CheckCircle2,
+  Volume2,
+  Square,
 } from 'lucide-react-native';
 
 import { api } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { Fonts, Shadow } from '@/constants/artisan-theme';
+import { isSpeechSupported, stopSpeech } from '@/utils/speech';
+import { getSelectedLanguage, speak as centralSpeak, AppLanguage } from '@/utils/language-utils';
 
 interface Scheme {
   id: string;
@@ -76,6 +80,37 @@ export default function SchemesListScreen() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [quizModalVisible, setQuizModalVisible] = useState<boolean>(false);
+  const [speakingSchemeId, setSpeakingSchemeId] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      stopSpeech();
+    };
+  }, []);
+
+  const handleToggleSpeech = (scheme: Scheme) => {
+    if (!isSpeechSupported()) return;
+
+    if (speakingSchemeId === scheme.id) {
+      stopSpeech();
+      setSpeakingSchemeId(null);
+      return;
+    }
+
+    stopSpeech();
+    const currentLang = (getSelectedLanguage() || 'en') as AppLanguage;
+    const summary = scheme.short_summary || scheme.simple_summary || scheme.name;
+    const textToRead = `${scheme.name}. ${summary}`;
+
+    setSpeakingSchemeId(scheme.id);
+    centralSpeak(textToRead, currentLang, {
+      rate: 0.95,
+      pitch: 1.0,
+      onDone: () => setSpeakingSchemeId(null),
+      onStopped: () => setSpeakingSchemeId(null),
+      onError: () => setSpeakingSchemeId(null),
+    });
+  };
 
   const craftName = profile?.craft_type || profile?.craft_custom || 'Wood Carving';
   const stateName = profile?.location || 'Tamil Nadu';
@@ -347,6 +382,22 @@ export default function SchemesListScreen() {
                           {visual.oneLiner}
                         </Text>
                       </View>
+
+                      {/* Speech Audio Button */}
+                      <TouchableOpacity
+                        style={s.audioBtn}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleToggleSpeech(scheme);
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        {speakingSchemeId === scheme.id ? (
+                          <Square size={15} color="#DC2626" fill="#DC2626" />
+                        ) : (
+                          <Volume2 size={17} color="#165B33" />
+                        )}
+                      </TouchableOpacity>
 
                       {/* Chevron */}
                       <ChevronRight size={18} color="#94A3B8" strokeWidth={2.4} />
@@ -693,6 +744,14 @@ const s = StyleSheet.create({
     fontFamily: Fonts.body,
     color: '#64748B',
     marginTop: 2,
+  },
+  audioBtn: {
+    padding: 7,
+    borderRadius: 20,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+    marginRight: 4,
   },
 
   /* Quiz Card */

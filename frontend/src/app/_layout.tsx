@@ -52,7 +52,6 @@ export default function RootLayout() {
               <Stack.Screen name="analytics/history" />
               <Stack.Screen name="analytics/product/[id]" />
               {/* Government Schemes Screens */}
-              <Stack.Screen name="schemes" />
               <Stack.Screen name="schemes/index" />
               <Stack.Screen name="schemes/[id]" />
               {/* Growth - Design Ideas Screens */}
