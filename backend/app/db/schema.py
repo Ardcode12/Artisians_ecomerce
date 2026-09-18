@@ -171,9 +171,10 @@ def init_db():
         """)
 
         # 8. Instagram Accounts Linkage
-        cursor.execute("""
+        ig_pk = "SERIAL PRIMARY KEY" if is_postgres() else "INTEGER PRIMARY KEY AUTOINCREMENT"
+        cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS instagram_accounts (
-            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            id                  {ig_pk},
             user_id             TEXT NOT NULL UNIQUE,
             ig_user_id          TEXT NOT NULL,
             ig_username         TEXT,
