@@ -28,24 +28,61 @@ def get_whisper_model():
     return _whisper_model
 
 
-def transcribe_audio_file(audio_path: str) -> str:
-    """Transcribe audio file to text using faster-whisper."""
-    whisper = get_whisper_model()
-    if not whisper:
+def transcribe_with_sarvam(audio_path: str, language_code: Optional[str] = None) -> str:
+    """Transcribe audio using Sarvam AI Saarika STT (optimized for Indian languages & English)."""
+    from app.config import SARVAM_API_KEY
+    if not SARVAM_API_KEY:
         return ""
     try:
-        segments, info = whisper.transcribe(
-            str(audio_path),
-            beam_size=5,
-            language=None,
-            task="translate",
-            vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=500)
-        )
-        return " ".join([seg.text.strip() for seg in segments]).strip()
+        url = "https://api.sarvam.ai/speech-to-text"
+        headers = {"api-subscription-key": SARVAM_API_KEY}
+        data = {"model": "saarika:v2.5"}
+        if language_code:
+            data["language_code"] = language_code
+        
+        from pathlib import Path
+        filename = Path(audio_path).name or "audio.wav"
+        with open(audio_path, "rb") as f:
+            files = {"file": (filename, f.read(), "audio/wav")}
+            resp = requests.post(url, headers=headers, files=files, data=data, timeout=10)
+            if resp.ok:
+                res_data = resp.json()
+                transcript = res_data.get("transcript", "").strip()
+                if transcript:
+                    logger.info(f"Sarvam STT success: '{transcript}'")
+                    return transcript
     except Exception as e:
-        logger.warning(f"Whisper transcription exception: {e}")
-        return ""
+        logger.warning(f"Sarvam STT request failed: {e}")
+    return ""
+
+
+def transcribe_audio_file(audio_path: str, language_code: Optional[str] = None) -> str:
+    """Transcribe audio file to text using local on-device faster-whisper with Sarvam fallback."""
+    # 1. Primary: Local on-device Faster-Whisper (100% offline, zero network blocks or DNS issues)
+    whisper = get_whisper_model()
+    if whisper:
+        try:
+            segments, info = whisper.transcribe(
+                str(audio_path),
+                beam_size=3,
+                language=None,
+                task="transcribe",
+                vad_filter=True,
+                vad_parameters=dict(min_silence_duration_ms=300)
+            )
+            whisper_text = " ".join([seg.text.strip() for seg in segments]).strip()
+            if whisper_text:
+                logger.info(f"Local faster-whisper STT success: '{whisper_text}'")
+                return whisper_text
+        except Exception as e:
+            logger.warning(f"Local Whisper transcription exception: {e}")
+
+    # 2. Secondary fallback: Sarvam AI Saarika (if external connectivity available)
+    sarvam_res = transcribe_with_sarvam(audio_path, language_code)
+    if sarvam_res:
+        return sarvam_res
+
+    return ""
 
 
 def generate_descriptions(

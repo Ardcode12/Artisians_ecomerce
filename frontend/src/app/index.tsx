@@ -190,8 +190,10 @@ export default function ArtisanHomeScreen() {
     }
 
     try {
-      await centralSpeak(textToSpeak, currentAppLang, () => {
-        setSpeakingKey(null);
+      await centralSpeak(textToSpeak, currentAppLang, {
+        onDone: () => setSpeakingKey(null),
+        onStopped: () => setSpeakingKey(null),
+        onError: () => setSpeakingKey(null),
       });
     } catch (err) {
       console.warn('[Home Speech] error:', err);
@@ -211,8 +213,8 @@ export default function ArtisanHomeScreen() {
     return <SelectLanguageScreen />;
   }
 
-  // Always show login if no active session (QR scan → login page)
-  if (!session) return <WelcomeScreen />;
+  // Always show login if no active session or profile (QR scan → login page)
+  if (!session && !profile) return <WelcomeScreen />;
   if (userRole === 'buyer') return <BuyerHomeScreen />;
 
   const handleTabChange = (tab: ArtisanTab) => {

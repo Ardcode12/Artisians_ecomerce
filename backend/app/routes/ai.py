@@ -97,6 +97,78 @@ async def enhance_image_endpoint(
                 pass
 
 
+@router.post("/transcribe")
+async def transcribe_audio_endpoint(
+    request: Request,
+    audio: Optional[UploadFile] = File(None),
+    file: Optional[UploadFile] = File(None),
+    language: Optional[str] = Form(None)
+):
+    """
+    Dedicated Audio Speech-to-Text Endpoint.
+    Accepts:
+    - Multipart audio file (audio or file)
+    - JSON with audio_base64 or base64
+    Returns transcribed text using Sarvam AI & local Faster-Whisper.
+    """
+    temp_audio_path = None
+    upload_item = audio or file
+    lang_code = language
+
+    # 1. Handle multipart audio file
+    if upload_item and upload_item.filename:
+        temp_id = uuid.uuid4().hex[:8]
+        ext = Path(upload_item.filename).suffix.lower() or ".wav"
+        temp_audio_path = UPLOADS_DIR / f"voice-{temp_id}{ext}"
+        with open(temp_audio_path, "wb") as buffer:
+            shutil.copyfileobj(upload_item.file, buffer)
+
+    # 2. Handle base64 JSON payload
+    if not temp_audio_path:
+        try:
+            body = await request.json()
+            raw_b64 = body.get("audio_base64") or body.get("base64") or body.get("audio")
+            lang_code = lang_code or body.get("language")
+            if raw_b64:
+                clean_b64 = raw_b64.split(",")[-1].strip()
+                if len(clean_b64) > 10:
+                    temp_id = uuid.uuid4().hex[:8]
+                    temp_audio_path = UPLOADS_DIR / f"voice-{temp_id}.wav"
+                    with open(temp_audio_path, "wb") as buffer:
+                        buffer.write(base64.b64decode(clean_b64))
+        except Exception:
+            pass
+
+    if not temp_audio_path or not temp_audio_path.exists():
+        return {"success": False, "text": "", "error": "No audio file or base64 payload provided."}
+
+    try:
+        # Map common lang codes to BCP-47 for Sarvam if needed
+        sarvam_lang = None
+        if lang_code:
+            clean_l = lang_code.lower()
+            if "ta" in clean_l:
+                sarvam_lang = "ta-IN"
+            elif "hi" in clean_l:
+                sarvam_lang = "hi-IN"
+            elif "en" in clean_l:
+                sarvam_lang = "en-IN"
+
+        transcript = transcribe_audio_file(str(temp_audio_path), language_code=sarvam_lang)
+        # Clean any trailing punctuation if it's a name
+        clean_text = transcript.strip().rstrip(".,")
+        return {"success": True, "text": clean_text}
+    except Exception as err:
+        logger.error(f"Transcription error: {err}", exc_info=True)
+        return {"success": False, "text": "", "error": str(err)}
+    finally:
+        if temp_audio_path and temp_audio_path.exists():
+            try:
+                temp_audio_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+
 @router.post("/generate-description")
 async def generate_description_endpoint(
     request: Request,

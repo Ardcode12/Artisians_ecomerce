@@ -294,7 +294,7 @@ export default function WelcomeScreen() {
 
   const handleGetStarted = () => {
     stopSpeech();
-    router.push('/auth/language');
+    router.push('/signup');
   };
 
   if (!fontsLoaded) return null;

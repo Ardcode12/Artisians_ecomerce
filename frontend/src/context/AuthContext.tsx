@@ -70,6 +70,7 @@ interface AuthContextType {
     upi_id?: string;
   }) => Promise<{ success: boolean; profile?: ArtisanProfile; error?: string }>;
   uploadAvatar: (imageUriOrBase64: string) => Promise<{ success: boolean; avatar_url?: string; error?: string }>;
+  establishArtisanSession: (profileData: Partial<ArtisanProfile> & { phone: string; name: string }) => Promise<{ success: boolean; profile: ArtisanProfile }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -881,6 +882,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBuyerOnboardingData(defaultBuyerOnboarding);
   };
 
+  const establishArtisanSession = async (
+    profileData: Partial<ArtisanProfile> & { phone: string; name: string }
+  ): Promise<{ success: boolean; profile: ArtisanProfile }> => {
+    const rawPhone = profileData.phone;
+    const formattedPhone = rawPhone.startsWith('+') ? rawPhone : `+91${rawPhone.trim().replace(/[^0-9]/g, '')}`;
+    const last10 = rawPhone.replace(/[^0-9]/g, '').slice(-10).padStart(10, '0');
+    const deterministicId = profileData.id || `11111111-2222-3333-4444-91${last10}`;
+
+    const syntheticUser: User = {
+      id: deterministicId,
+      phone: formattedPhone,
+      role: 'authenticated',
+      aud: 'authenticated',
+      app_metadata: { provider: 'phone' },
+      user_metadata: {},
+      created_at: new Date().toISOString(),
+    } as any;
+
+    const syntheticSession: Session = {
+      access_token: 'dev_token_' + deterministicId,
+      refresh_token: 'dev_refresh_' + Date.now(),
+      expires_in: 86400,
+      token_type: 'bearer',
+      user: syntheticUser,
+    } as any;
+
+    const completeProfile: ArtisanProfile = {
+      ...profileData,
+      id: deterministicId,
+      phone: formattedPhone,
+      name: profileData.name,
+      shop_name: profileData.shop_name,
+      craft_type: profileData.craft_type,
+      craft_custom: profileData.craft_custom,
+      location: profileData.location,
+      bio: profileData.bio,
+      avatar_url: profileData.avatar_url,
+      language: profileData.language || 'English',
+      is_onboarded: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as ArtisanProfile;
+
+    setUser(syntheticUser);
+    setSession(syntheticSession);
+    setProfile(completeProfile);
+    setUserRole('artisan');
+    setPhone(rawPhone);
+
+    try {
+      await AsyncStorage.setItem('@artisanlink_auth_user', JSON.stringify(syntheticUser));
+      await AsyncStorage.setItem('@artisanlink_auth_session', JSON.stringify(syntheticSession));
+      await AsyncStorage.setItem('@artisanlink_auth_phone', formattedPhone);
+      await AsyncStorage.setItem('@artisanlink_artisan_profile', JSON.stringify(completeProfile));
+    } catch (_) {}
+
+    return { success: true, profile: completeProfile };
+  };
+
   const refreshProfile = async () => {
     if (user?.id) {
       const phoneVal = user.phone || phone;
@@ -915,6 +975,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateProfile,
         updateBankDetails,
         uploadAvatar,
+        establishArtisanSession,
         signOut,
         refreshProfile,
       }}

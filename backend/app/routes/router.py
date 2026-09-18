@@ -17,6 +17,7 @@ from app.routes.ai import router as ai_router
 from app.routes.instagram import router as instagram_router
 from app.routes.reels import router as reels_router
 from app.routes.schemes import router as schemes_router
+from app.routes.location import router as location_router
 
 api_router = APIRouter()
 
@@ -31,6 +32,7 @@ api_router.include_router(orders_router)
 api_router.include_router(reviews_router)
 api_router.include_router(ai_router)
 api_router.include_router(schemes_router)
+api_router.include_router(location_router)
 
 # Mount Instagram & Reels under /api and also root aliases for spec compatibility
 api_router.include_router(instagram_router, prefix="/api")

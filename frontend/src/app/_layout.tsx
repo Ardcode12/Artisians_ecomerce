@@ -25,6 +25,7 @@ export default function RootLayout() {
               <Stack.Screen name="select-language" />
               <Stack.Screen name="index" />
               <Stack.Screen name="welcome" />
+              <Stack.Screen name="signup" />
               <Stack.Screen name="auth/phone" />
               <Stack.Screen name="auth/otp" />
               <Stack.Screen name="auth/details" />
