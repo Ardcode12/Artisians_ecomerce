@@ -176,6 +176,24 @@ Return ONLY valid JSON:
 
 def suggest_price(product_title, craft_type, material_cost_raw, serpapi_key="", gemini_key=""):
     try:
+        from app.services.ai.price_suggester import suggest_price as modular_suggest_price
+        res = modular_suggest_price(
+            product_title=product_title,
+            craft_type=craft_type,
+            material_cost=float(material_cost_raw) if material_cost_raw else 0.0
+        )
+        if res and res.get("success"):
+            result_str = json.dumps(res, ensure_ascii=False)
+            try:
+                sys.stdout.buffer.write(result_str.encode('utf-8') + b'\n')
+                sys.stdout.buffer.flush()
+            except Exception:
+                print(result_str)
+            return res
+    except Exception:
+        pass
+
+    try:
         material_cost = float(material_cost_raw)
     except (ValueError, TypeError):
         material_cost = 0.0
