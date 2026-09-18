@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import {
   useFonts,
@@ -26,13 +26,47 @@ import {
 } from '@expo-google-fonts/inter';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { isSpeechSupported, speakText, stopSpeech } from '@/utils/speech';
 
 const BG = '#F5F0E8';
+const INACTIVITY_DELAY = 10000;
+
+const OTP_INITIAL_TEXT: Record<string, string> = {
+  en: 'Please enter the OTP sent to your phone.',
+  ta: 'உங்கள் தொலைபேசிக்கு அனுப்பப்பட்ட OTP எண்ணை உள்ளிடவும்.',
+  hi: 'आपके फ़ोन पर भेजा गया OTP दर्ज करें।',
+  te: 'మీ ఫోన్‌కు పంపిన OTPని నమోదు చేయండి.',
+  bn: 'আপনার ফোনে পাঠানো ওটিপি লিখুন।',
+  mr: 'तुमच्या फोनवर पाठवलेला OTP टाका.',
+  pa: 'ਤੁਹਾਡੇ ਫ਼ੋਨ \'ਤੇ ਭੇਜਿਆ ਗਿਆ OTP ਦਰਜ ਕਰੋ।',
+};
+
+const PLEASE_PROCEED_TEXT: Record<string, string> = {
+  en: 'Please proceed.',
+  ta: 'தயவுசெய்து தொடரவும்.',
+  hi: 'कृपया आगे बढ़ें।',
+  te: 'దయచేసి కొనసాగండి.',
+  bn: 'দয়া করে এগিয়ে চলুন।',
+  mr: 'कृपया पुढे जा.',
+  pa: 'ਕਿਰਪਾ ਕਰਕੇ ਅੱਗੇ ਵਧੋ।',
+};
+
+const BCP47_MAP: Record<string, string> = {
+  en: 'en-IN',
+  ta: 'ta-IN',
+  hi: 'hi-IN',
+  te: 'te-IN',
+  bn: 'bn-IN',
+  mr: 'mr-IN',
+  pa: 'pa-IN',
+};
 
 export default function OtpScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { phone, flowMode, userRole, verifyOtp, sendOtp } = useAuth();
+  const { language } = useLanguage();
 
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [errorMsg, setErrorMsg] = useState('');
@@ -41,6 +75,9 @@ export default function OtpScreen() {
   const [countdown, setCountdown] = useState(30);
 
   const inputsRef = useRef<(TextInput | null)[]>([]);
+  const inactivityTimerRef = useRef<any>(null);
+  const fallbackTimerRef = useRef<any>(null);
+  const hasSpokenCompleteRef = useRef<boolean>(false);
 
   const [fontsLoaded] = useFonts({
     Poppins_600SemiBold,
@@ -49,6 +86,51 @@ export default function OtpScreen() {
     Inter_500Medium,
   });
 
+  const stopAllSpeechAndTimers = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+    stopSpeech();
+  }, []);
+
+  const speakAndScheduleInactivity = useCallback(
+    (text: string, langCode: string, reminderText: string, reminderLangCode: string) => {
+      stopAllSpeechAndTimers();
+
+      if (!isSpeechSupported()) return;
+
+      let timerStarted = false;
+      const startTimer = () => {
+        if (timerStarted) return;
+        timerStarted = true;
+        if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = setTimeout(() => {
+          speakAndScheduleInactivity(reminderText, reminderLangCode, reminderText, reminderLangCode);
+        }, INACTIVITY_DELAY);
+      };
+
+      speakText(text, {
+        language: langCode,
+        rate: 0.95,
+        pitch: 1.0,
+        onDone: startTimer,
+        onError: startTimer,
+        onStopped: () => {},
+      });
+
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = setTimeout(() => {
+        if (!timerStarted) startTimer();
+      }, 4000);
+    },
+    [stopAllSpeechAndTimers]
+  );
+
   useEffect(() => {
     if (countdown <= 0) return;
     const timer = setInterval(() => {
@@ -56,6 +138,26 @@ export default function OtpScreen() {
     }, 1000);
     return () => clearInterval(timer);
   }, [countdown]);
+
+  // Automatically speak OTP instruction once in the selected language when focused
+  useFocusEffect(
+    useCallback(() => {
+      hasSpokenCompleteRef.current = false;
+      stopAllSpeechAndTimers();
+
+      const langCode = BCP47_MAP[language] || 'en-IN';
+      const initialText = OTP_INITIAL_TEXT[language] || OTP_INITIAL_TEXT.en;
+
+      const initTimer = setTimeout(() => {
+        speakAndScheduleInactivity(initialText, langCode, initialText, langCode);
+      }, 300);
+
+      return () => {
+        clearTimeout(initTimer);
+        stopAllSpeechAndTimers();
+      };
+    }, [language, speakAndScheduleInactivity, stopAllSpeechAndTimers])
+  );
 
   if (!fontsLoaded) return null;
 
@@ -66,6 +168,25 @@ export default function OtpScreen() {
     newOtp[index] = cleanChar;
     setOtp(newOtp);
     if (cleanChar && index < 5) inputsRef.current[index + 1]?.focus();
+
+    const fullCode = newOtp.join('');
+    const langCode = BCP47_MAP[language] || 'en-IN';
+
+    // If reached 6 digits, speak completion message ("Please proceed.")
+    if (fullCode.length === 6) {
+      if (!hasSpokenCompleteRef.current) {
+        hasSpokenCompleteRef.current = true;
+        const proceedText = PLEASE_PROCEED_TEXT[language] || PLEASE_PROCEED_TEXT.en;
+        speakAndScheduleInactivity(proceedText, langCode, proceedText, langCode);
+      }
+    } else {
+      hasSpokenCompleteRef.current = false;
+      const initialText = OTP_INITIAL_TEXT[language] || OTP_INITIAL_TEXT.en;
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = setTimeout(() => {
+        speakAndScheduleInactivity(initialText, langCode, initialText, langCode);
+      }, INACTIVITY_DELAY);
+    }
   };
 
   const handleKeyPress = (e: any, index: number) => {
@@ -84,6 +205,7 @@ export default function OtpScreen() {
 
   const handleVerify = async () => {
     if (!isComplete) return;
+    stopAllSpeechAndTimers();
     setLoading(true);
     setErrorMsg('');
     setHasErrorBorder(false);
@@ -125,6 +247,10 @@ export default function OtpScreen() {
     setCountdown(30);
     setErrorMsg('');
     setHasErrorBorder(false);
+    hasSpokenCompleteRef.current = false;
+    const initialText = OTP_INITIAL_TEXT[language] || OTP_INITIAL_TEXT.en;
+    const langCode = BCP47_MAP[language] || 'en-IN';
+    speakAndScheduleInactivity(initialText, langCode, initialText, langCode);
     await sendOtp(phone);
   };
 

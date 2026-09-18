@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ScrollView,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -21,10 +22,19 @@ import {
   Inter_400Regular,
   Inter_500Medium,
 } from '@expo-google-fonts/inter';
+import { Volume2, Square, Globe } from 'lucide-react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
+import { isSpeechSupported, stopSpeech } from '@/utils/speech';
+import { getSelectedLanguage, speak as centralSpeak, AppLanguage } from '@/utils/language-utils';
 
 const { width } = Dimensions.get('window');
 const BG = '#F5F0E8';
+
+const WELCOME_SPOKEN_TEXTS: Record<string, string> = {
+  en: "Welcome to Kala Udyam! This app helps artisans like you sell your handmade products and find money, loans, and training programs for your craft. Tap the Get Started button below to begin.",
+  hi: "कला उद्यम में आपका स्वागत है! यह ऐप आप जैसे कारीगरों को अपने हस्तनिर्मित उत्पाद बेचने और अपने शिल्प के लिए धन, ऋण और प्रशिक्षण कार्यक्रम खोजने में मदद करता है। शुरू करने के लिए नीचे दिए गए 'आरंभ करें' बटन पर टैप करें।",
+  ta: "கலா உத்யமிற்கு நல்வரவு! இந்த செயலி உங்களைப் போன்ற கைவினைஞர்கள் தங்கள் கைவினைப் பொருட்களை விற்கவும், நிதி, கடன் மற்றும் பயிற்சித் திட்டங்களைப் பெறவும் உதவுகிறது. தொடங்க கீழே உள்ள 'தொடங்குங்கள்' பொத்தானைத் தட்டவும்.",
+};
 
 // ── Plant / Leaf Logo (SVG-style shapes) ─────────────────────────────────────
 function PlantLogo({ size = 80 }: { size?: number }) {
@@ -238,6 +248,7 @@ export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [activeSlide, setActiveSlide] = useState(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   const [fontsLoaded] = useFonts({
@@ -247,7 +258,34 @@ export default function WelcomeScreen() {
     Inter_500Medium,
   });
 
-  if (!fontsLoaded) return null;
+  const supported = isSpeechSupported();
+
+  const handleToggleSpeech = () => {
+    if (!supported) return;
+
+    if (isSpeaking) {
+      stopSpeech();
+      setIsSpeaking(false);
+      return;
+    }
+
+    const currentLang = getSelectedLanguage();
+    const spokenText = WELCOME_SPOKEN_TEXTS[currentLang] || WELCOME_SPOKEN_TEXTS.en;
+    setIsSpeaking(true);
+    centralSpeak(spokenText, currentLang, {
+      rate: 0.95,
+      pitch: 1.0,
+      onDone: () => setIsSpeaking(false),
+      onStopped: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      stopSpeech();
+    };
+  }, []);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / width);
@@ -255,12 +293,56 @@ export default function WelcomeScreen() {
   };
 
   const handleGetStarted = () => {
+    stopSpeech();
     router.push('/auth/language');
   };
+
+  if (!fontsLoaded) return null;
 
   return (
     <View style={[styles.root, { paddingBottom: Math.max(insets.bottom, 24) }]}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
+
+      {/* ── Top Bar with Language Selector and Audio Guide ── */}
+      <View style={[styles.welcomeTopBar, { top: insets.top + 14 }]}>
+        <TouchableOpacity
+          style={styles.welcomeLangPill}
+          onPress={() => router.push({ pathname: '/select-language', params: { canGoBack: 'true' } })}
+          activeOpacity={0.85}
+          accessibilityLabel="Change Language"
+        >
+          <Globe size={15} color={Colors.primary} strokeWidth={2} />
+          <Text style={styles.welcomeLangText}>
+            {getSelectedLanguage() === 'ta' ? 'தமிழ்' : getSelectedLanguage() === 'hi' ? 'हिंदी' : 'English'}
+          </Text>
+        </TouchableOpacity>
+
+        {supported && (
+          <TouchableOpacity
+            style={[
+              styles.welcomeListenPill,
+              isSpeaking && styles.welcomeListenPillActive,
+            ]}
+            onPress={handleToggleSpeech}
+            activeOpacity={0.85}
+            accessibilityLabel={
+              isSpeaking ? 'Stop listening to introduction' : 'Listen to app voice introduction'
+            }
+            accessibilityRole="button"
+          >
+            {isSpeaking ? (
+              <Square size={15} color="#FFFFFF" fill="#FFFFFF" />
+            ) : (
+              <Volume2 size={18} color="#FFFFFF" strokeWidth={2.3} />
+            )}
+            <Text style={styles.welcomeListenText}>
+              {isSpeaking
+                ? (getSelectedLanguage() === 'ta' ? 'நிறுத்து' : getSelectedLanguage() === 'hi' ? 'रोकें' : 'Stop')
+                : (getSelectedLanguage() === 'ta' ? 'கேட்க' : getSelectedLanguage() === 'hi' ? 'सुनें' : 'Listen')}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Paged slides */}
       <ScrollView
@@ -429,5 +511,73 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontFamily: Fonts.heading,
     fontWeight: '600',
+  },
+  welcomeTopBar: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 99,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  welcomeLangPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#E2D5C3',
+    minHeight: 44,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        boxShadow: '0 3px 8px rgba(0, 0, 0, 0.08)',
+      },
+      default: {
+        ...Shadow.card,
+      },
+    }),
+  },
+  welcomeLangText: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: Colors.primary,
+  },
+  welcomeListenPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#059669',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
+    minHeight: 44,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        boxShadow: '0 3px 10px rgba(5, 150, 105, 0.35)',
+      },
+      default: {
+        ...Shadow.card,
+      },
+    }),
+  },
+  welcomeListenPillActive: {
+    backgroundColor: '#DC2626',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 3px 10px rgba(220, 38, 38, 0.45)',
+      },
+    }),
+  },
+  welcomeListenText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
   },
 });

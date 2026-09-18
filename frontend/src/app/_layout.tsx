@@ -22,6 +22,7 @@ export default function RootLayout() {
         <LanguageProvider>
           <CartProvider>
             <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+              <Stack.Screen name="select-language" />
               <Stack.Screen name="index" />
               <Stack.Screen name="welcome" />
               <Stack.Screen name="auth/phone" />

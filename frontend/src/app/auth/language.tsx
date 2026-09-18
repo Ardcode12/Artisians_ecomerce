@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import {
   useFonts,
@@ -22,8 +23,10 @@ import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { LanguageCode } from '@/i18n/translations';
+import { isSpeechSupported, speakText, stopSpeech } from '@/utils/speech';
 
 const BG = '#F5F0E8';
+const INACTIVITY_DELAY = 10000;
 
 interface LanguageOption {
   code: LanguageCode;
@@ -39,6 +42,42 @@ const LANGUAGES: LanguageOption[] = [
   { code: 'mr', nativeLabel: 'मराठी' },
 ];
 
+const BCP47_MAP: Record<string, string> = {
+  en: 'en-IN',
+  ta: 'ta-IN',
+  hi: 'hi-IN',
+  te: 'te-IN',
+  bn: 'bn-IN',
+  mr: 'mr-IN',
+};
+
+const LANG_NAMES: Record<string, string> = {
+  en: 'English',
+  ta: 'Tamil',
+  hi: 'Hindi',
+  te: 'Telugu',
+  bn: 'Bengali',
+  mr: 'Marathi',
+};
+
+const LANG_CONFIRMATION: Record<string, string> = {
+  en: 'You selected English. Please select the Continue button.',
+  ta: 'நீங்கள் தமிழ் மொழியைத் தேர்ந்தெடுத்துள்ளீர்கள். தொடர, தொடரவும் பொத்தானைத் தேர்ந்தெடுக்கவும்.',
+  hi: 'आपने हिन्दी भाषा चुनी है। आगे बढ़ने के लिए जारी रखें बटन दबाएं।',
+  te: 'మీరు తెలుగు భాషను ఎంచుకున్నారు. కొనసాగడానికి కొనసాగించు బటన్‌ను ఎంచుకోండి.',
+  bn: 'আপনি বাংলা ভাষা বেছে নিয়েছেন। এগিয়ে যেতে এগিয়ে চলুন বোতাম নির্বাচন করুন।',
+  mr: 'तुम्ही मराठी भाषा निवडली आहे. पुढे जाण्यासाठी सुरू ठेवा बटण निवडा.',
+};
+
+const LANG_REMINDER_AFTER_SELECT: Record<string, string> = {
+  en: 'Please select the Continue button to continue.',
+  ta: 'தொடர, தொடரவும் பொத்தானைத் தேர்ந்தெடுக்கவும்.',
+  hi: 'आगे बढ़ने के लिए कृपया जारी रखें बटन दबाएं।',
+  te: 'కొనసాగడానికి దయచేసి కొనసాగించు బటన్‌ను ఎంచుకోండి.',
+  bn: 'এগিয়ে যেতে দয়া করে এগিয়ে চলুন বোতাম নির্বাচন করুন।',
+  mr: 'पुढे जाण्यासाठी कृपया सुरू ठेवा बटण निवडा.',
+};
+
 export default function LanguageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -49,6 +88,10 @@ export default function LanguageScreen() {
     (onboardingData.language as LanguageCode) || currentLang || 'ta'
   );
 
+  const inactivityTimerRef = useRef<any>(null);
+  const fallbackTimerRef = useRef<any>(null);
+  const selectedRef = useRef<LanguageCode | null>(null);
+
   const [fontsLoaded] = useFonts({
     Poppins_600SemiBold,
     Poppins_700Bold,
@@ -56,14 +99,90 @@ export default function LanguageScreen() {
     Inter_500Medium,
   });
 
+  const stopAllSpeechAndTimers = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+    stopSpeech();
+  }, []);
+
+  const speakAndScheduleInactivity = useCallback(
+    (text: string, langCode: string, reminderText: string, reminderLangCode: string) => {
+      stopAllSpeechAndTimers();
+
+      if (!isSpeechSupported()) return;
+
+      let timerStarted = false;
+      const startTimer = () => {
+        if (timerStarted) return;
+        timerStarted = true;
+        if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = setTimeout(() => {
+          speakAndScheduleInactivity(reminderText, reminderLangCode, reminderText, reminderLangCode);
+        }, INACTIVITY_DELAY);
+      };
+
+      speakText(text, {
+        language: langCode,
+        rate: 0.95,
+        pitch: 1.0,
+        onDone: startTimer,
+        onError: startTimer,
+        onStopped: () => {},
+      });
+
+      // Fallback timer just in case onDone does not fire
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = setTimeout(() => {
+        if (!timerStarted) startTimer();
+      }, 4000);
+    },
+    [stopAllSpeechAndTimers]
+  );
+
+  // Automatically speak welcome instruction once when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      selectedRef.current = null;
+      stopAllSpeechAndTimers();
+
+      const initTimer = setTimeout(() => {
+        speakAndScheduleInactivity(
+          'Welcome. Please choose your language to continue.',
+          'en-IN',
+          'Welcome. Please choose your language to continue.',
+          'en-IN'
+        );
+      }, 250);
+
+      return () => {
+        clearTimeout(initTimer);
+        stopAllSpeechAndTimers();
+      };
+    }, [speakAndScheduleInactivity, stopAllSpeechAndTimers])
+  );
+
   if (!fontsLoaded) return null;
 
   const handleSelect = (code: LanguageCode) => {
     setSelectedCode(code);
     setLanguage(code);
+    selectedRef.current = code;
+
+    // Immediately speak confirmation and set inactivity reminder
+    const confirmText = LANG_CONFIRMATION[code] || `You selected ${LANG_NAMES[code] || code}. Please select the Continue button.`;
+    const reminderText = LANG_REMINDER_AFTER_SELECT[code] || 'Please select the Continue button to continue.';
+    const langCode = BCP47_MAP[code] || 'en-IN';
+    speakAndScheduleInactivity(confirmText, langCode, reminderText, langCode);
   };
 
   const handleContinue = () => {
+    stopAllSpeechAndTimers();
     setLanguage(selectedCode);
     updateOnboardingData({ language: selectedCode });
     router.push('/auth/phone');

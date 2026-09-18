@@ -23,14 +23,16 @@ import {
   Inter_500Medium,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
-import { ChevronRight, Plus, Package } from 'lucide-react-native';
+import { ChevronRight, Plus, Package, Globe } from 'lucide-react-native';
 
 import { Colors, Fonts, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { EditProductModal, EditableProduct } from '@/components/artisan/EditProductModal';
-
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+import { BACKEND_URL, normalizeImageUrl } from '@/config/api';
+import { useProductSpeech } from '@/utils/speech';
+import { ProductListenButton } from '@/components/ui/ProductListenButton';
 
 // ── Design tokens matching reference image ─────────────────────────────────
 const BG           = '#F5F0E8';   // warm cream background
@@ -62,6 +64,28 @@ function isAvailable(p: Product): boolean {
   return s === 'published' || s === 'active';
 }
 
+function ProductRowImage({ url }: { url?: string }) {
+  const [hasError, setHasError] = useState(false);
+  const normalized = normalizeImageUrl(url);
+
+  if (hasError || !url || !url.trim()) {
+    return (
+      <View style={styles.thumbPlaceholder}>
+        <Package size={24} color={TEXT_MUTED} strokeWidth={1.4} />
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri: normalized }}
+      style={styles.thumbImg}
+      resizeMode="cover"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 export default function ListingsScreen() {
   const [activeTab, setActiveTab] = useState<ArtisanTab>('listings');
   const [products, setProducts]   = useState<Product[]>([]);
@@ -71,10 +95,12 @@ export default function ListingsScreen() {
 
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [productToEdit, setProductToEdit]       = useState<EditableProduct | null>(null);
+  const { isSpeaking, toggle: toggleSpeech } = useProductSpeech();
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const { language } = useLanguage();
 
   const [fontsLoaded] = useFonts({
     Poppins_600SemiBold,
@@ -95,8 +121,25 @@ export default function ListingsScreen() {
       const resp = await fetch(url, { headers: { Accept: 'application/json' } });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || `Server error ${resp.status}`);
-      setProducts(data.products || []);
+      let list = data.products || [];
+      // If filtering by specific artisan_id yielded no products (e.g. newly signed-in user exploring),
+      // fallback to showing all demo marketplace products so the user is never left with a blank list
+      if (list.length === 0 && user?.id) {
+        try {
+          const fallbackResp = await fetch(`${BACKEND_URL}/api/products?limit=100`, {
+            headers: { Accept: 'application/json' },
+          });
+          if (fallbackResp.ok) {
+            const fallbackData = await fallbackResp.json();
+            if (fallbackData.products && fallbackData.products.length > 0) {
+              list = fallbackData.products;
+            }
+          }
+        } catch (_) {}
+      }
+      setProducts(list);
     } catch (err: any) {
+      console.warn('[Listings] fetchProducts error:', err);
       setFetchError(err.message || 'Failed to load products');
       setProducts([]);
     } finally {
@@ -147,59 +190,88 @@ export default function ListingsScreen() {
     const isLast    = index === products.length - 1;
 
     return (
-      <TouchableOpacity
-        style={[styles.row, !isLast && styles.rowBorder]}
-        onPress={() =>
-          router.push({
-            pathname: '/product-details',
-            params: {
-              id:             item.id,
-              title:          item.title,
-              subtitle:       item.category || item.craft_type || '',
-              price:          item.price,
-              imageUri:       item.image_url || '',
-              description_en: item.description_en || '',
-              description_hi: item.description_hi || '',
-              description_ta: item.description_ta || '',
-              category:       item.category || item.craft_type || 'Handicraft',
-              units:          String(item.units || 1),
-              status:         item.status || 'published',
-            },
-          })
-        }
-        onLongPress={() => handleOpenEdit(item)}
-        activeOpacity={0.7}
-      >
-        {/* Thumbnail */}
-        <View style={styles.thumbWrap}>
-          {item.image_url ? (
-            <Image
-              source={{ uri: item.image_url }}
-              style={styles.thumbImg}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={styles.thumbPlaceholder}>
-              <Package size={24} color={TEXT_MUTED} strokeWidth={1.4} />
-            </View>
-          )}
-        </View>
-
-        {/* Info */}
-        <View style={styles.info}>
-          <Text style={styles.productName} numberOfLines={1}>{item.title}</Text>
-          <Text style={styles.productPrice}>₹ {item.price}</Text>
-          <View style={styles.statusRow}>
-            <View style={[styles.dot, { backgroundColor: available ? GREEN : '#F59E0B' }]} />
-            <Text style={[styles.statusText, { color: available ? GREEN : '#F59E0B' }]}>
-              {available ? 'Available' : 'Draft'}
-            </Text>
+      <View style={[styles.row, !isLast && styles.rowBorder]}>
+        {/* Main Tappable Area Navigating to Details */}
+        <TouchableOpacity
+          style={styles.rowMain}
+          onPress={() =>
+            router.push({
+              pathname: '/product-details',
+              params: {
+                id:             item.id,
+                title:          item.title,
+                subtitle:       item.category || item.craft_type || '',
+                price:          item.price,
+                imageUri:       item.image_url || '',
+                description_en: item.description_en || '',
+                description_hi: item.description_hi || '',
+                description_ta: item.description_ta || '',
+                category:       item.category || item.craft_type || 'Handicraft',
+                units:          String(item.units || 1),
+                status:         item.status || 'published',
+              },
+            })
+          }
+          onLongPress={() => handleOpenEdit(item)}
+          activeOpacity={0.7}
+        >
+          {/* Thumbnail */}
+          <View style={styles.thumbWrap}>
+            <ProductRowImage url={item.image_url} />
           </View>
-        </View>
 
-        {/* Chevron */}
-        <ChevronRight size={18} color={TEXT_MUTED} strokeWidth={1.8} />
-      </TouchableOpacity>
+          {/* Info */}
+          <View style={styles.info}>
+            <Text style={styles.productName} numberOfLines={1}>{item.title}</Text>
+            <Text style={styles.productPrice}>
+              {item.price?.startsWith('₹') ? item.price : `₹ ${item.price}`}
+            </Text>
+            <View style={styles.statusRow}>
+              <View style={[styles.dot, { backgroundColor: available ? GREEN : '#F59E0B' }]} />
+              <Text style={[styles.statusText, { color: available ? GREEN : '#F59E0B' }]}>
+                {available
+                  ? (language === 'ta' ? 'கிடைக்கிறது' : language === 'hi' ? 'उपलब्ध' : 'Available')
+                  : (language === 'ta' ? 'வரைவு' : language === 'hi' ? 'ड्राफ्ट' : 'Draft')}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* Listen Button (Speech Read-Aloud) - independent from navigation */}
+        <ProductListenButton
+          product={item}
+          isSpeaking={isSpeaking(item.id)}
+          onToggle={toggleSpeech}
+          variant="inline"
+          style={{ marginHorizontal: 6 }}
+        />
+
+        {/* Chevron Navigating to Details */}
+        <TouchableOpacity
+          style={styles.chevronWrap}
+          onPress={() =>
+            router.push({
+              pathname: '/product-details',
+              params: {
+                id:             item.id,
+                title:          item.title,
+                subtitle:       item.category || item.craft_type || '',
+                price:          item.price,
+                imageUri:       item.image_url || '',
+                description_en: item.description_en || '',
+                description_hi: item.description_hi || '',
+                description_ta: item.description_ta || '',
+                category:       item.category || item.craft_type || 'Handicraft',
+                units:          String(item.units || 1),
+                status:         item.status || 'published',
+              },
+            })
+          }
+          activeOpacity={0.7}
+        >
+          <ChevronRight size={18} color={TEXT_MUTED} strokeWidth={1.8} />
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -210,7 +282,21 @@ export default function ListingsScreen() {
 
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <Text style={styles.screenTitle}>My Products</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.screenTitle}>
+            {language === 'ta' ? 'என் பொருட்கள்' : language === 'hi' ? 'मेरे उत्पाद' : 'My Products'}
+          </Text>
+          <TouchableOpacity
+            style={styles.langPill}
+            onPress={() => router.push('/select-language')}
+            activeOpacity={0.7}
+          >
+            <Globe size={14} color="#7A6F62" />
+            <Text style={styles.langPillText}>
+              {language === 'ta' ? 'தமிழ்' : language === 'hi' ? 'हिंदी' : 'English'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── Loading ── */}
@@ -296,12 +382,31 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     backgroundColor: BG,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   screenTitle: {
     fontSize: 24,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
     color: TEXT_PRIMARY,
     letterSpacing: -0.3,
+  },
+  langPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EAE3D2',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 5,
+  },
+  langPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#3D3428',
   },
 
   // ── List ──────────────────────────────────────────────────────────────────
@@ -332,6 +437,16 @@ const styles = StyleSheet.create({
   },
   rowBorder: {
     // kept separate so we can toggle it per-item if desired
+  },
+  rowMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chevronWrap: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // Thumbnail

@@ -211,6 +211,56 @@ def init_db():
         );
         """)
 
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS schemes (
+            id TEXT PRIMARY KEY,
+            scheme_name TEXT NOT NULL,
+            provider_name TEXT NOT NULL,
+            provider_type TEXT NOT NULL,
+            scheme_category TEXT,
+            eligibility_summary TEXT,
+            benefits_offered TEXT,
+            application_process TEXT,
+            application_deadline TEXT,
+            official_source_url TEXT NOT NULL,
+            source_type TEXT,
+            review_flagged INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            last_verified_date TEXT NOT NULL,
+            simple_summary TEXT,
+            simple_summary_en TEXT,
+            simple_summary_hi TEXT,
+            simple_summary_ta TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        # Migration: Ensure simple_summary and multilingual summary columns exist if table pre-existed
+        cursor.execute("PRAGMA table_info(schemes);")
+        schemes_cols = [row[1] for row in cursor.fetchall()]
+        if "simple_summary" not in schemes_cols:
+            cursor.execute("ALTER TABLE schemes ADD COLUMN simple_summary TEXT;")
+        if "simple_summary_en" not in schemes_cols:
+            cursor.execute("ALTER TABLE schemes ADD COLUMN simple_summary_en TEXT;")
+        if "simple_summary_hi" not in schemes_cols:
+            cursor.execute("ALTER TABLE schemes ADD COLUMN simple_summary_hi TEXT;")
+        if "simple_summary_ta" not in schemes_cols:
+            cursor.execute("ALTER TABLE schemes ADD COLUMN simple_summary_ta TEXT;")
+
+        # 11. Scheme Crawl Log
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS scheme_crawl_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_name TEXT NOT NULL,
+            source_url TEXT NOT NULL,
+            status TEXT NOT NULL,
+            schemes_found INTEGER DEFAULT 0,
+            error_message TEXT,
+            crawled_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
         # Indexes for fast lookup
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_profiles_phone ON profiles(phone);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_buyer_profiles_phone ON buyer_profiles(phone);")
@@ -223,6 +273,9 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_reviews_artisan_id ON reviews(artisan_id);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_instagram_accounts_user ON instagram_accounts(user_id);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_reel_jobs_user ON reel_jobs(user_id, created_at DESC);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_schemes_provider_type ON schemes(provider_type);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_schemes_category ON schemes(scheme_category);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_schemes_is_active ON schemes(is_active);")
 
     # Run one-time migration from existing JSON stores if tables are empty
     _migrate_json_data()
@@ -240,7 +293,8 @@ def _migrate_json_data():
         if profiles_file.exists():
             try:
                 with open(profiles_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                    content = f.read().strip()
+                    data = json.loads(content) if content else {}
                     if isinstance(data, dict):
                         for phone, p in data.items():
                             pid = p.get("id") or f"11111111-2222-3333-4444-91{phone[-10:]}"
@@ -281,7 +335,8 @@ def _migrate_json_data():
         if buyer_file.exists():
             try:
                 with open(buyer_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                    content = f.read().strip()
+                    data = json.loads(content) if content else {}
                     if isinstance(data, dict):
                         for phone, b in data.items():
                             bid = b.get("id") or f"22222222-3333-4444-5555-91{phone[-10:]}"
@@ -314,7 +369,8 @@ def _migrate_json_data():
         if products_file.exists():
             try:
                 with open(products_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                    content = f.read().strip()
+                    data = json.loads(content) if content else []
                     if isinstance(data, list):
                         for prod in data:
                             pid = prod.get("id")
@@ -353,7 +409,8 @@ def _migrate_json_data():
         if inquiries_file.exists():
             try:
                 with open(inquiries_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                    content = f.read().strip()
+                    data = json.loads(content) if content else []
                     if isinstance(data, list):
                         for inq in data:
                             iid = inq.get("id")

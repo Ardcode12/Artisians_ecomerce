@@ -97,8 +97,8 @@ const defaultBuyerOnboarding: BuyerOnboardingData = {
 // ─── Backend URL ──────────────────────────────────────────────────────────────
 // The app tries multiple hosts in order (LAN IP first, then localhost).
 const BACKEND_HOSTS = [
-  process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000',
-  'http://10.45.69.254:5000',
+  process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.1.72.20:5000',
+  'http://10.1.72.20:5000',
   'http://localhost:5000',
   'http://127.0.0.1:5000',
 ];
