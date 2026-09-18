@@ -46,8 +46,7 @@ import {
 import { Fonts, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
 import { useLanguage } from '@/context/LanguageContext';
-
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+import { BACKEND_URL } from '@/config/api';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 interface Message {

@@ -41,8 +41,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
 import LinkInstagramCard from '@/components/profile/LinkInstagramCard';
-
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+import { BACKEND_URL } from '@/config/api';
 const BG = '#F5F0E8';
 
 const PRESET_AVATARS = [

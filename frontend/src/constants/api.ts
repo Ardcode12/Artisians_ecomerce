@@ -1,6 +1,9 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+// Re-export BACKEND_URL from the single source of truth
+export { BACKEND_URL, normalizeImageUrl, DEFAULT_CRAFT_FALLBACK_IMAGE } from '@/config/api';
+
 const getDevServerHost = (): string | null => {
   try {
     const hostUri =
@@ -18,37 +21,16 @@ const getDevServerHost = (): string | null => {
 };
 
 const devHost = getDevServerHost();
-const CURRENT_LAN_IP = '10.246.167.35';
-const FALLBACK_LAN_IP = '10.1.2.41';
 
-export const BACKEND_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL ||
-  (devHost ? `http://${devHost}:5000` : `http://${CURRENT_LAN_IP}:5000`);
-
+// List of hosts to try in order (used by some retry logic in the app)
 export const BACKEND_HOSTS = Array.from(
   new Set(
     [
       process.env.EXPO_PUBLIC_BACKEND_URL,
-      `http://${CURRENT_LAN_IP}:5000`,
       devHost ? `http://${devHost}:5000` : null,
-      'http://10.246.167.35:5000',
-      'http://10.29.208.1:5000',
-      `http://${FALLBACK_LAN_IP}:5000`,
       Platform.OS === 'android' ? 'http://10.0.2.2:5000' : null,
       'http://localhost:5000',
       'http://127.0.0.1:5000',
     ].filter(Boolean) as string[]
   )
 );
-
-export function normalizeImageUrl(url?: string | null): string {
-  if (!url || typeof url !== 'string') return '';
-  const trimmed = url.trim();
-  if (!trimmed) return '';
-
-  if (trimmed.includes('/uploads/')) {
-    const filename = trimmed.split('/uploads/').pop();
-    return `${BACKEND_URL}/uploads/${filename}`;
-  }
-  return trimmed;
-}

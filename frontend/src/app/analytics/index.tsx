@@ -1,0 +1,936 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  StatusBar,
+  Dimensions,
+  Alert,
+  Platform,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import Svg, { Path, Defs, LinearGradient, Stop, Circle } from 'react-native-svg';
+import {
+  ArrowLeft,
+  Volume2,
+  VolumeX,
+  ShoppingBag,
+  Eye,
+  BarChart2,
+  ChevronRight,
+  Sparkles,
+  MapPin,
+  Clock,
+} from 'lucide-react-native';
+import * as Speech from 'expo-speech';
+import { InstagramIcon } from '@/components/ui/InstagramIcon';
+
+import { BACKEND_URL } from '@/config/api';
+import { useAuth } from '@/context/AuthContext';
+import { Colors, Fonts, Shadow, NAV_HEIGHT } from '@/constants/artisan-theme';
+import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const PERIODS = [
+  { id: '7_days', label: '7 Days' },
+  { id: '30_days', label: '30 Days' },
+  { id: '90_days', label: '90 Days' },
+  { id: '1_year', label: '1 Year' },
+  { id: 'all_time', label: 'All Time' },
+];
+
+export default function AnalyticsHomeScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { user } = useAuth();
+
+  const [activePeriod, setActivePeriod] = useState('30_days');
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
+  const [speaking, setSpeaking] = useState(false);
+
+  useEffect(() => {
+    fetchInsights();
+  }, [activePeriod]);
+
+  const fetchInsights = async () => {
+    try {
+      setLoading(true);
+      const url = `${BACKEND_URL}/api/analytics/insights?period=${activePeriod}&artisan_id=${user?.id || 'demo_artisan'}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
+      const json = await res.json();
+      if (json.success) {
+        setData(json);
+      } else {
+        throw new Error(json.error || 'Failed to fetch insights');
+      }
+    } catch (e) {
+      console.warn('Failed to fetch analytics insights, using fallback data', e);
+      // Fallback matching Screenshot 1
+      setData({
+        period: '30 Days',
+        hero_stats: {
+          revenue: { value: '₹8,450', raw_value: 8450, label: 'Revenue', trend: '↑ 18%' },
+          orders: { value: '12', raw_value: 12, label: 'Orders', trend: '↑ 3 more' },
+          listing_views: { value: '340', raw_value: 340, label: 'Listing Views', trend: '↑ 22%' },
+          conversion_rate: { value: '3.5%', label: 'Conversion', subtext: 'views → orders' },
+        },
+        revenue_chart: {
+          headline: 'Your best week was Sept 8 – 14',
+          sub_headline: 'with ₹2,100 in sales',
+          peak_value: '₹2,100',
+          points: [
+            { day: 'Sep 1', val: 320 },
+            { day: 'Sep 3', val: 410 },
+            { day: 'Sep 6', val: 680 },
+            { day: 'Sep 8', val: 1200 },
+            { day: 'Sep 11', val: 2100 },
+            { day: 'Sep 15', val: 1650 },
+            { day: 'Sep 18', val: 780 },
+            { day: 'Sep 22', val: 620 },
+            { day: 'Sep 26', val: 840 },
+            { day: 'Sep 30', val: 1150 },
+          ],
+          x_labels: ['Sep 1', 'Sep 8', 'Sep 15', 'Sep 22', 'Sep 30'],
+        },
+        top_products: [
+          {
+            id: 'prod_vase',
+            title: 'Terracotta Vase',
+            price: 1100,
+            category: 'Hand-thrown clay vase',
+            image_url: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=500&q=80',
+            views: 84,
+            inquiries: 6,
+            sold: 3,
+          },
+          {
+            id: 'prod_basket',
+            title: 'Woven Basket',
+            price: 950,
+            category: 'Sabai grass woven basket',
+            image_url: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&q=80',
+            views: 56,
+            inquiries: 4,
+            sold: 2,
+          },
+        ],
+        price_performance: {
+          show: true,
+          headline: 'Your AI-suggested prices are working',
+          body: 'Listings published at the AI-suggested price sold 40% faster than manually-priced listings',
+        },
+        social_reach: {
+          show: true,
+          headline: 'Your reels are being seen',
+          views: '1,240',
+          likes: '38',
+          comments: '4',
+        },
+        buyer_locations: [
+          { city: 'Chennai', orders: 5 },
+          { city: 'Bengaluru', orders: 3 },
+          { city: 'Coimbatore', orders: 2 },
+        ],
+        speech_summary:
+          'Your business insights: Total revenue is ₹8,450, up 18 percent. You received 12 orders and 340 views. Your best week was September 8 to 14 with ₹2,100 in sales.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cleanup speech if user leaves screen
+  useEffect(() => {
+    return () => {
+      try {
+        Speech.stop();
+      } catch (e) {
+        // ignore
+      }
+    };
+  }, []);
+
+  const handleReadStatsAloud = async () => {
+    // If speaking right now, stop immediately
+    if (speaking) {
+      try {
+        await Speech.stop();
+      } catch (e) {}
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setSpeaking(false);
+      return;
+    }
+
+    const rawText =
+      data?.speech_summary ||
+      'Your business insights: Total revenue is 8,450 rupees, up 18 percent. You received 12 orders and 340 views. Your best week was September 8 to 14 with 2,100 in sales.';
+
+    // Clean text for natural speech pronunciation
+    const speechText = rawText
+      .replace(/₹\s*([0-9,]+)/g, '$1 rupees')
+      .replace(/%/g, ' percent')
+      .replace(/↑/g, 'up ')
+      .replace(/↓/g, 'down ')
+      .replace(/[–—]/g, ' to ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    try {
+      setSpeaking(true);
+
+      // Cancel any ongoing utterances
+      try {
+        await Speech.stop();
+      } catch (e) {}
+
+      // Cross-platform native TTS: Android, iOS & Web
+      Speech.speak(speechText, {
+        language: 'en-IN',
+        pitch: 1.0,
+        rate: 0.92,
+        onStart: () => setSpeaking(true),
+        onDone: () => setSpeaking(false),
+        onStopped: () => setSpeaking(false),
+        onError: (err) => {
+          console.warn('Speech error:', err);
+          setSpeaking(false);
+        },
+      });
+    } catch (err) {
+      console.warn('Expo speech error, trying fallback:', err);
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(speechText);
+        utterance.rate = 0.95;
+        utterance.onend = () => setSpeaking(false);
+        utterance.onerror = () => setSpeaking(false);
+        window.speechSynthesis.speak(utterance);
+      } else {
+        setSpeaking(false);
+      }
+    }
+  };
+
+  const handleTabChange = (tab: ArtisanTab) => {
+    if (tab === 'home') router.push('/');
+    if (tab === 'listings') router.push('/listings');
+    if (tab === 'growth') router.push('/growth' as any);
+    if (tab === 'analytical') router.push('/analytics' as any);
+    if (tab === 'add') router.push('/add-product');
+    if (tab === 'profile') router.push('/profile');
+  };
+
+  // Build SVG path for smooth spline curve
+  const chartWidth = SCREEN_WIDTH - 76;
+  const chartHeight = 110;
+  const points = data?.revenue_chart?.points || [];
+  const maxVal = points.length ? Math.max(...points.map((p: any) => p.val)) : 2100;
+
+  // Generate SVG coordinates
+  const svgCoords = points.map((p: any, idx: number) => {
+    const x = (idx / Math.max(points.length - 1, 1)) * chartWidth;
+    const y = chartHeight - (p.val / maxVal) * (chartHeight - 30) - 10;
+    return { x, y, val: p.val, day: p.day };
+  });
+
+  // Construct smooth bezier path
+  let linePath = '';
+  let areaPath = '';
+  if (svgCoords.length > 0) {
+    linePath = `M ${svgCoords[0].x} ${svgCoords[0].y}`;
+    for (let i = 0; i < svgCoords.length - 1; i++) {
+      const p0 = svgCoords[i];
+      const p1 = svgCoords[i + 1];
+      const cx = (p0.x + p1.x) / 2;
+      linePath += ` Q ${p0.x} ${p0.y}, ${cx} ${(p0.y + p1.y) / 2}`;
+    }
+    const last = svgCoords[svgCoords.length - 1];
+    linePath += ` T ${last.x} ${last.y}`;
+    areaPath = `${linePath} L ${last.x} ${chartHeight} L ${svgCoords[0].x} ${chartHeight} Z`;
+  }
+
+  // Find peak point for pill badge
+  const peakCoord = svgCoords.reduce(
+    (max: any, c: any) => (!max || c.val > max.val ? c : max),
+    null
+  );
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF8F5" />
+
+      {/* Top Header */}
+      <View style={styles.topHeaderRow}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <ArrowLeft size={24} color="#0F2438" strokeWidth={2.2} />
+        </TouchableOpacity>
+
+        {/* Read my stats aloud button */}
+        <TouchableOpacity
+          style={[styles.readAloudBtn, speaking && styles.readAloudBtnActive]}
+          activeOpacity={0.8}
+          onPress={handleReadStatsAloud}
+        >
+          {speaking ? (
+            <VolumeX size={16} color="#C04B25" strokeWidth={2.2} style={{ marginRight: 6 }} />
+          ) : (
+            <Volume2 size={16} color="#0F2438" strokeWidth={2.2} style={{ marginRight: 6 }} />
+          )}
+          <Text style={[styles.readAloudText, speaking && styles.readAloudTextActive]}>
+            {speaking ? 'Stop reading' : 'Read my stats aloud'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + NAV_HEIGHT + 20 }]}
+      >
+        {/* Title and Subtitle */}
+        <View style={styles.titleSection}>
+          <Text style={styles.pageTitle}>Your Business Insights</Text>
+          <Text style={styles.pageSubtitle}>See what's working and what to do next</Text>
+        </View>
+
+        {/* Time Period Selector Pills */}
+        <View style={styles.periodPillsRow}>
+          {PERIODS.map((p) => {
+            const isSelected = activePeriod === p.id;
+            return (
+              <TouchableOpacity
+                key={p.id}
+                style={[
+                  styles.periodPill,
+                  isSelected ? styles.periodPillActive : styles.periodPillInactive,
+                ]}
+                onPress={() => setActivePeriod(p.id)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.periodText,
+                    isSelected ? styles.periodTextActive : styles.periodTextInactive,
+                  ]}
+                >
+                  {p.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {loading && !data ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color="#C04B25" />
+          </View>
+        ) : (
+          <>
+            {/* Hero Stat Cards Horizontal Scroll */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.heroStatsScroll}
+            >
+              {/* 1. Revenue */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconCircle, { backgroundColor: '#E8F5E9' }]}>
+                  <Text style={styles.rupeeSymbol}>₹</Text>
+                </View>
+                <Text style={styles.statBigNum}>{data?.hero_stats?.revenue?.value || '₹8,450'}</Text>
+                <Text style={styles.statLabel}>Revenue</Text>
+                <Text style={styles.statTrendGreen}>
+                  {data?.hero_stats?.revenue?.trend || '↑ 18%'}
+                </Text>
+              </View>
+
+              {/* 2. Orders */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconCircle, { backgroundColor: '#FDF0E6' }]}>
+                  <ShoppingBag size={18} color="#9C4121" strokeWidth={2.2} />
+                </View>
+                <Text style={styles.statBigNum}>{data?.hero_stats?.orders?.value || '12'}</Text>
+                <Text style={styles.statLabel}>Orders</Text>
+                <Text style={styles.statTrendGreen}>
+                  {data?.hero_stats?.orders?.trend || '↑ 3 more'}
+                </Text>
+              </View>
+
+              {/* 3. Listing Views */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconCircle, { backgroundColor: '#E8F5E9' }]}>
+                  <Eye size={18} color="#16A34A" strokeWidth={2.2} />
+                </View>
+                <Text style={styles.statBigNum}>{data?.hero_stats?.listing_views?.value || '340'}</Text>
+                <Text style={styles.statLabel}>Listing Views</Text>
+                <Text style={styles.statTrendGreen}>
+                  {data?.hero_stats?.listing_views?.trend || '↑ 22%'}
+                </Text>
+              </View>
+
+              {/* 4. Conversion */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconCircle, { backgroundColor: '#FFF3E0' }]}>
+                  <BarChart2 size={18} color="#E65100" strokeWidth={2.2} />
+                </View>
+                <Text style={styles.statBigNum}>
+                  {data?.hero_stats?.conversion_rate?.value || '3.5%'}
+                </Text>
+                <Text style={styles.statLabel}>Conversion</Text>
+                <Text style={styles.statSubtext}>views → orders</Text>
+              </View>
+            </ScrollView>
+
+            {/* Revenue Trend Chart Card matching Image 1 */}
+            <View style={styles.chartCard}>
+              <Text style={styles.chartHeadline}>
+                {data?.revenue_chart?.headline || 'Your best week was Sept 8 – 14'}
+              </Text>
+              <Text style={styles.chartSubHeadline}>
+                {data?.revenue_chart?.sub_headline || 'with ₹2,100 in sales'}
+              </Text>
+
+              {/* SVG Spline Curve */}
+              <View style={styles.svgWrapper}>
+                {peakCoord && (
+                  <View
+                    style={[
+                      styles.peakBadgePill,
+                      {
+                        left: Math.max(10, Math.min(peakCoord.x - 30, chartWidth - 65)),
+                        top: Math.max(0, peakCoord.y - 28),
+                      },
+                    ]}
+                  >
+                    <Text style={styles.peakBadgeText}>
+                      {data?.revenue_chart?.peak_value || '₹2,100'}
+                    </Text>
+                  </View>
+                )}
+
+                <Svg width={chartWidth} height={chartHeight}>
+                  <Defs>
+                    <LinearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                      <Stop offset="0%" stopColor="#1E5E2B" stopOpacity="0.25" />
+                      <Stop offset="100%" stopColor="#F4F9F4" stopOpacity="0.0" />
+                    </LinearGradient>
+                  </Defs>
+                  {areaPath ? <Path d={areaPath} fill="url(#chartGrad)" /> : null}
+                  {linePath ? (
+                    <Path
+                      d={linePath}
+                      fill="none"
+                      stroke="#1E5E2B"
+                      strokeWidth="2.8"
+                      strokeLinecap="round"
+                    />
+                  ) : null}
+                  {peakCoord && (
+                    <>
+                      <Circle cx={peakCoord.x} cy={peakCoord.y} r="6" fill="#1E5E2B" />
+                      <Circle cx={peakCoord.x} cy={peakCoord.y} r="3" fill="#FFFFFF" />
+                    </>
+                  )}
+                </Svg>
+
+                {/* X Axis Labels */}
+                <View style={styles.xAxisLabelsRow}>
+                  {(data?.revenue_chart?.x_labels || ['Sep 1', 'Sep 8', 'Sep 15', 'Sep 22', 'Sep 30']).map(
+                    (lbl: string, i: number) => (
+                      <Text key={i} style={styles.xAxisLabel}>
+                        {lbl}
+                      </Text>
+                    )
+                  )}
+                </View>
+              </View>
+            </View>
+
+            {/* Top Products Section matching Image 1 */}
+            <View style={styles.sectionWrap}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Top Products</Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/listings')}
+                  style={styles.seeAllBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.seeAllText}>See All</Text>
+                  <ChevronRight size={16} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.productsList}>
+                {(data?.top_products || []).map((prod: any) => (
+                  <TouchableOpacity
+                    key={prod.id}
+                    style={styles.productCardRow}
+                    activeOpacity={0.85}
+                    onPress={() =>
+                      router.push({
+                        pathname: `/analytics/product/${prod.id}` as any,
+                      })
+                    }
+                  >
+                    <Image
+                      source={{ uri: prod.image_url }}
+                      style={styles.productThumb}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.productInfoWrap}>
+                      <Text style={styles.productTitle} numberOfLines={1}>
+                        {prod.title}
+                      </Text>
+                      <View style={styles.productStatsRow}>
+                        <Text style={styles.statSnippet}>👁 {prod.views} views</Text>
+                        <Text style={styles.statSnippet}>💬 {prod.inquiries} inquiries</Text>
+                        <Text style={styles.statSnippet}>🛒 {prod.sold} sold</Text>
+                      </View>
+                    </View>
+                    <ChevronRight size={18} color="#94A3B8" strokeWidth={2.2} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Price Performance Card (Dynamic Pricing Insight) */}
+            {data?.price_performance?.show && (
+              <View style={styles.priceInsightCard}>
+                <View style={styles.cardHeaderFlex}>
+                  <Sparkles size={18} color="#C04B25" style={{ marginRight: 8 }} />
+                  <Text style={styles.insightTitle}>{data.price_performance.headline}</Text>
+                </View>
+                <Text style={styles.insightBody}>{data.price_performance.body}</Text>
+              </View>
+            )}
+
+            {/* Social Reach Card (Instagram Integration) */}
+            {data?.social_reach?.show && (
+              <View style={styles.socialCard}>
+                <View style={styles.cardHeaderFlex}>
+                  <View style={{ marginRight: 8 }}>
+                    <InstagramIcon size={18} color="#D946EF" />
+                  </View>
+                  <Text style={styles.insightTitle}>{data.social_reach.headline}</Text>
+                </View>
+                <Text style={styles.socialStatsLine}>
+                  {data.social_reach.views} views · {data.social_reach.likes} likes · {data.social_reach.comments} comments
+                </Text>
+              </View>
+            )}
+
+            {/* Where your buyers are */}
+            <View style={styles.buyersCard}>
+              <View style={styles.cardHeaderFlex}>
+                <MapPin size={18} color="#0F2438" style={{ marginRight: 8 }} />
+                <Text style={styles.insightTitle}>Where your buyers are</Text>
+              </View>
+              <View style={styles.buyerCitiesList}>
+                {(data?.buyer_locations || []).map((loc: any, idx: number) => (
+                  <View key={idx} style={styles.cityRow}>
+                    <Text style={styles.cityName}>{loc.city}</Text>
+                    <Text style={styles.cityOrders}>{loc.orders} orders</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Activity History Entry Banner */}
+            <TouchableOpacity
+              style={styles.historyCard}
+              activeOpacity={0.85}
+              onPress={() => router.push('/analytics/history' as any)}
+            >
+              <View style={styles.historyIconCircle}>
+                <Clock size={20} color="#C04B25" />
+              </View>
+              <View style={styles.historyTextWrap}>
+                <Text style={styles.historyTitle}>Activity History</Text>
+                <Text style={styles.historySubtitle}>See everything that's happened in your business</Text>
+              </View>
+              <ChevronRight size={20} color="#C04B25" strokeWidth={2.4} />
+            </TouchableOpacity>
+          </>
+        )}
+      </ScrollView>
+
+      {/* Persistent Bottom Nav with Analytical active */}
+      <ArtisanBottomNav activeTab="analytical" onTabChange={handleTabChange} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FAF8F5',
+  },
+  topHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  readAloudBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDF0E6',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  readAloudBtnActive: {
+    backgroundColor: '#FBE8E3',
+    borderWidth: 1,
+    borderColor: '#C04B25',
+  },
+  readAloudText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F2438',
+  },
+  readAloudTextActive: {
+    color: '#C04B25',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 6,
+  },
+  titleSection: {
+    marginBottom: 16,
+  },
+  pageTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#0F2438',
+    letterSpacing: -0.4,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    color: '#6B778C',
+    marginTop: 4,
+  },
+  periodPillsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  periodPill: {
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 22,
+    alignItems: 'center',
+  },
+  periodPillActive: {
+    backgroundColor: '#C04B25',
+  },
+  periodPillInactive: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E6EAEE',
+  },
+  periodText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  periodTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  periodTextInactive: {
+    color: '#475569',
+  },
+  loadingBox: {
+    paddingVertical: 80,
+    alignItems: 'center',
+  },
+  heroStatsScroll: {
+    flexDirection: 'row',
+    paddingRight: 10,
+    marginBottom: 20,
+  },
+  statCard: {
+    width: 126,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EFECE6',
+    padding: 14,
+    marginRight: 12,
+    ...Shadow.sm,
+  },
+  statIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  rupeeSymbol: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#16A34A',
+  },
+  statBigNum: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0F2438',
+    letterSpacing: -0.3,
+  },
+  statLabel: {
+    fontSize: 12.5,
+    color: '#6B7280',
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  statTrendGreen: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#16A34A',
+  },
+  statSubtext: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  chartCard: {
+    backgroundColor: '#F4F9F4',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2ECE2',
+    padding: 18,
+    marginBottom: 24,
+    ...Shadow.sm,
+  },
+  chartHeadline: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F2438',
+    letterSpacing: -0.2,
+  },
+  chartSubHeadline: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E5E2B',
+    marginTop: 3,
+    marginBottom: 16,
+  },
+  svgWrapper: {
+    alignItems: 'center',
+    position: 'relative',
+  },
+  peakBadgePill: {
+    position: 'absolute',
+    backgroundColor: '#1E5E2B',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    zIndex: 10,
+  },
+  peakBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  xAxisLabelsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingTop: 8,
+  },
+  xAxisLabel: {
+    fontSize: 11.5,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  sectionWrap: {
+    marginBottom: 22,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F2438',
+    letterSpacing: -0.2,
+  },
+  seeAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  seeAllText: {
+    fontSize: 13.5,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginRight: 2,
+  },
+  productsList: {
+    gap: 10,
+  },
+  productCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EFECE6',
+    padding: 12,
+    ...Shadow.sm,
+  },
+  productThumb: {
+    width: 58,
+    height: 58,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  productInfoWrap: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  productTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F2438',
+    marginBottom: 4,
+  },
+  productStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statSnippet: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  priceInsightCard: {
+    backgroundColor: '#FBF7F2',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F0EAE1',
+    padding: 16,
+    marginBottom: 14,
+  },
+  cardHeaderFlex: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  insightTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F2438',
+  },
+  insightBody: {
+    fontSize: 13.5,
+    color: '#475569',
+    lineHeight: 18.5,
+  },
+  socialCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EFECE6',
+    padding: 16,
+    marginBottom: 14,
+    ...Shadow.sm,
+  },
+  socialStatsLine: {
+    fontSize: 13.5,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  buyersCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EFECE6',
+    padding: 16,
+    marginBottom: 14,
+    ...Shadow.sm,
+  },
+  buyerCitiesList: {
+    marginTop: 6,
+    gap: 8,
+  },
+  cityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8F6F0',
+  },
+  cityName: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#0F2438',
+  },
+  cityOrders: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  historyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#EFECE6',
+    padding: 16,
+    marginBottom: 16,
+    ...Shadow.sm,
+  },
+  historyIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FDEFE7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  historyTextWrap: {
+    flex: 1,
+    marginRight: 8,
+  },
+  historyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F2438',
+  },
+  historySubtitle: {
+    fontSize: 12.5,
+    color: '#64748B',
+    marginTop: 2,
+  },
+});

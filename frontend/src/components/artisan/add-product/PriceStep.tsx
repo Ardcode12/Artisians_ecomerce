@@ -18,10 +18,10 @@ import {
   TrendingUp,
   RefreshCw,
   AlertCircle,
+  Sparkles,
 } from 'lucide-react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
-
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+import { BACKEND_URL } from '@/config/api';
 const BG          = '#F5F0E8';
 const GREEN       = '#2D6A4F';
 const CARD_BG     = '#FFFFFF';
@@ -173,10 +173,19 @@ export function PriceStep({
         <>
           {/* "We suggest" box */}
           <View style={styles.suggestBox}>
-            <Text style={styles.suggestLabel}>We suggest</Text>
+            <View style={styles.suggestHeaderRow}>
+              <Text style={styles.suggestLabel}>We suggest</Text>
+              <View style={styles.mlBadge}>
+                <Sparkles size={11} color="#059669" />
+                <Text style={styles.mlBadgeText}>ML Model</Text>
+              </View>
+            </View>
             <Text style={styles.suggestPrice}>
               ₹ {priceData.suggested_price.toLocaleString('en-IN')}
             </Text>
+            {priceData.note ? (
+              <Text style={styles.mlNoteText}>{priceData.note}</Text>
+            ) : null}
           </View>
 
           {/* Market range + slider */}
@@ -340,6 +349,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     gap: 4,
   },
+  suggestHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  mlBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  mlBadgeText: {
+    fontSize: 11,
+    fontFamily: Fonts.heading,
+    color: '#059669',
+    fontWeight: '600',
+  },
   suggestLabel: {
     fontSize: 14,
     fontFamily: Fonts.body,
@@ -351,6 +380,12 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.headingBold,
     color: TEXT_MAIN,
     letterSpacing: -1,
+  },
+  mlNoteText: {
+    fontSize: 12,
+    fontFamily: Fonts.body,
+    color: '#059669',
+    marginTop: 2,
   },
 
   // Market range + slider

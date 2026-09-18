@@ -46,16 +46,9 @@ def upload_reel(local_path: str, job_id: str) -> str:
         except Exception as e:
             logger.warning(f"Cloudinary upload failed: {e}. Using local URL fallback.")
 
-    # Local fallback URL
-    public_base = os.getenv("PUBLIC_BASE_URL", "")
-    port = os.getenv("PORT", "5000")
-    host_ip = "10.42.0.129"
-
-    if public_base and not public_base.startswith("https://your-domain"):
-        base = public_base.rstrip("/")
-    else:
-        base = f"http://{host_ip}:{port}"
-
+    # Local fallback URL — uses PUBLIC_BASE_URL which is auto-detected in config.py
+    from app.config import PUBLIC_BASE_URL
+    base = PUBLIC_BASE_URL.rstrip("/")
     local_url = f"{base}/media/reels/{job_id}/reel.mp4"
     logger.info(f"Using local static URL: {local_url}")
     return local_url

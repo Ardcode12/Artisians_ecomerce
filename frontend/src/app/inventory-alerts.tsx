@@ -29,8 +29,7 @@ import {
 
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
-
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+import { BACKEND_URL } from '@/config/api';
 
 interface LowStockProduct {
   id: string;

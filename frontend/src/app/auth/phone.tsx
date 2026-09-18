@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import {
   useFonts,
@@ -27,8 +27,40 @@ import {
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { isSpeechSupported, speakText, stopSpeech } from '@/utils/speech';
 
 const BG = '#F5F0E8';
+const INACTIVITY_DELAY = 10000;
+
+const PHONE_INITIAL_TEXT: Record<string, string> = {
+  en: 'Please enter your phone number to continue.',
+  ta: 'தொடர, உங்கள் தொலைபேசி எண்ணை உள்ளிடவும்.',
+  hi: 'आगे बढ़ने के लिए अपना मोबाइल नंबर दर्ज करें।',
+  te: 'కొనసాగడానికి మీ ఫోన్ నంబర్‌ను నమోదు చేయండి.',
+  bn: 'এগিয়ে যেতে আপনার ফোন নম্বর লিখুন।',
+  mr: 'पुढे जाण्यासाठी तुमचा फोन नंबर टाका.',
+  pa: 'ਜਾਰੀ ਰੱਖਣ ਲਈ ਆਪਣਾ ਫ਼ੋਨ ਨੰਬਰ ਦਰਜ ਕਰੋ।',
+};
+
+const PLEASE_PROCEED_TEXT: Record<string, string> = {
+  en: 'Please proceed.',
+  ta: 'தயவுசெய்து தொடரவும்.',
+  hi: 'कृपया आगे बढ़ें।',
+  te: 'దయచేసి కొనసాగండి.',
+  bn: 'দয়া করে এগিয়ে চলুন।',
+  mr: 'कृपया पुढे जा.',
+  pa: 'ਕਿਰਪਾ ਕਰਕੇ ਅੱਗੇ ਵਧੋ।',
+};
+
+const BCP47_MAP: Record<string, string> = {
+  en: 'en-IN',
+  ta: 'ta-IN',
+  hi: 'hi-IN',
+  te: 'te-IN',
+  bn: 'bn-IN',
+  mr: 'mr-IN',
+  pa: 'pa-IN',
+};
 
 export default function PhoneScreen() {
   const router = useRouter();
@@ -41,6 +73,10 @@ export default function PhoneScreen() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
 
+  const inactivityTimerRef = useRef<any>(null);
+  const fallbackTimerRef = useRef<any>(null);
+  const lastSpokenNumberRef = useRef<string>('');
+
   const [fontsLoaded] = useFonts({
     Poppins_600SemiBold,
     Poppins_700Bold,
@@ -48,12 +84,148 @@ export default function PhoneScreen() {
     Inter_500Medium,
   });
 
+  const stopAllSpeechAndTimers = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+    stopSpeech();
+  }, []);
+
+  const speakAndScheduleInactivity = useCallback(
+    (text: string, langCode: string, reminderText: string, reminderLangCode: string) => {
+      stopAllSpeechAndTimers();
+
+      if (!isSpeechSupported()) return;
+
+      let timerStarted = false;
+      const startTimer = () => {
+        if (timerStarted) return;
+        timerStarted = true;
+        if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = setTimeout(() => {
+          speakAndScheduleInactivity(reminderText, reminderLangCode, reminderText, reminderLangCode);
+        }, INACTIVITY_DELAY);
+      };
+
+      speakText(text, {
+        language: langCode,
+        rate: 0.95,
+        pitch: 1.0,
+        onDone: startTimer,
+        onError: startTimer,
+        onStopped: () => {},
+      });
+
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = setTimeout(() => {
+        if (!timerStarted) startTimer();
+      }, 4000);
+    },
+    [stopAllSpeechAndTimers]
+  );
+
+  // Sequential phone number readback: reads digits, then speaks "Please proceed.", then sets inactivity timer
+  const speakPhoneNumberAndProceed = useCallback(
+    (phoneNumber: string, langCode: string) => {
+      stopAllSpeechAndTimers();
+
+      if (!isSpeechSupported()) return;
+
+      const proceedText = PLEASE_PROCEED_TEXT[language] || PLEASE_PROCEED_TEXT.en;
+      const spacedDigits = phoneNumber.split('').join(' ');
+
+      let proceedStarted = false;
+      const playProceed = () => {
+        if (proceedStarted) return;
+        proceedStarted = true;
+
+        let reminderStarted = false;
+        const startReminderTimer = () => {
+          if (reminderStarted) return;
+          reminderStarted = true;
+          if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+          inactivityTimerRef.current = setTimeout(() => {
+            speakAndScheduleInactivity(proceedText, langCode, proceedText, langCode);
+          }, INACTIVITY_DELAY);
+        };
+
+        // Step 2: Speak "Please proceed."
+        speakText(proceedText, {
+          language: langCode,
+          rate: 0.95,
+          pitch: 1.0,
+          onDone: startReminderTimer,
+          onError: startReminderTimer,
+          onStopped: () => {},
+        });
+      };
+
+      // Step 1: Read the actual entered phone number dynamically
+      speakText(spacedDigits, {
+        language: langCode,
+        rate: 0.85,
+        pitch: 1.0,
+        onDone: playProceed,
+        onError: playProceed,
+        onStopped: () => {},
+      });
+    },
+    [language, speakAndScheduleInactivity, stopAllSpeechAndTimers]
+  );
+
+  // Automatically speak phone instruction once in the selected language when focused
+  useFocusEffect(
+    useCallback(() => {
+      lastSpokenNumberRef.current = '';
+      stopAllSpeechAndTimers();
+
+      const langCode = BCP47_MAP[language] || 'en-IN';
+      const initialText = PHONE_INITIAL_TEXT[language] || PHONE_INITIAL_TEXT.en;
+
+      const initTimer = setTimeout(() => {
+        speakAndScheduleInactivity(initialText, langCode, initialText, langCode);
+      }, 300);
+
+      return () => {
+        clearTimeout(initTimer);
+        stopAllSpeechAndTimers();
+      };
+    }, [language, speakAndScheduleInactivity, stopAllSpeechAndTimers])
+  );
+
   if (!fontsLoaded) return null;
 
   const handleTextChange = (text: string) => {
     const cleaned = text.replace(/[^0-9]/g, '').slice(0, 10);
     setLocalNumber(cleaned);
     if (errorMsg) setErrorMsg('');
+
+    const langCode = BCP47_MAP[language] || 'en-IN';
+
+    // DO NOT speak anything while the user is typing.
+    // Wait until phone number is complete (10 digits).
+    if (cleaned.length === 10) {
+      if (lastSpokenNumberRef.current !== cleaned) {
+        lastSpokenNumberRef.current = cleaned;
+        speakPhoneNumberAndProceed(cleaned, langCode);
+      }
+    } else {
+      // User is editing or hasn't finished: reset completion tracking and cancel active speech
+      lastSpokenNumberRef.current = '';
+      stopAllSpeechAndTimers();
+
+      // Inactivity reminder: if user pauses typing for 10s without completing
+      const initialText = PHONE_INITIAL_TEXT[language] || PHONE_INITIAL_TEXT.en;
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = setTimeout(() => {
+        speakAndScheduleInactivity(initialText, langCode, initialText, langCode);
+      }, INACTIVITY_DELAY);
+    }
   };
 
   const isComplete = localNumber.length === 10;
@@ -63,6 +235,7 @@ export default function PhoneScreen() {
       setErrorMsg('Please enter a valid 10-digit number');
       return;
     }
+    stopAllSpeechAndTimers();
     setLoading(true);
     setErrorMsg('');
     try {

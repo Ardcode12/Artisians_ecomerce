@@ -39,12 +39,34 @@ export default function RootLayout() {
               <Stack.Screen name="profile" />
               <Stack.Screen name="earnings" />
               <Stack.Screen name="inquiries" />
-              {/* New Seller Screens */}
+              {/* Seller Operations Screens */}
               <Stack.Screen name="seller-orders" />
               <Stack.Screen name="order-tracking" />
               <Stack.Screen name="inventory-alerts" />
               <Stack.Screen name="help-support" />
               <Stack.Screen name="manage-stock" />
+              <Stack.Screen name="select-language" />
+              <Stack.Screen name="growth" />
+              {/* Analytics Screens */}
+              <Stack.Screen name="analytics/index" />
+              <Stack.Screen name="analytics/history" />
+              <Stack.Screen name="analytics/product/[id]" />
+              {/* Government Schemes Screens */}
+              <Stack.Screen name="schemes" />
+              <Stack.Screen name="schemes/index" />
+              <Stack.Screen name="schemes/[id]" />
+              {/* Growth - Design Ideas Screens */}
+              <Stack.Screen name="design-ideas/index" />
+              <Stack.Screen name="design-ideas/[productId]" />
+              {/* Growth - Demand Forecast Screens */}
+              <Stack.Screen name="demand-forecast/index" />
+              <Stack.Screen name="demand-forecast/[category]" />
+              <Stack.Screen name="demand-forecast/festival/[slug]" />
+              {/* Raw Materials Hub Screens */}
+              <Stack.Screen name="materials/index" />
+              <Stack.Screen name="materials/category" />
+              <Stack.Screen name="materials/search" />
+              <Stack.Screen name="materials/[supplierId]" />
             </Stack>
           </CartProvider>
         </LanguageProvider>

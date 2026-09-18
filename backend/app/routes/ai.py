@@ -171,6 +171,7 @@ async def generate_description_endpoint(
 
 
 @router.post("/suggest-price")
+@router.post("/ai/suggest-price")
 async def suggest_price_endpoint(
     request: Request,
     payload: Optional[PriceSuggestRequest] = None,

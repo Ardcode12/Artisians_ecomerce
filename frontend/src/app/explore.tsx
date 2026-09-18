@@ -31,9 +31,10 @@ import { Fonts, Shadow, Radius, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { BuyerBottomNav, BuyerTab } from '@/components/buyer/BuyerBottomNav';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { BACKEND_URL, normalizeImageUrl } from '@/config/api';
+import { useProductSpeech } from '@/utils/speech';
+import { ProductListenButton } from '@/components/ui/ProductListenButton';
 import AsyncStorage from '@/utils/storage';
-
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
 
 interface Product {
   id: string;
@@ -82,6 +83,7 @@ export default function ExploreScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
+  const { isSpeaking, toggle: toggleSpeech } = useProductSpeech();
 
   useEffect(() => {
     fetchProducts();
@@ -348,28 +350,27 @@ export default function ExploreScreen() {
               const isSaved = !!wishlist[item.id];
               const isGI = item.is_gi_tagged || index % 2 === 0;
               const craftCategory = item.craft_type || item.category || 'Handicraft';
-              const heroUri =
-                item.image_url ||
-                'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=600&q=80';
+              const heroUri = normalizeImageUrl(item.image_url);
 
               return (
                 <View key={item.id} style={styles.gridCell}>
-                  <TouchableOpacity
-                    style={styles.productCard}
-                    onPress={() => handleProductPress(item)}
-                    activeOpacity={0.9}
-                  >
+                  <View style={styles.productCard}>
                     <View style={styles.cardImageContainer}>
-                      <Image source={{ uri: heroUri }} style={styles.cardImage} resizeMode="cover" />
+                      {/* Tappable image */}
+                      <TouchableOpacity
+                        style={StyleSheet.absoluteFill}
+                        onPress={() => handleProductPress(item)}
+                        activeOpacity={0.9}
+                      >
+                        <Image source={{ uri: heroUri }} style={styles.cardImage} resizeMode="cover" />
+                      </TouchableOpacity>
+
                       <View style={[styles.trustTag, isGI ? styles.trustTagGI : styles.trustTagVerified]}>
                         <Text style={styles.trustTagText}>{isGI ? 'GI Tagged' : 'Verified'}</Text>
                       </View>
                       <TouchableOpacity
                         style={styles.cardHeartBtn}
-                        onPress={(e) => {
-                          e.stopPropagation?.();
-                          toggleWishlist(item.id);
-                        }}
+                        onPress={() => toggleWishlist(item.id)}
                         activeOpacity={0.8}
                       >
                         <Heart
@@ -379,9 +380,21 @@ export default function ExploreScreen() {
                           strokeWidth={2}
                         />
                       </TouchableOpacity>
+
+                      {/* Listen Button (Speech Read-Aloud) */}
+                      <ProductListenButton
+                        product={item}
+                        isSpeaking={isSpeaking(item.id)}
+                        onToggle={toggleSpeech}
+                        variant="card-overlay"
+                      />
                     </View>
 
-                    <View style={styles.cardInfo}>
+                    <TouchableOpacity
+                      style={styles.cardInfo}
+                      onPress={() => handleProductPress(item)}
+                      activeOpacity={0.85}
+                    >
                       <Text style={styles.cardTitle} numberOfLines={1}>
                         {item.title}
                       </Text>
@@ -392,17 +405,14 @@ export default function ExploreScreen() {
                         <Text style={styles.cardPrice}>{item.price}</Text>
                         <TouchableOpacity
                           style={styles.addBagBtn}
-                          onPress={(e) => {
-                            e.stopPropagation?.();
-                            handleAddToCart(item);
-                          }}
+                          onPress={() => handleAddToCart(item)}
                           activeOpacity={0.85}
                         >
                           <Text style={styles.addBagText}>+ Bag</Text>
                         </TouchableOpacity>
                       </View>
-                    </View>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               );
             })}

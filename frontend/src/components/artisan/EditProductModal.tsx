@@ -15,10 +15,9 @@ import {
 } from 'react-native';
 import { X, Check, Sparkles, Tag, Layers, Globe, PackageCheck, AlertCircle } from 'lucide-react-native';
 import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
+import { BACKEND_URL } from '@/config/api';
 
 const { width, height } = Dimensions.get('window');
-
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
 
 const CATEGORIES = [
   'Handloom Textile',

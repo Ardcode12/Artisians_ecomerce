@@ -27,8 +27,8 @@ def build_authorize_url(state: str) -> str:
     redirect = os.getenv("IG_REDIRECT_URI", "")
     if not app_id or app_id == "xxxxx":
         # Mock auth URL for local dev/demo
-        port = os.getenv("PORT", "5000")
-        return f"http://10.42.0.129:{port}/api/instagram/callback?code=mock_code_123&state={state}"
+        from app.config import PUBLIC_BASE_URL
+        return f"{PUBLIC_BASE_URL}/api/instagram/callback?code=mock_code_123&state={state}"
 
     return (
         "https://www.instagram.com/oauth/authorize"

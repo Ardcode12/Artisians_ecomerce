@@ -4,8 +4,23 @@ Loads environment variables and sets system-wide paths and constants.
 """
 
 import os
+import socket
 from pathlib import Path
 from dotenv import load_dotenv
+
+
+def _get_lan_ip() -> str:
+    """Auto-detect the machine's active LAN IP address."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+LAN_IP = _get_lan_ip()
 
 # Base backend directory
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -57,13 +72,15 @@ CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
 # Instagram Meta Graph
 IG_APP_ID = os.getenv("IG_APP_ID", "")
 IG_APP_SECRET = os.getenv("IG_APP_SECRET", "")
-IG_REDIRECT_URI = os.getenv("IG_REDIRECT_URI", "")
 IG_GRAPH_BASE = os.getenv("IG_GRAPH_BASE", "https://graph.instagram.com")
 
-# App & Public URLs
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "")
-DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() in ("true", "1", "yes")
+# App & Public URLs — auto-filled with LAN IP if not set in .env
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip() or f"http://{LAN_IP}:{PORT}"
 
+# IG_REDIRECT_URI auto-constructed from PUBLIC_BASE_URL if not explicitly set
+IG_REDIRECT_URI = os.getenv("IG_REDIRECT_URI", "").strip() or f"{PUBLIC_BASE_URL}/api/instagram/callback"
+
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() in ("true", "1", "yes")
 # Reel Output & Asset Directories
 REEL_OUTPUT_DIR = Path(os.getenv("REEL_OUTPUT_DIR", str(BACKEND_DIR / "media" / "reels")))
 REEL_ASSETS_DIR = Path(os.getenv("REEL_ASSETS_DIR", str(BACKEND_DIR / "assets" / "reel")))

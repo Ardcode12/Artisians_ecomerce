@@ -48,13 +48,16 @@ import {
 import { Fonts, Shadow, Radius, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import { useProductSpeech } from '@/utils/speech';
+import { ProductListenButton } from '@/components/ui/ProductListenButton';
 import { LanguagePicker } from '@/components/artisan/LanguagePicker';
 import { BuyerBottomNav, BuyerTab } from '@/components/buyer/BuyerBottomNav';
 import AsyncStorage from '@/utils/storage';
 
+import { BACKEND_URL, normalizeImageUrl, DEFAULT_CRAFT_FALLBACK_IMAGE } from '@/config/api';
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
-const DEFAULT_PRODUCT_IMG = 'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=600&q=80';
+const DEFAULT_PRODUCT_IMG = DEFAULT_CRAFT_FALLBACK_IMAGE;
 const DEFAULT_ARTISAN_AVATAR = 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&q=80';
 
 // Safe AsyncStorage wrapper to avoid "Native module is null" crashes
@@ -234,6 +237,7 @@ export default function BuyerHomeScreen() {
 
   const { addToCart: addGlobalCart, cartCount } = useCart();
   const { buyerProfile, profile, signOut, phone } = useAuth();
+  const { isSpeaking, toggle: toggleSpeech } = useProductSpeech();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const mainScrollRef = useRef<ScrollView>(null);
@@ -264,7 +268,7 @@ export default function BuyerHomeScreen() {
             return {
               ...p,
               original_price: `₹${origNum.toLocaleString('en-IN')}`,
-              image_url: p.image_url && p.image_url.trim() ? p.image_url : DEFAULT_PRODUCT_IMG,
+              image_url: normalizeImageUrl(p.image_url),
               artisan_name: p.artisan_name || 'Verified Artisan Maker',
               badge: idx === 0 ? 'bestseller' : idx === 1 ? 'new' : undefined,
             };
@@ -890,63 +894,72 @@ export default function BuyerHomeScreen() {
                   <View key={item.id} style={styles.gridCell}>
                     <View style={styles.card}>
                       {/* Product Image Frame */}
-                      <TouchableOpacity
-                        activeOpacity={0.9}
-                        onPress={() =>
-                          router.push({
-                            pathname: '/product-details',
-                            params: {
-                              id: item.id,
-                              title: item.title,
-                              price: item.price,
-                              category: item.category || item.craft_type || 'Handicraft',
-                              craft_type: item.craft_type || item.category || 'Handicraft',
-                              image_url: item.image_url,
-                              description_en: item.description_en || '',
-                              units: item.units || 1,
-                              artisan_id: item.artisan_id || '',
-                              artisan_name: item.artisan_name || '',
-                            },
-                          })
-                        }
-                      >
-                        <View style={styles.cardImgContainer}>
+                      <View style={styles.cardImgContainer}>
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          style={StyleSheet.absoluteFill}
+                          onPress={() =>
+                            router.push({
+                              pathname: '/product-details',
+                              params: {
+                                id: item.id,
+                                title: item.title,
+                                price: item.price,
+                                category: item.category || item.craft_type || 'Handicraft',
+                                craft_type: item.craft_type || item.category || 'Handicraft',
+                                image_url: item.image_url,
+                                description_en: item.description_en || '',
+                                units: item.units || 1,
+                                artisan_id: item.artisan_id || '',
+                                artisan_name: item.artisan_name || '',
+                              },
+                            })
+                          }
+                        >
                           <Image
                             source={{ uri: item.image_url || DEFAULT_PRODUCT_IMG }}
                             style={styles.cardImg}
                             resizeMode="cover"
                           />
+                        </TouchableOpacity>
 
-                          {/* Clean Status Pill Badge (No Emojis) */}
-                          {item.badge && (
-                            <View
-                              style={[
-                                styles.cardBadge,
-                                item.badge === 'bestseller' && styles.badgeBestseller,
-                                item.badge === 'new' && styles.badgeNew,
-                              ]}
-                            >
-                              <Text style={styles.cardBadgeText}>
-                                {item.badge === 'bestseller' ? 'Bestseller' : 'New Arrival'}
-                              </Text>
-                            </View>
-                          )}
-
-                          {/* Wishlist Heart */}
-                          <TouchableOpacity
-                            style={styles.wishlistBtn}
-                            onPress={() => toggleWishlist(item.id)}
-                            activeOpacity={0.8}
+                        {/* Clean Status Pill Badge (No Emojis) */}
+                        {item.badge && (
+                          <View
+                            style={[
+                              styles.cardBadge,
+                              item.badge === 'bestseller' && styles.badgeBestseller,
+                              item.badge === 'new' && styles.badgeNew,
+                            ]}
                           >
-                            <Heart
-                              size={14}
-                              color={isSaved ? '#EF4444' : '#FFFFFF'}
-                              fill={isSaved ? '#EF4444' : 'transparent'}
-                              strokeWidth={2}
-                            />
-                          </TouchableOpacity>
-                        </View>
-                      </TouchableOpacity>
+                            <Text style={styles.cardBadgeText}>
+                              {item.badge === 'bestseller' ? 'Bestseller' : 'New Arrival'}
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* Wishlist Heart */}
+                        <TouchableOpacity
+                          style={styles.wishlistBtn}
+                          onPress={() => toggleWishlist(item.id)}
+                          activeOpacity={0.8}
+                        >
+                          <Heart
+                            size={14}
+                            color={isSaved ? '#EF4444' : '#FFFFFF'}
+                            fill={isSaved ? '#EF4444' : 'transparent'}
+                            strokeWidth={2}
+                          />
+                        </TouchableOpacity>
+
+                        {/* Listen Button (Speech Read-Aloud) */}
+                        <ProductListenButton
+                          product={item}
+                          isSpeaking={isSpeaking(item.id)}
+                          onToggle={toggleSpeech}
+                          variant="card-overlay"
+                        />
+                      </View>
 
                       {/* Product Card Details */}
                       <View style={styles.cardBody}>

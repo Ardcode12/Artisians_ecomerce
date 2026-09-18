@@ -41,21 +41,25 @@ import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { EditProductModal, EditableProduct } from '@/components/artisan/EditProductModal';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import { BACKEND_URL, normalizeImageUrl } from '@/config/api';
+import { useProductSpeech } from '@/utils/speech';
+import { ProductListenButton } from '@/components/ui/ProductListenButton';
+
+import { getSelectedLanguage } from '@/utils/language-utils';
 
 export interface DetailedProduct extends EditableProduct {
   artisan_id?: string;
   artisan_name?: string;
 }
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
-
-const LANG_OPTIONS = ['EN', 'हिं', 'தமிழ்', 'తెలుగు'];
+const LANG_OPTIONS = ['English', 'हिंदी', 'தமிழ்'];
 
 const DEFAULT_DESCRIPTIONS: Record<string, string> = {
+  English: 'Authentic artisan creation handcrafted with heritage techniques. Natural dyes, pure organic cotton, and traditional hand-block printing. Engineered for supreme durability and breathable elegance, directly empowering women artisan clusters in Kutch.',
+  'हिंदी': 'प्रामाणिक हस्तशिल्प उत्पाद जो पारंपरिक तकनीकों से निर्मित है। प्राकृतिक रंगों और शुद्ध जैविक सूती धागों से तैयार। यह उत्पाद कच्छ के बुनकर समुदायों को सीधे आत्मनिर्भर बनाता है।',
+  'தமிழ்': 'பாரம்பரிய கைவினை நுட்பங்களால் நெய்யப்பட்ட அசல் கைத்தறி தயாரிப்பு. இயற்கை சாயங்கள் மற்றும் தூய பருத்தி கொண்டு அழகாக வடிவமைக்கப்பட்டுள்ளது.',
   EN: 'Authentic artisan creation handcrafted with heritage techniques. Natural dyes, pure organic cotton, and traditional hand-block printing. Engineered for supreme durability and breathable elegance, directly empowering women artisan clusters in Kutch.',
   'हिं': 'प्रामाणिक हस्तशिल्प उत्पाद जो पारंपरिक तकनीकों से निर्मित है। प्राकृतिक रंगों और शुद्ध जैविक सूती धागों से तैयार। यह उत्पाद कच्छ के बुनकर समुदायों को सीधे आत्मनिर्भर बनाता है।',
-  'தமிழ்': 'பாரம்பரிய கைவினை நுட்பங்களால் நெய்யப்பட்ட அசல் கைத்தறி தயாரிப்பு. இயற்கை சாயங்கள் மற்றும் தூய பருத்தி கொண்டு அழகாக வடிவமைக்கப்பட்டுள்ளது.',
-  'తెలుగు': 'వారసత్వ పద్ధతులతో తయారు చేసిన ప్రామాణిక చేతిపనుల ఉత్పత్తి. సహజ రంగులు మరియు స్వచ్ఛమైన పత్తితో కళాత్మకంగా రూపొందించబడింది.',
 };
 
 export default function ProductDetailsScreen() {
@@ -64,6 +68,10 @@ export default function ProductDetailsScreen() {
   const params = useLocalSearchParams();
   const { userRole, user, profile } = useAuth();
   const { addToCart, cartCount } = useCart();
+
+  // Initialize selectedLang based on global active language
+  const appLang = getSelectedLanguage();
+  const initialLang = appLang === 'ta' ? 'தமிழ்' : appLang === 'hi' ? 'हिंदी' : 'English';
 
   // Local state for product data
   const [product, setProduct] = useState<DetailedProduct>({
@@ -83,11 +91,13 @@ export default function ProductDetailsScreen() {
   });
 
   const [quantity, setQuantity] = useState(1);
-  const [selectedLang, setSelectedLang] = useState('EN');
+  const [selectedLang, setSelectedLang] = useState(initialLang);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(1);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { isSpeaking, toggle: toggleSpeech } = useProductSpeech();
 
   // Direct Buy Modal & States
   const [buyModalOpen, setBuyModalOpen] = useState(false);
@@ -127,11 +137,11 @@ export default function ProductDetailsScreen() {
 
   // Compute description to display based on selected language
   const getDisplayDescription = () => {
-    if (selectedLang === 'EN' && product.description_en) return product.description_en;
-    if (selectedLang === 'हिं' && product.description_hi) return product.description_hi;
-    if (selectedLang === 'தமிழ்' && product.description_ta) return product.description_ta;
+    if ((selectedLang === 'தமிழ்' || selectedLang === 'ta') && product.description_ta) return product.description_ta;
+    if ((selectedLang === 'हिंदी' || selectedLang === 'हिं' || selectedLang === 'hi') && product.description_hi) return product.description_hi;
+    if ((selectedLang === 'English' || selectedLang === 'EN' || selectedLang === 'en') && product.description_en) return product.description_en;
     if (product.description_en) return product.description_en;
-    return DEFAULT_DESCRIPTIONS[selectedLang] || DEFAULT_DESCRIPTIONS.EN;
+    return DEFAULT_DESCRIPTIONS[selectedLang] || DEFAULT_DESCRIPTIONS.English;
   };
 
   const handleEditSuccess = (updated: EditableProduct) => {
@@ -309,7 +319,9 @@ export default function ProductDetailsScreen() {
     }
   };
 
-  const heroImage = product.image_url || 'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=600&q=80';
+  const heroImage = imageLoadFailed || !product.image_url
+    ? 'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=600&q=80'
+    : normalizeImageUrl(product.image_url);
 
   return (
     <View style={styles.container}>
@@ -394,6 +406,13 @@ export default function ProductDetailsScreen() {
               </View>
             )}
           </TouchableOpacity>
+          {/* Read-Aloud Listen Button in Top Bar */}
+          <ProductListenButton
+            product={product}
+            isSpeaking={isSpeaking(product.id)}
+            onToggle={(p) => toggleSpeech(p, { isDetailView: true, lang: selectedLang })}
+            variant="top-bar"
+          />
         </View>
       </View>
 
@@ -407,6 +426,7 @@ export default function ProductDetailsScreen() {
             source={{ uri: heroImage }}
             style={styles.heroImage}
             resizeMode="cover"
+            onError={() => setImageLoadFailed(true)}
           />
 
           {/* Pagination dots */}
@@ -512,6 +532,15 @@ export default function ProductDetailsScreen() {
               <Text style={styles.trustText}>100% Genuine Craft</Text>
             </View>
           </View>
+
+          {/* ── Accessible Audio Read-Aloud Button ────────────────── */}
+          <ProductListenButton
+            product={product}
+            isSpeaking={isSpeaking(product.id)}
+            onToggle={(p) => toggleSpeech(p, { isDetailView: true, lang: selectedLang })}
+            variant="full-banner"
+            style={{ marginVertical: 12 }}
+          />
 
           {/* ── Language Preview Selector ─────────────────────── */}
           <View style={styles.langSection}>

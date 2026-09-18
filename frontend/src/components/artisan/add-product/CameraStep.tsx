@@ -14,9 +14,9 @@ import { Image as ImageIcon, RefreshCw } from 'lucide-react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import * as ImagePicker from 'expo-image-picker';
 import { useLanguage } from '@/context/LanguageContext';
+import { BACKEND_URL } from '@/config/api';
 
 const { width } = Dimensions.get('window');
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
 
 const BG           = '#F5F0E8';
 const FINDER_BG    = '#E8E4DE';

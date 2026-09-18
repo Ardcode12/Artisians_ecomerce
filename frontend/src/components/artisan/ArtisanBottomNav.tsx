@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, Package, User } from 'lucide-react-native';
+import { Home, Package, TrendingUp, BarChart3 } from 'lucide-react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 
-// 3-tab nav: Home | Products | Profile (Sell removed per user request)
-export type ArtisanTab = 'home' | 'listings' | 'add' | 'inquiries' | 'profile';
+// 4-tab nav: Home | Products | Growth | Analytical (Profile accessible via header icon)
+export type ArtisanTab = 'home' | 'listings' | 'growth' | 'analytical' | 'add' | 'inquiries' | 'profile';
 
 interface ArtisanBottomNavProps {
   activeTab: ArtisanTab;
@@ -52,20 +52,35 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
           </Text>
         </TouchableOpacity>
 
-        {/* Profile */}
+        {/* Growth */}
         <TouchableOpacity
           style={styles.tab}
-          onPress={() => onTabChange('profile')}
+          onPress={() => onTabChange('growth')}
           activeOpacity={0.75}
         >
-          <User
+          <TrendingUp
             size={22}
-            color={activeTab === 'profile' ? Colors.primary : Colors.navInactive}
-            strokeWidth={activeTab === 'profile' ? 2.2 : 1.6}
-            fill={activeTab === 'profile' ? Colors.primary : 'none'}
+            color={activeTab === 'growth' ? Colors.primary : Colors.navInactive}
+            strokeWidth={activeTab === 'growth' ? 2.2 : 1.6}
           />
-          <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]}>
-            Profile
+          <Text style={[styles.tabLabel, activeTab === 'growth' && styles.tabLabelActive]}>
+            Growth
+          </Text>
+        </TouchableOpacity>
+
+        {/* Analytical */}
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => onTabChange('analytical')}
+          activeOpacity={0.75}
+        >
+          <BarChart3
+            size={22}
+            color={activeTab === 'analytical' ? Colors.primary : Colors.navInactive}
+            strokeWidth={activeTab === 'analytical' ? 2.2 : 1.6}
+          />
+          <Text style={[styles.tabLabel, activeTab === 'analytical' && styles.tabLabelActive]}>
+            Analytical
           </Text>
         </TouchableOpacity>
 
