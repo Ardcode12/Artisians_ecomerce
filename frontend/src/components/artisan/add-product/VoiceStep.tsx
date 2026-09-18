@@ -25,7 +25,7 @@ import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { LanguageCode } from '@/i18n/translations';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 const BG = '#F5F0E8';
 
 const LANGUAGE_OPTIONS: { code: LanguageCode; label: string; local: string }[] = [

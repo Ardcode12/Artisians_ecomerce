@@ -36,18 +36,20 @@ import {
   CreditCard,
   MapPin,
   CheckCircle2,
+  ChevronRight,
 } from 'lucide-react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { EditProductModal, EditableProduct } from '@/components/artisan/EditProductModal';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import { normalizeImageUrl } from '@/config/api';
 
 export interface DetailedProduct extends EditableProduct {
   artisan_id?: string;
   artisan_name?: string;
 }
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 
 const LANG_OPTIONS = ['EN', 'हिं', 'தமிழ்', 'తెలుగు'];
 
@@ -309,7 +311,7 @@ export default function ProductDetailsScreen() {
     }
   };
 
-  const heroImage = product.image_url || 'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=600&q=80';
+  const heroImage = normalizeImageUrl(product.image_url) || 'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=600&q=80';
 
   return (
     <View style={styles.container}>
@@ -328,8 +330,22 @@ export default function ProductDetailsScreen() {
         {/* Right Action Icons: ARTISAN OWNER vs BUYER */}
         <View style={styles.topBarActions}>
           {isArtisanOwner ? (
-            /* Artisan Owner sees Edit & Delete */
+            /* Artisan Owner sees Redesign, Edit & Delete */
             <>
+              <TouchableOpacity
+                style={styles.circleBtnGreen}
+                onPress={() =>
+                  router.push({
+                    pathname: '/design-ideas/[productId]',
+                    params: { productId: product.id },
+                  } as any)
+                }
+                activeOpacity={0.8}
+                accessibilityLabel="Redesign with AI"
+              >
+                <Sparkles size={18} color="#1E4E2C" strokeWidth={2.2} />
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.circleBtnWhite}
                 onPress={() => setIsEditModalOpen(true)}
@@ -512,6 +528,33 @@ export default function ProductDetailsScreen() {
               <Text style={styles.trustText}>100% Genuine Craft</Text>
             </View>
           </View>
+
+          {/* ── Artisan Redesign Callout Banner ──────────────────── */}
+          {isArtisanOwner && product.id ? (
+            <TouchableOpacity
+              style={styles.redesignCallout}
+              onPress={() =>
+                router.push({
+                  pathname: '/design-ideas/[productId]',
+                  params: { productId: product.id },
+                } as any)
+              }
+              activeOpacity={0.88}
+            >
+              <View style={styles.redesignCalloutLeft}>
+                <View style={styles.redesignCalloutIcon}>
+                  <Sparkles size={18} color="#1E4E2C" strokeWidth={2.4} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.redesignCalloutTitle}>Modern Redesign Ideas</Text>
+                  <Text style={styles.redesignCalloutSub}>
+                    See how this product looks with modern trends & fusion concepts
+                  </Text>
+                </View>
+              </View>
+              <ChevronRight size={18} color="#1E4E2C" strokeWidth={2.4} />
+            </TouchableOpacity>
+          ) : null}
 
           {/* ── Language Preview Selector ─────────────────────── */}
           <View style={styles.langSection}>
@@ -904,6 +947,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...Shadow.card,
   },
+  circleBtnGreen: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#EFF7F1',
+    borderWidth: 1.5,
+    borderColor: '#DDF0E1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadow.card,
+  },
   cartBadgeDot: {
     position: 'absolute',
     top: -4,
@@ -1085,6 +1139,46 @@ const styles = StyleSheet.create({
     width: 1,
     height: 16,
     backgroundColor: '#E5E5EA',
+  },
+  redesignCallout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#EFF7F1',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: '#DDF0E1',
+    ...Shadow.card,
+  },
+  redesignCalloutLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    paddingRight: 10,
+  },
+  redesignCalloutIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#D6EFE0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  redesignCalloutTitle: {
+    fontSize: 14.5,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '700',
+    color: '#0F2537',
+    marginBottom: 2,
+  },
+  redesignCalloutSub: {
+    fontSize: 12,
+    fontFamily: Fonts.body,
+    color: '#4B5563',
+    lineHeight: 16,
   },
   langSection: {
     marginBottom: 20,

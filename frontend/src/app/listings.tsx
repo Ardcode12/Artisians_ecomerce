@@ -23,14 +23,15 @@ import {
   Inter_500Medium,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
-import { ChevronRight, Plus, Package } from 'lucide-react-native';
+import { ChevronRight, Plus, Package, Sparkles } from 'lucide-react-native';
 
 import { Colors, Fonts, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
 import { useAuth } from '@/context/AuthContext';
 import { EditProductModal, EditableProduct } from '@/components/artisan/EditProductModal';
+import { normalizeImageUrl } from '@/config/api';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 
 // ── Design tokens matching reference image ─────────────────────────────────
 const BG           = '#F5F0E8';   // warm cream background
@@ -116,6 +117,7 @@ export default function ListingsScreen() {
     setActiveTab(tab);
     if (tab === 'home')     router.push('/');
     if (tab === 'listings') router.push('/listings');
+    if (tab === 'growth')   router.push('/growth' as any);
     if (tab === 'add')      router.push('/add-product');
     if (tab === 'profile')  router.push('/profile');
   };
@@ -174,7 +176,7 @@ export default function ListingsScreen() {
         <View style={styles.thumbWrap}>
           {item.image_url ? (
             <Image
-              source={{ uri: item.image_url }}
+              source={{ uri: normalizeImageUrl(item.image_url) }}
               style={styles.thumbImg}
               resizeMode="cover"
             />
@@ -196,6 +198,22 @@ export default function ListingsScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Redesign Action Button */}
+        <TouchableOpacity
+          style={styles.redesignPill}
+          onPress={(e) => {
+            if (e && e.stopPropagation) e.stopPropagation();
+            router.push({
+              pathname: '/design-ideas/[productId]',
+              params: { productId: item.id },
+            } as any);
+          }}
+          activeOpacity={0.8}
+        >
+          <Sparkles size={12} color="#1E4E2C" />
+          <Text style={styles.redesignPillText}>Redesign</Text>
+        </TouchableOpacity>
 
         {/* Chevron */}
         <ChevronRight size={18} color={TEXT_MUTED} strokeWidth={1.8} />
@@ -470,5 +488,23 @@ const styles = StyleSheet.create({
       },
       android: { elevation: 8 },
     }),
+  },
+  redesignPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF7F1',
+    borderWidth: 1,
+    borderColor: '#DDF0E1',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    gap: 4,
+    marginRight: 6,
+  },
+  redesignPillText: {
+    fontSize: 11.5,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '700',
+    color: '#1E4E2C',
   },
 });

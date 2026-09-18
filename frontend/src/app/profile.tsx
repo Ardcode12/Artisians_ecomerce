@@ -31,6 +31,7 @@ import {
   Check,
   Globe,
   Share2,
+  ArrowLeft,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -42,7 +43,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
 import LinkInstagramCard from '@/components/profile/LinkInstagramCard';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 const BG = '#F5F0E8';
 
 const PRESET_AVATARS = [
@@ -99,6 +100,7 @@ export default function ProfileScreen() {
     setActiveTab(tab);
     if (tab === 'home') router.push('/');
     if (tab === 'listings') router.push('/listings');
+    if (tab === 'growth') router.push('/growth' as any);
   };
 
   const handleSignOut = async () => {
@@ -267,6 +269,16 @@ export default function ProfileScreen() {
       <View style={styles.root}>
         <StatusBar barStyle="dark-content" backgroundColor={BG} />
         <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => router.back()}
+              activeOpacity={0.75}
+            >
+              <ArrowLeft size={20} color="#111827" strokeWidth={2.2} />
+            </TouchableOpacity>
+            <Text style={styles.screenTitle}>My Profile</Text>
+          </View>
           <View style={styles.heroCard}>
             <View style={styles.avatarCircle}>
               <User size={36} color="#2D6A4F" strokeWidth={2} />
@@ -367,9 +379,18 @@ export default function ProfileScreen() {
       >
         {/* ── Top Header ────────────────────────────────────────────── */}
         <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.screenTitle}>My Profile</Text>
-            <Text style={styles.screenSubtitle}>Manage your account</Text>
+          <View style={styles.headerTitleGroup}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => router.back()}
+              activeOpacity={0.75}
+            >
+              <ArrowLeft size={20} color="#111827" strokeWidth={2.2} />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.screenTitle}>My Profile</Text>
+              <Text style={styles.screenSubtitle}>Manage your account</Text>
+            </View>
           </View>
           <TouchableOpacity
             style={styles.editPillBtn}
@@ -726,6 +747,22 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 20,
     paddingTop: 4,
+  },
+  headerTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadow.card,
   },
   screenTitle: {
     fontSize: 26,

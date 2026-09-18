@@ -16,7 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLanguage } from '@/context/LanguageContext';
 
 const { width } = Dimensions.get('window');
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 
 const BG           = '#F5F0E8';
 const FINDER_BG    = '#E8E4DE';

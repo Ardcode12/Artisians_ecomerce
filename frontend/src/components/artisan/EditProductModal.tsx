@@ -18,7 +18,7 @@ import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-them
 
 const { width, height } = Dimensions.get('window');
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 
 const CATEGORIES = [
   'Handloom Textile',

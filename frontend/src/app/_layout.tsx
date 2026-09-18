@@ -36,6 +36,7 @@ export default function RootLayout() {
               <Stack.Screen name="categories" />
               <Stack.Screen name="add-product" />
               <Stack.Screen name="listings" />
+              <Stack.Screen name="growth" />
               <Stack.Screen name="profile" />
               <Stack.Screen name="earnings" />
               <Stack.Screen name="inquiries" />
@@ -45,6 +46,16 @@ export default function RootLayout() {
               <Stack.Screen name="inventory-alerts" />
               <Stack.Screen name="help-support" />
               <Stack.Screen name="manage-stock" />
+              {/* Government Schemes Screens */}
+              <Stack.Screen name="schemes/index" />
+              <Stack.Screen name="schemes/[id]" />
+              {/* Growth - Design Ideas Screens */}
+              <Stack.Screen name="design-ideas/index" />
+              <Stack.Screen name="design-ideas/[productId]" />
+              {/* Growth - Demand Forecast Screens */}
+              <Stack.Screen name="demand-forecast/index" />
+              <Stack.Screen name="demand-forecast/[category]" />
+              <Stack.Screen name="demand-forecast/festival/[slug]" />
             </Stack>
           </CartProvider>
         </LanguageProvider>

@@ -29,7 +29,7 @@ import { Colors, Fonts, Shadow, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
 import { useAuth } from '@/context/AuthContext';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 const { width } = Dimensions.get('window');
 
 const PERIOD_TABS = ['7 Days', '30 Days', '3 Months', '1 Year'];
@@ -94,6 +94,7 @@ export default function EarningsScreen() {
     setActiveTab(tab);
     if (tab === 'home') router.push('/');
     if (tab === 'listings') router.push('/listings');
+    if (tab === 'growth') router.push('/growth' as any);
     if (tab === 'add') router.push('/add-product');
     if (tab === 'profile') router.push('/profile');
   };

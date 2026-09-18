@@ -30,7 +30,7 @@ import {
 
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.45.69.254:5000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.42.0.129:5000';
 
 export default function ManageStockScreen() {
   const insets = useSafeAreaInsets();

@@ -14,10 +14,13 @@ const getDevHost = () => {
   return null;
 };
 
-export const BACKEND_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL ||
-  getDevHost() ||
-  'http://10.45.69.254:5000';
+export const BACKEND_URL = (() => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.hostname) {
+    return `http://${window.location.hostname}:5000`;
+  }
+  if (process.env.EXPO_PUBLIC_BACKEND_URL) return process.env.EXPO_PUBLIC_BACKEND_URL;
+  return getDevHost() || 'http://10.42.0.129:5000';
+})();
 
 /**
  * Normalizes any image URL so old/stale IP addresses (e.g. 192.168.137.205)
@@ -28,6 +31,12 @@ export function normalizeImageUrl(url?: string | null): string {
   const trimmed = url.trim();
   if (!trimmed) return '';
   
+  if (trimmed.startsWith('uploads/')) {
+    return `${BACKEND_URL}/${trimmed}`;
+  }
+  if (trimmed.startsWith('/uploads/')) {
+    return `${BACKEND_URL}${trimmed}`;
+  }
   if (trimmed.includes('/uploads/')) {
     const filename = trimmed.split('/uploads/').pop();
     return `${BACKEND_URL}/uploads/${filename}`;
