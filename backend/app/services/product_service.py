@@ -79,30 +79,38 @@ def get_products(
     offset: int = 0
 ) -> Tuple[List[Dict[str, Any]], int]:
     """Get paginated products with optional artisan, status, category, and search filters."""
-    query = "SELECT * FROM products WHERE 1=1"
+    base_where = " WHERE 1=1"
     params = []
 
     if artisan_id:
-        query += " AND artisan_id = ?"
+        base_where += " AND p.artisan_id = ?"
         params.append(artisan_id)
 
     if status:
-        query += " AND status = ?"
+        base_where += " AND p.status = ?"
         params.append(status)
 
     if category:
-        query += " AND (LOWER(category) LIKE ? OR LOWER(craft_type) LIKE ?)"
+        base_where += " AND (LOWER(p.category) LIKE ? OR LOWER(p.craft_type) LIKE ?)"
         params.extend([f"%{category.lower()}%", f"%{category.lower()}%"])
 
     if search:
-        query += " AND (LOWER(title) LIKE ? OR LOWER(description_en) LIKE ? OR LOWER(category) LIKE ?)"
+        base_where += " AND (LOWER(p.title) LIKE ? OR LOWER(p.description_en) LIKE ? OR LOWER(p.category) LIKE ?)"
         params.extend([f"%{search.lower()}%", f"%{search.lower()}%", f"%{search.lower()}%"])
 
-    count_query = query.replace("SELECT *", "SELECT COUNT(*) AS total_count")
-
-    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    count_query = f"SELECT COUNT(*) AS total_count FROM products p{base_where}"
+    query = f"""
+    SELECT p.*,
+           COALESCE(NULLIF(pr.name, ''), 'Master Artisan') AS artisan_name,
+           COALESCE(NULLIF(pr.phone, ''), '+91 98765 43210') AS artisan_phone,
+           pr.avatar_url AS artisan_avatar,
+           pr.craft_type AS artisan_craft
+    FROM products p
+    LEFT JOIN profiles pr ON p.artisan_id = pr.id
+    {base_where}
+    ORDER BY p.created_at DESC LIMIT ? OFFSET ?
+    """
     params_with_paging = list(params) + [limit, offset]
-
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -125,9 +133,19 @@ def get_products(
 
 def get_product_by_id(product_id: str) -> Optional[Dict[str, Any]]:
     """Fetch single product by ID."""
+    query = """
+    SELECT p.*,
+           COALESCE(NULLIF(pr.name, ''), 'Master Artisan') AS artisan_name,
+           COALESCE(NULLIF(pr.phone, ''), '+91 98765 43210') AS artisan_phone,
+           pr.avatar_url AS artisan_avatar,
+           pr.craft_type AS artisan_craft
+    FROM products p
+    LEFT JOIN profiles pr ON p.artisan_id = pr.id
+    WHERE p.id = ?
+    """
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM products WHERE id = ?", (product_id,))
+        cursor.execute(query, (product_id,))
         row = cursor.fetchone()
         if row:
             p = dict(row)

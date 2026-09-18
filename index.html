@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Confirmation Call System — Artisans E-Commerce</title>
+  <meta name="description" content="Automated seller order-confirmation calling system via Twilio. Receives orders from GeM/ONDC and calls sellers in their preferred language." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Design Tokens ─── */
+    :root {
+      --bg:        #0b0f1a;
+      --surface:   #111827;
+      --border:    #1f2937;
+      --border-hi: #374151;
+      --blue:      #3b82f6;
+      --blue-dark: #2563eb;
+      --green:     #22c55e;
+      --red:       #ef4444;
+      --amber:     #f59e0b;
+      --slate:     #64748b;
+      --text:      #f1f5f9;
+      --muted:     #94a3b8;
+      --mono:      'JetBrains Mono', monospace;
+      --sans:      'Inter', sans-serif;
+    }
+
+    /* ─── Reset ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ─── Layout ─── */
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+
+    /* ─── Header ─── */
+    .header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+      margin-bottom: 32px;
+    }
+    .header-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+    .header h1 span { color: var(--blue); }
+    .header p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+      max-width: 540px;
+    }
+    .backend-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--slate);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      white-space: nowrap;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+    }
+    .dot.offline { background: var(--red); }
+
+    /* ─── Flow diagram ─── */
+    .flow-bar {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      overflow-x: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 28px;
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .flow-bar .step { font-family: var(--mono); color: var(--text); font-size: 11px; }
+    .flow-bar .arrow { color: var(--border-hi); margin: 0 8px; }
+    .flow-bar .step.hi { color: var(--blue); }
+
+    /* ─── Two-column layout ─── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ─── Card ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title .icon { font-size: 14px; }
+
+    /* ─── Form ─── */
+    .form-grid {
+      display: grid;
+      gap: 14px;
+    }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .field input, .field select, .field textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: var(--sans);
+      padding: 8px 11px;
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--blue);
+    }
+    .field select option { background: #1a2130; }
+    .field textarea { resize: vertical; min-height: 60px; }
+
+    .field-hint {
+      font-size: 11px;
+      color: var(--slate);
+      margin-top: 2px;
+    }
+
+    /* ─── Trigger button ─── */
+    .trigger-btn {
+      width: 100%;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 11px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--sans);
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      margin-top: 6px;
+    }
+    .trigger-btn:hover:not(:disabled) { background: var(--blue-dark); }
+    .trigger-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* ─── Status Panel ─── */
+    .status-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    /* pipeline steps */
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-bottom: 16px;
+    }
+    .pipe-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 9px 0;
+      position: relative;
+    }
+    .pipe-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 34px;
+      width: 1px;
+      height: calc(100% - 10px);
+      background: var(--border);
+    }
+    .pipe-dot {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 1.5px solid var(--border-hi);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      flex-shrink: 0;
+      color: var(--slate);
+      margin-top: 1px;
+    }
+    .pipe-dot.active   { border-color: var(--blue);  color: var(--blue);  background: rgba(59,130,246,0.12); }
+    .pipe-dot.done     { border-color: var(--green); color: var(--green); background: rgba(34,197,94,0.12); }
+    .pipe-dot.error    { border-color: var(--red);   color: var(--red);   background: rgba(239,68,68,0.12); }
+    .pipe-dot.waiting  { border-color: var(--border-hi); }
+
+    .pipe-text { display: flex; flex-direction: column; }
+    .pipe-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .pipe-label.active  { color: var(--text); }
+    .pipe-label.done    { color: var(--green); }
+    .pipe-label.error   { color: var(--red); }
+    .pipe-sub {
+      font-size: 11px;
+      color: var(--slate);
+      margin-top: 1px;
+      font-family: var(--mono);
+    }
+
+    /* ─── Call result ─── */
+    .result-box {
+      border-radius: 7px;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      border: 1px solid;
+    }
+    .result-box.confirmed { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.25); }
+    .result-box.rejected  { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); }
+    .result-box.pending   { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.2); }
+    .result-box.failed    { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); }
+    .result-box.idle      { background: var(--bg); border-color: var(--border); color: var(--muted); }
+
+    .result-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 6px;
+    }
+    .result-label.confirmed { color: var(--green); }
+    .result-label.rejected  { color: var(--red); }
+    .result-label.pending   { color: var(--blue); }
+    .result-label.failed    { color: var(--red); }
+
+    .result-detail {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      word-break: break-all;
+    }
+
+    /* ─── Call log ─── */
+    .log-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .log-row {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .log-row:hover { border-color: var(--border-hi); }
+    .log-status-badge {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .badge-confirmed { background: rgba(34,197,94,0.15); color: var(--green); }
+    .badge-rejected  { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge-pending   { background: rgba(59,130,246,0.15); color: var(--blue); }
+    .badge-failed    { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge-ringing   { background: rgba(245,158,11,0.15); color: var(--amber); }
+
+    .log-info { min-width: 0; }
+    .log-product { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .log-meta    { font-size: 10px; color: var(--slate); font-family: var(--mono); margin-top: 1px; }
+    .log-time    { font-size: 10px; color: var(--slate); white-space: nowrap; }
+
+    /* ─── Misc ─── */
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 28px 0 12px;
+    }
+
+    .api-hint {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 28px;
+    }
+    .api-hint h3 {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .api-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 5px 0;
+      border-top: 1px solid var(--border);
+    }
+    .api-method {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .m-post { background: rgba(34,197,94,0.12); color: var(--green); }
+    .m-get  { background: rgba(59,130,246,0.12); color: var(--blue); }
+    .api-path { font-family: var(--mono); font-size: 11px; color: var(--text); }
+    .api-desc { font-size: 11px; color: var(--slate); margin-left: auto; }
+
+    .empty-state {
+      text-align: center;
+      padding: 28px 0;
+      color: var(--slate);
+      font-size: 12px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .poll-indicator {
+      font-size: 11px;
+      color: var(--slate);
+      font-family: var(--mono);
+      text-align: center;
+      padding: 8px 0 0;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── Header ── -->
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <h1>Seller Order-Confirmation <span>Call System</span></h1>
+        <p>
+          When a buyer places an order on <strong>GeM / ONDC</strong> or another portal,
+          the backend automatically calls the seller via Twilio to confirm or reject the order —
+          in the seller's preferred language.
+        </p>
+      </div>
+      <div class="backend-badge" id="backendBadge">
+        <span class="dot" id="backendDot"></span>
+        <span id="backendStatus">Checking…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── System Flow ── -->
+  <div class="flow-bar">
+    <span class="step hi">GeM / ONDC</span>
+    <span class="arrow">→</span>
+    <span class="step">Order API</span>
+    <span class="arrow">→</span>
+    <span class="step">Backend Validation</span>
+    <span class="arrow">→</span>
+    <span class="step hi">Twilio Call</span>
+    <span class="arrow">→</span>
+    <span class="step">Seller Phone</span>
+    <span class="arrow">→</span>
+    <span class="step">AI Voice Agent</span>
+    <span class="arrow">→</span>
+    <span class="step hi">Confirm / Reject</span>
+    <span class="arrow">→</span>
+    <span class="step">Order Status Updated</span>
+  </div>
+
+  <!-- ── Two-Column: Form + Status ── -->
+  <div class="two-col">
+
+    <!-- LEFT: Order Form -->
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span> Order Details</div>
+      <div class="form-grid">
+
+        <div class="field">
+          <label>Order ID</label>
+          <input id="orderId" type="text" placeholder="GEM-2024-00123" value="GEM-2024-00123" />
+          <span class="field-hint">From GeM / ONDC / external portal</span>
+        </div>
+
+        <div class="field">
+          <label>Order Source</label>
+          <select id="orderSource">
+            <option value="GeM">GeM (Govt. e-Marketplace)</option>
+            <option value="ONDC">ONDC</option>
+            <option value="Flipkart">Flipkart</option>
+            <option value="Amazon">Amazon</option>
+            <option value="Meesho">Meesho</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Product Name</label>
+          <input id="productTitle" type="text" placeholder="Premium Hand-Hammered Copper Bottle 1.5L" value="Premium Hand-Hammered Copper Bottle 1.5L" />
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field">
+            <label>Quantity</label>
+            <input id="quantity" type="number" min="1" value="2" />
+          </div>
+          <div class="field">
+            <label>Total Amount</label>
+            <input id="amount" type="text" placeholder="₹1,500" value="₹1,500" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Buyer Name</label>
+          <input id="buyerName" type="text" placeholder="Ramesh Kumar" value="Ramesh Kumar" />
+        </div>
+
+        <div class="field">
+          <label>Delivery Address (optional)</label>
+          <textarea id="deliveryAddress" placeholder="12, Anna Nagar, Chennai - 600040">12, Anna Nagar, Chennai - 600040</textarea>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- LEFT BOTTOM: Seller Info -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="card">
+        <div class="card-title"><span class="icon">👤</span> Seller Details</div>
+        <div class="form-grid">
+
+          <div class="field">
+            <label>Seller Name</label>
+            <input id="sellerName" type="text" placeholder="Arnald S" value="Arnald S" />
+          </div>
+
+          <div class="field">
+            <label>Seller Phone</label>
+            <input id="sellerPhone" type="tel" placeholder="+919080176624" value="+919080176624" />
+            <span class="field-hint">E.164 format — +91XXXXXXXXXX</span>
+          </div>
+
+          <div class="field">
+            <label>Preferred Language</label>
+            <select id="sellerLang">
+              <option value="ta-IN">Tamil (தமிழ்)</option>
+              <option value="hi-IN">Hindi (हिंदी)</option>
+              <option value="en-IN" selected>English (India)</option>
+              <option value="te-IN">Telugu (తెలుగు)</option>
+              <option value="kn-IN">Kannada (ಕನ್ನಡ)</option>
+              <option value="ml-IN">Malayalam (മലയാളം)</option>
+            </select>
+            <span class="field-hint">Twilio voice agent will speak in this language</span>
+          </div>
+
+        </div>
+      </div>
+
+      <button class="trigger-btn" id="triggerBtn" onclick="triggerCall()">
+        Trigger Seller Confirmation Call
+      </button>
+    </div>
+
+  </div><!-- /two-col -->
+
+  <!-- ── Status Section ── -->
+  <div class="section-title">Call Status</div>
+  <div class="two-col">
+
+    <!-- Pipeline Steps -->
+    <div class="card">
+      <div class="card-title"><span class="icon">📡</span> Call Pipeline</div>
+      <div class="pipeline" id="pipeline">
+        <div class="pipe-step">
+          <div class="pipe-dot waiting" id="dot-order">1</div>
+          <div class="pipe-text">
+            <span class="pipe-label" id="lbl-order">Order Received</span>
+            <span class="pipe-sub" id="sub-order">Waiting for order submission</span>
+          </div>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-dot waiting" id="dot-trigger">2</div>
+          <div class="pipe-text">
+            <span class="pipe-label" id="lbl-trigger">Call Triggered</span>
+            <span class="pipe-sub" id="sub-trigger">Backend → Twilio REST API</span>
+          </div>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-dot waiting" id="dot-ringing">3</div>
+          <div class="pipe-text">
+            <span class="pipe-label" id="lbl-ringing">Calling Seller</span>
+            <span class="pipe-sub" id="sub-ringing">Twilio → Seller phone</span>
+          </div>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-dot waiting" id="dot-voice">4</div>
+          <div class="pipe-text">
+            <span class="pipe-label" id="lbl-voice">AI Voice Agent Active</span>
+            <span class="pipe-sub" id="sub-voice">Reading order details to seller</span>
+          </div>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-dot waiting" id="dot-response">5</div>
+          <div class="pipe-text">
+            <span class="pipe-label" id="lbl-response">Seller Responded</span>
+            <span class="pipe-sub" id="sub-response">Press 1 = Confirm, Press 2 = Reject</span>
+          </div>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-dot waiting" id="dot-final">6</div>
+          <div class="pipe-text">
+            <span class="pipe-label" id="lbl-final">Order Status Updated</span>
+            <span class="pipe-sub" id="sub-final">Recorded in backend</span>
+          </div>
+        </div>
+      </div>
+      <div id="pollIndicator" class="poll-indicator" style="display:none;"></div>
+    </div>
+
+    <!-- Result Box + Call Info -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card">
+        <div class="card-title"><span class="icon">✅</span> Confirmation Result</div>
+        <div class="result-box idle" id="resultBox">
+          <div class="result-label" id="resultLabel">Idle</div>
+          <div style="font-size:12px;color:var(--muted)">Trigger a call to see the seller's response here.</div>
+        </div>
+      </div>
+
+      <div class="card" id="callInfoCard" style="display:none">
+        <div class="card-title"><span class="icon">🔗</span> Call Record</div>
+        <div class="form-grid" style="gap:8px">
+          <div class="field">
+            <label>Call ID</label>
+            <input type="text" id="infoCallId" readonly style="font-family:var(--mono);font-size:11px" />
+          </div>
+          <div class="field">
+            <label>Twilio SID</label>
+            <input type="text" id="infoTwilioSid" readonly style="font-family:var(--mono);font-size:11px" />
+          </div>
+          <div class="field">
+            <label>Backend Status</label>
+            <input type="text" id="infoStatus" readonly style="font-family:var(--mono);font-size:11px" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Call History ── -->
+  <div class="section-title">Call History</div>
+  <div class="card">
+    <div class="card-title"><span class="icon">📜</span> Recent Calls</div>
+    <div id="callLog">
+      <div class="empty-state">No calls yet. Trigger a call above to begin testing.</div>
+    </div>
+  </div>
+
+  <!-- ── API Reference ── -->
+  <div class="api-hint">
+    <h3>Backend API Endpoints</h3>
+    <div class="api-row">
+      <span class="api-method m-post">POST</span>
+      <span class="api-path">/api/calls/trigger</span>
+      <span class="api-desc">Trigger seller confirmation call</span>
+    </div>
+    <div class="api-row">
+      <span class="api-method m-get">GET</span>
+      <span class="api-path">/api/calls/{call_id}</span>
+      <span class="api-desc">Poll call status</span>
+    </div>
+    <div class="api-row">
+      <span class="api-method m-get">GET</span>
+      <span class="api-path">/api/calls</span>
+      <span class="api-desc">List all calls</span>
+    </div>
+    <div class="api-row">
+      <span class="api-method m-post">POST</span>
+      <span class="api-path">/api/calls/webhook/voice</span>
+      <span class="api-desc">TwiML voice script (Twilio webhook)</span>
+    </div>
+    <div class="api-row">
+      <span class="api-method m-post">POST</span>
+      <span class="api-path">/api/calls/webhook/gather</span>
+      <span class="api-desc">DTMF input handler (1=confirm, 2=reject)</span>
+    </div>
+    <div class="api-row">
+      <span class="api-method m-post">POST</span>
+      <span class="api-path">/api/calls/webhook/status</span>
+      <span class="api-desc">Twilio call-status callback</span>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+  /* ── Config ── */
+  const API = 'http://localhost:5000';
+  let currentCallId = null;
+  let pollTimer = null;
+
+  /* ── Backend Health Check ── */
+  async function checkBackend() {
+    try {
+      const r = await fetch(`${API}/api/health`, { signal: AbortSignal.timeout(3000) });
+      const ok = r.ok;
+      document.getElementById('backendDot').className = 'dot' + (ok ? '' : ' offline');
+      document.getElementById('backendStatus').textContent = ok ? 'Backend Online' : 'Backend Error';
+    } catch {
+      document.getElementById('backendDot').className = 'dot offline';
+      document.getElementById('backendStatus').textContent = 'Backend Offline';
+    }
+  }
+  checkBackend();
+  setInterval(checkBackend, 15000);
+
+  /* ── Pipeline helpers ── */
+  const STATUSES_ORDER = [
+    'call_initiated', 'ringing', 'answered', 'in_progress',
+    'seller_confirmed', 'seller_rejected',
+    'no_response', 'completed', 'call_failed', 'call_cancelled',
+    'seller_busy',
+  ];
+
+  function setPipeState(dotId, lblId, subId, state, subText) {
+    const dot = document.getElementById(dotId);
+    const lbl = document.getElementById(lblId);
+    const sub = document.getElementById(subId);
+    dot.className = `pipe-dot ${state}`;
+    lbl.className = `pipe-label ${state}`;
+    if (subText !== undefined) sub.textContent = subText;
+  }
+
+  function resetPipeline() {
+    ['order','trigger','ringing','voice','response','final'].forEach(id => {
+      setPipeState(`dot-${id}`, `lbl-${id}`, `sub-${id}`, 'waiting');
+    });
+    setResult('idle', 'Idle', 'Trigger a call to see the seller\'s response here.');
+  }
+
+  function updatePipelineFromCall(call) {
+    const s = call.status;
+    const r = call.seller_response;
+
+    // Step 1: Order Received
+    setPipeState('dot-order','lbl-order','sub-order','done',
+      `Order ID: ${call.order_id}`);
+
+    // Step 2: Call Triggered
+    if (['call_initiated','ringing','answered','in_progress','seller_confirmed',
+         'seller_rejected','no_response','completed','call_failed'].includes(s)) {
+      const errState = s === 'call_failed' ? 'error' : 'done';
+      setPipeState('dot-trigger','lbl-trigger','sub-trigger', errState,
+        call.twilio_call_sid ? `SID: ${call.twilio_call_sid}` : 'Call queued');
+    }
+
+    // Step 3: Calling Seller
+    if (['ringing','answered','in_progress','seller_confirmed',
+         'seller_rejected','no_response','completed','call_failed','seller_busy'].includes(s)) {
+      const rState = ['call_failed','seller_busy','no_response'].includes(s) ? 'error'
+                   : ['seller_confirmed','seller_rejected','completed'].includes(s) ? 'done'
+                   : 'active';
+      setPipeState('dot-ringing','lbl-ringing','sub-ringing', rState,
+        `Calling: ${call.seller_name} (${call.seller_phone})`);
+    }
+
+    // Step 4: Voice Agent
+    if (['answered','in_progress','seller_confirmed','seller_rejected','no_response','completed'].includes(s)) {
+      const vState = ['seller_confirmed','seller_rejected','completed','no_response'].includes(s) ? 'done' : 'active';
+      setPipeState('dot-voice','lbl-voice','sub-voice', vState,
+        `Language: ${call.seller_lang}`);
+    }
+
+    // Step 5: Seller Responded
+    if (r === 'confirmed') {
+      setPipeState('dot-response','lbl-response','sub-response','done','Pressed 1 — Confirmed');
+    } else if (r === 'rejected') {
+      setPipeState('dot-response','lbl-response','sub-response','done','Pressed 2 — Rejected');
+    } else if (r === 'no_response') {
+      setPipeState('dot-response','lbl-response','sub-response','error','No response / Timeout');
+    } else if (r === 'failed') {
+      setPipeState('dot-response','lbl-response','sub-response','error','Call failed');
+    } else if (['answered','in_progress'].includes(s)) {
+      setPipeState('dot-response','lbl-response','sub-response','active','Waiting for seller input…');
+    }
+
+    // Step 6: Order Updated
+    if (r === 'confirmed') {
+      setPipeState('dot-final','lbl-final','sub-final','done','Status: Confirmed ✓');
+      setResult('confirmed','✅ Order Confirmed',
+        `Seller ${call.seller_name} confirmed the order.\nProduct: ${call.product_title} × ${call.quantity}\nAmount: ${call.amount}`);
+    } else if (r === 'rejected') {
+      setPipeState('dot-final','lbl-final','sub-final','done','Status: Rejected');
+      setResult('rejected','❌ Order Rejected',
+        `Seller ${call.seller_name} rejected the order.\nProduct: ${call.product_title} × ${call.quantity}`);
+    } else if (r === 'no_response') {
+      setPipeState('dot-final','lbl-final','sub-final','error','Status: No Response');
+      setResult('failed','⚠️ No Response',
+        `Seller did not respond during the call.\nCall SID: ${call.twilio_call_sid || '—'}`);
+    } else if (r === 'failed') {
+      setPipeState('dot-final','lbl-final','sub-final','error','Status: Call Failed');
+      setResult('failed','🔴 Call Failed',
+        `The call to ${call.seller_phone} could not be completed.`);
+    }
+
+    // Update info card
+    document.getElementById('infoCallId').value   = call.call_id || '—';
+    document.getElementById('infoTwilioSid').value = call.twilio_call_sid || '—';
+    document.getElementById('infoStatus').value    = call.status || '—';
+    document.getElementById('callInfoCard').style.display = 'block';
+  }
+
+  /* ── Result box ── */
+  function setResult(type, label, text) {
+    const box = document.getElementById('resultBox');
+    const lbl = document.getElementById('resultLabel');
+    box.className = `result-box ${type}`;
+    lbl.className = `result-label ${type}`;
+    lbl.textContent = label;
+    const detail = box.querySelector('.result-detail') || (() => {
+      const d = document.createElement('div');
+      d.className = 'result-detail';
+      box.appendChild(d);
+      return d;
+    })();
+    // remove old body if it exists
+    const old = box.querySelector('.result-body');
+    if (old) old.remove();
+    const body = document.createElement('div');
+    body.className = 'result-body';
+    body.style.fontSize = '12px';
+    body.style.color = 'var(--muted)';
+    body.style.marginTop = '4px';
+    body.style.whiteSpace = 'pre-line';
+    body.textContent = text;
+    // clear box except label
+    while (box.children.length > 1) box.removeChild(box.lastChild);
+    box.appendChild(body);
+  }
+
+  /* ── Poll call status ── */
+  function startPolling(callId) {
+    if (pollTimer) clearInterval(pollTimer);
+    currentCallId = callId;
+    const indicator = document.getElementById('pollIndicator');
+    indicator.style.display = 'block';
+    let count = 0;
+    pollTimer = setInterval(async () => {
+      count++;
+      indicator.textContent = `Polling status… (${count})`;
+      try {
+        const r = await fetch(`${API}/api/calls/${callId}`);
+        if (!r.ok) return;
+        const d = await r.json();
+        const call = d.call;
+        updatePipelineFromCall(call);
+        loadCallHistory();
+
+        // Stop polling once terminal state reached
+        const terminal = ['seller_confirmed','seller_rejected','no_response',
+                          'call_failed','call_cancelled','seller_busy','completed'];
+        if (terminal.includes(call.status) || terminal.includes(call.seller_response)) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          indicator.textContent = 'Polling complete.';
+          setTimeout(() => { indicator.style.display = 'none'; }, 3000);
+        }
+      } catch {}
+    }, 2500);
+  }
+
+  /* ── Trigger Call ── */
+  async function triggerCall() {
+    const btn = document.getElementById('triggerBtn');
+    const orderId       = document.getElementById('orderId').value.trim();
+    const orderSource   = document.getElementById('orderSource').value;
+    const productTitle  = document.getElementById('productTitle').value.trim();
+    const quantity      = parseInt(document.getElementById('quantity').value) || 1;
+    const amount        = document.getElementById('amount').value.trim();
+    const buyerName     = document.getElementById('buyerName').value.trim();
+    const deliveryAddr  = document.getElementById('deliveryAddress').value.trim();
+    const sellerName    = document.getElementById('sellerName').value.trim();
+    const sellerPhone   = document.getElementById('sellerPhone').value.trim();
+    const sellerLang    = document.getElementById('sellerLang').value;
+
+    // Basic validation
+    if (!orderId || !productTitle || !amount || !sellerPhone) {
+      alert('Please fill in Order ID, Product Name, Amount, and Seller Phone.');
+      return;
+    }
+    if (!sellerPhone.startsWith('+')) {
+      alert('Seller Phone must be in E.164 format: +91XXXXXXXXXX');
+      return;
+    }
+
+    resetPipeline();
+    setPipeState('dot-order','lbl-order','sub-order','active',`Order ID: ${orderId}`);
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Triggering…';
+
+    try {
+      const res = await fetch(`${API}/api/calls/trigger`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: orderId,
+          seller_phone: sellerPhone,
+          seller_name: sellerName,
+          seller_lang: sellerLang,
+          product_title: productTitle,
+          quantity: quantity,
+          amount: amount,
+          order_source: orderSource,
+          buyer_name: buyerName,
+          delivery_address: deliveryAddr,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPipeState('dot-order','lbl-order','sub-order','error','Order received');
+        setPipeState('dot-trigger','lbl-trigger','sub-trigger','error',
+          data.detail || 'Call trigger failed');
+        setResult('failed','🔴 Trigger Failed', data.detail || 'Unknown error from backend.');
+        return;
+      }
+
+      // Mark pipeline steps active
+      setPipeState('dot-order','lbl-order','sub-order','done',`Order ID: ${orderId}`);
+      setPipeState('dot-trigger','lbl-trigger','sub-trigger','done',
+        `SID: ${data.twilio_call_sid || '—'}`);
+      setPipeState('dot-ringing','lbl-ringing','sub-ringing','active',
+        `Calling ${sellerName} (${sellerPhone})…`);
+      setResult('pending','📞 Call In Progress',
+        `Twilio is calling ${sellerName} (${sellerPhone})\nLanguage: ${sellerLang}\nProduct: ${productTitle}`);
+
+      document.getElementById('infoCallId').value    = data.call_id || '—';
+      document.getElementById('infoTwilioSid').value = data.twilio_call_sid || '—';
+      document.getElementById('infoStatus').value    = data.status || '—';
+      document.getElementById('callInfoCard').style.display = 'block';
+
+      startPolling(data.call_id);
+      loadCallHistory();
+
+    } catch (err) {
+      setResult('failed','🔴 Network Error', `Could not reach backend: ${err.message}`);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Trigger Seller Confirmation Call';
+    }
+  }
+
+  /* ── Call History ── */
+  function badgeClass(call) {
+    const r = call.seller_response;
+    if (r === 'confirmed') return 'badge-confirmed';
+    if (r === 'rejected')  return 'badge-rejected';
+    if (r === 'failed' || call.status === 'call_failed') return 'badge-failed';
+    if (['ringing','answered','in_progress','call_initiated'].includes(call.status)) return 'badge-ringing';
+    return 'badge-pending';
+  }
+  function badgeLabel(call) {
+    const r = call.seller_response;
+    if (r === 'confirmed') return 'Confirmed';
+    if (r === 'rejected')  return 'Rejected';
+    if (r === 'no_response') return 'No Response';
+    if (r === 'failed' || call.status === 'call_failed') return 'Failed';
+    if (call.status === 'ringing') return 'Ringing';
+    if (['answered','in_progress'].includes(call.status)) return 'Answered';
+    if (call.status === 'call_initiated') return 'Calling…';
+    return call.status || 'Pending';
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return '';
+    const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (diff < 60)   return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    return `${Math.floor(diff/3600)}h ago`;
+  }
+
+  async function loadCallHistory() {
+    try {
+      const r = await fetch(`${API}/api/calls`);
+      if (!r.ok) return;
+      const data = await r.json();
+      const calls = data.calls || [];
+      const log = document.getElementById('callLog');
+      if (!calls.length) {
+        log.innerHTML = '<div class="empty-state">No calls yet.</div>';
+        return;
+      }
+      log.innerHTML = '<div class="log-list">' +
+        calls.slice(0, 15).map(c => `
+          <div class="log-row" onclick="loadCall('${c.call_id}')">
+            <span class="log-status-badge ${badgeClass(c)}">${badgeLabel(c)}</span>
+            <div class="log-info">
+              <div class="log-product">${c.product_title || '—'}</div>
+              <div class="log-meta">${c.order_id} · ${c.seller_phone} · ${c.seller_lang}</div>
+            </div>
+            <span class="log-time">${timeAgo(c.created_at)}</span>
+          </div>
+        `).join('') +
+      '</div>';
+    } catch {}
+  }
+
+  async function loadCall(callId) {
+    try {
+      const r = await fetch(`${API}/api/calls/${callId}`);
+      if (!r.ok) return;
+      const d = await r.json();
+      updatePipelineFromCall(d.call);
+      // Re-populate form fields
+      const c = d.call;
+      document.getElementById('orderId').value       = c.order_id || '';
+      document.getElementById('productTitle').value  = c.product_title || '';
+      document.getElementById('quantity').value      = c.quantity || 1;
+      document.getElementById('amount').value        = c.amount || '';
+      document.getElementById('buyerName').value     = c.buyer_name || '';
+      document.getElementById('sellerName').value    = c.seller_name || '';
+      document.getElementById('sellerPhone').value   = c.seller_phone || '';
+      document.getElementById('sellerLang').value    = c.seller_lang || 'en-IN';
+    } catch {}
+  }
+
+  // Load history on start
+  loadCallHistory();
+</script>
+</body>
+</html>

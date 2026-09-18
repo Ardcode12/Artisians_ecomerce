@@ -6,7 +6,7 @@ import sys
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import UPLOADS_DIR, PORT, BACKEND_DIR
@@ -78,6 +78,16 @@ app.include_router(api_router)
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "Artisans Marketplace & AI Backend"}
+
+
+INDEX_HTML_PATH = BACKEND_DIR.parent / "index.html"
+
+@app.get("/")
+@app.get("/call-test")
+def serve_call_test():
+    if INDEX_HTML_PATH.exists():
+        return FileResponse(str(INDEX_HTML_PATH), media_type="text/html")
+    return {"status": "ok", "message": "Artisans Call Test Hub"}
 
 
 
