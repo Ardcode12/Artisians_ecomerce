@@ -29,10 +29,15 @@ const getDevHost = (): string | null => {
   return null;
 };
 
+const devHost = getDevHost();
+const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL?.trim();
+
 export const BACKEND_URL: string =
-  process.env.EXPO_PUBLIC_BACKEND_URL ||
-  getDevHost() ||
+  devHost ||
+  envUrl ||
   'http://localhost:5000';
+
+console.log('[CONFIG] Active BACKEND_URL:', BACKEND_URL, '(devHost:', devHost, ', envUrl:', envUrl, ')');
 
 /**
  * Normalizes any image URL to always point to the active BACKEND_URL.
