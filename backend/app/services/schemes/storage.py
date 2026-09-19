@@ -90,13 +90,16 @@ def save_schemes(records: List[SchemeRecord]) -> int:
                 last_verified_date,
                 created_at,
                 updated_at,
-                simple_summary
+                simple_summary,
+                simple_summary_en,
+                simple_summary_hi,
+                simple_summary_ta
             ) VALUES (
                 ?, ?, ?, ?, ?,
                 ?, ?, ?, ?,
                 ?, ?, ?, 1,
                 ?, ?, ?,
-                ?
+                ?, ?, ?, ?
             )
             ON CONFLICT(id) DO UPDATE SET
                 scheme_name = excluded.scheme_name,
@@ -113,7 +116,10 @@ def save_schemes(records: List[SchemeRecord]) -> int:
                 is_active = 1,
                 last_verified_date = excluded.last_verified_date,
                 updated_at = excluded.updated_at,
-                simple_summary = excluded.simple_summary;
+                simple_summary = excluded.simple_summary,
+                simple_summary_en = excluded.simple_summary_en,
+                simple_summary_hi = excluded.simple_summary_hi,
+                simple_summary_ta = excluded.simple_summary_ta;
             """, (
                 scheme_id,
                 record.scheme_name,
@@ -131,6 +137,9 @@ def save_schemes(records: List[SchemeRecord]) -> int:
                 now_iso,
                 now_iso,
                 getattr(record, 'simple_summary', None),
+                getattr(record, 'simple_summary_en', None),
+                getattr(record, 'simple_summary_hi', None),
+                getattr(record, 'simple_summary_ta', None),
             ))
             processed_count += 1
 
@@ -232,9 +241,11 @@ def get_all_schemes(
             LOWER(COALESCE(short_summary, '')) LIKE ? OR
             LOWER(COALESCE(benefits_offered, '')) LIKE ? OR
             LOWER(COALESCE(eligibility_summary, '')) LIKE ? OR
-            LOWER(COALESCE(simple_summary, '')) LIKE ?
+            LOWER(COALESCE(simple_summary, '')) LIKE ? OR
+            LOWER(COALESCE(simple_summary_hi, '')) LIKE ? OR
+            LOWER(COALESCE(simple_summary_ta, '')) LIKE ?
         )"""
-        params.extend([kw_pattern] * 9)
+        params.extend([kw_pattern] * 11)
 
     query += " ORDER BY COALESCE(review_flagged, 0) ASC, id ASC;"
 
@@ -321,7 +332,6 @@ def save_user_scheme_progress(
         ))
 
     return get_user_scheme_progress(user_id, scheme_id) or {}
-
 
 
 def get_recent_crawl_logs(limit: int = 20) -> List[Dict[str, Any]]:

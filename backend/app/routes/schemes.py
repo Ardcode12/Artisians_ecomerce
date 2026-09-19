@@ -8,6 +8,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.db.database import get_db
@@ -225,3 +226,4 @@ def save_progress(scheme_id: str, payload: ProgressPayload):
         "success": True,
         "progress": saved,
     }
+

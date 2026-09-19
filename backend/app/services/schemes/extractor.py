@@ -62,6 +62,9 @@ class SchemeRecord(BaseModel):
     source_type: Literal["api", "web", "pdf"]
     review_flagged: bool = False
     simple_summary: Optional[str] = None
+    simple_summary_en: Optional[str] = None
+    simple_summary_hi: Optional[str] = None
+    simple_summary_ta: Optional[str] = None
 
 
 # ── System Prompts ─────────────────────────────────────────────────────────────
@@ -213,6 +216,14 @@ PLAIN_LANGUAGE_SYSTEM_PROMPT = (
     "6. Return ONLY the plain text paragraph. Do not use bullet points, markdown bolding, quotes, or conversational filler."
 )
 
+MULTILINGUAL_SUMMARY_SYSTEM_PROMPT = (
+    "Rewrite this scheme for someone with very basic reading ability in THREE languages: English, Hindi, and Tamil.\n\n"
+    "CRITICAL RULES:\n"
+    "1. For English: Format as 'What it is: [sentence]. Who can apply: [sentence]. What you get: [sentence with numbers].'\n"
+    "2. For Hindi (Devanagari script): Format as 'यह क्या है: [वाक्य]. कौन आवेदन कर सकता है: [वाक्य]. आपको क्या मिलेगा: [वाक्य].'\n"
+    "3. For Tamil (Tamil script): Format as 'இது என்ன: [வாக்கியம்]. யார் விண்ணப்பிக்கலாம்: [வாக்கியம்]. உங்களுக்கு என்ன கிடைக்கும்: [வாக்கியம்].'\n"
+    "4. Return ONLY a valid JSON object strictly with keys \"en\", \"hi\", and \"ta\". Do NOT wrap with markdown backticks or explanations."
+)
 
 def _call_llm_for_text(system_prompt: str, user_prompt: str) -> Optional[str]:
     """
@@ -351,6 +362,67 @@ def generate_simple_summary(
     )
 
 
+def generate_multilingual_simple_summaries(
+    scheme_name: str,
+    provider_name: Optional[str] = None,
+    category: Optional[str] = None,
+    eligibility: Optional[str] = None,
+    benefits: Optional[str] = None,
+) -> Dict[str, str]:
+    """
+    Generates 3-sentence plain-language summaries in English, Hindi, and Tamil.
+    Returns: {"en": "...", "hi": "...", "ta": "..."}
+    """
+    clean_elig = (eligibility or "Traditional artisans and weavers in India").split(".")[0].strip()
+    clean_ben = (benefits or "Toolkits, loan assistance, and training").split(".")[0].strip()
+
+    fallback = {
+        "en": (
+            f"What it is: This program gives training and financial support to craft workers. "
+            f"Who can apply: {clean_elig}. "
+            f"What you get: {clean_ben}."
+        ),
+        "hi": (
+            f"यह क्या है: यह योजना शिल्पकारों और दस्तकारों को प्रशिक्षण और आर्थिक मदद देती है। "
+            f"कौन आवेदन कर सकता है: {clean_elig}। "
+            f"आपको क्या मिलेगा: टूलकिट अनुदान, कम ब्याज पर आसान ऋण और कौशल प्रशिक्षण।"
+        ),
+        "ta": (
+            f"இது என்ன: கைவினைஞர்களுக்கு பயிற்சி மற்றும் நிதி உதவி வழங்கும் அரசு நலத்திட்டம். "
+            f"யார் விண்ணப்பிக்கலாம்: {clean_elig}. "
+            f"உங்களுக்கு என்ன கிடைக்கும்: கருவித்தொகுப்பு உதவித்தொகை, எளிய கடன் மற்றும் பயிற்சி."
+        ),
+    }
+
+    user_prompt = (
+        f"SCHEME NAME: {scheme_name}\n"
+        f"OFFERED BY: {provider_name or 'Government / NGO'}\n"
+        f"TYPE: {category or 'Artisan Support'}\n"
+        f"ORIGINAL ELIGIBILITY: {eligibility or 'All traditional artisans and weavers.'}\n"
+        f"ORIGINAL BENEFITS: {benefits or 'Toolkits, loan support, and skill training.'}\n\n"
+        "Generate plain-language summaries in English, Hindi, and Tamil as a JSON object with keys 'en', 'hi', and 'ta'."
+    )
+
+    llm_output = _call_llm_for_text(MULTILINGUAL_SUMMARY_SYSTEM_PROMPT, user_prompt)
+    if llm_output:
+        try:
+            cleaned = _clean_json_string(llm_output)
+            parsed = json.loads(cleaned)
+            if isinstance(parsed, dict) and "en" in parsed and "hi" in parsed and "ta" in parsed:
+                return {
+                    "en": str(parsed.get("en") or fallback["en"]).strip(),
+                    "hi": str(parsed.get("hi") or fallback["hi"]).strip(),
+                    "ta": str(parsed.get("ta") or fallback["ta"]).strip(),
+                }
+        except Exception as e:
+            logger.warning(f"Error parsing multilingual summaries from LLM: {e}")
+
+    # Fallback to English single-summary LLM if multilingual json call failed
+    en_summary = generate_simple_summary(scheme_name, provider_name, category, eligibility, benefits)
+    if en_summary:
+        fallback["en"] = en_summary
+
+    return fallback
 # ── Extraction Functions ───────────────────────────────────────────────────────
 
 def _clean_json_string(raw_text: str) -> str:
@@ -466,15 +538,23 @@ Remember to return ONLY valid JSON."""
         # Validate with Pydantic
         try:
             record = SchemeRecord(**item)
-            # Step 1A: Plain-language rewrite for low-literacy accessibility
-            if not record.simple_summary:
-                record.simple_summary = generate_simple_summary(
+            # Step 1A: Plain-language rewrite for low-literacy accessibility (EN, HI, TA)
+            if not record.simple_summary_en or not record.simple_summary_hi or not record.simple_summary_ta:
+                multi = generate_multilingual_simple_summaries(
                     scheme_name=record.scheme_name,
                     provider_name=record.provider_name,
                     category=record.scheme_category,
                     eligibility=record.eligibility_summary,
                     benefits=record.benefits_offered,
                 )
+                if not record.simple_summary_en:
+                    record.simple_summary_en = multi.get("en")
+                if not record.simple_summary_hi:
+                    record.simple_summary_hi = multi.get("hi")
+                if not record.simple_summary_ta:
+                    record.simple_summary_ta = multi.get("ta")
+                if not record.simple_summary:
+                    record.simple_summary = record.simple_summary_en or multi.get("en")
             extracted_records.append(record)
         except ValidationError as val_err:
             logger.warning(f"Skipping record in '{source_name}' due to validation error: {val_err}")

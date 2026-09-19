@@ -3,6 +3,7 @@ import AsyncStorage from '@/utils/storage';
 import { translations, LanguageCode, TranslationKeys, LANGUAGE_META } from '@/i18n/translations';
 
 const STORAGE_KEY = '@artisanlink_language';
+const APP_LANGUAGE_KEY = 'app_language';
 
 interface LanguageContextType {
   language: LanguageCode;
@@ -38,15 +39,25 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Load persisted language on mount
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((stored) => {
-      if (stored && stored in translations) {
-        setLanguageState(stored as LanguageCode);
-      }
-    }).catch(() => {});
+    async function loadLang() {
+      try {
+        const appLang = await AsyncStorage.getItem(APP_LANGUAGE_KEY);
+        if (appLang && appLang in translations) {
+          setLanguageState(appLang as LanguageCode);
+          return;
+        }
+        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        if (stored && stored in translations) {
+          setLanguageState(stored as LanguageCode);
+        }
+      } catch (_) {}
+    }
+    loadLang();
   }, []);
 
   const setLanguage = useCallback((code: LanguageCode) => {
     setLanguageState(code);
+    AsyncStorage.setItem(APP_LANGUAGE_KEY, code).catch(() => {});
     AsyncStorage.setItem(STORAGE_KEY, code).catch(() => {});
   }, []);
 

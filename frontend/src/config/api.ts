@@ -1,16 +1,16 @@
 import Constants from 'expo-constants';
 
+export const DEFAULT_CRAFT_FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=600&q=80';
+
 /**
  * SINGLE SOURCE OF TRUTH FOR BACKEND URL
  * ─────────────────────────────────────────────────────────────────────────────
  * Priority order (first non-empty wins):
  *
- * 1. EXPO_PUBLIC_BACKEND_URL in frontend/.env  ← change ONE line here to override
- * 2. Auto-detected from Expo dev server hostUri (works when running `expo start`)
- * 3. Nothing needed — if you set it in .env, you're done.
- *
- * To update the IP: open frontend/.env and change EXPO_PUBLIC_BACKEND_URL.
- * Every screen imports BACKEND_URL from this file, so it updates everywhere.
+ * 1. Auto-detected from Expo dev server hostUri (works when running `expo start`)
+ * 2. EXPO_PUBLIC_BACKEND_URL in frontend/.env
+ * 3. Fallback to localhost:5000
  */
 
 const getDevHost = (): string | null => {
@@ -41,18 +41,16 @@ console.log('[CONFIG] Active BACKEND_URL:', BACKEND_URL, '(devHost:', devHost, '
 
 /**
  * Normalizes any image URL to always point to the active BACKEND_URL.
- * This handles stale IPs stored in the database automatically.
+ * Handles stale IPs stored in the database automatically, and provides
+ * a dependable craft fallback image when missing.
  */
 export function normalizeImageUrl(url?: string | null): string {
-  if (!url || typeof url !== 'string') return '';
+  if (!url || typeof url !== 'string') return DEFAULT_CRAFT_FALLBACK_IMAGE;
   const trimmed = url.trim();
-  if (!trimmed) return '';
+  if (!trimmed) return DEFAULT_CRAFT_FALLBACK_IMAGE;
   if (trimmed.includes('/uploads/')) {
     const filename = trimmed.split('/uploads/').pop();
     return `${BACKEND_URL}/uploads/${filename}`;
   }
   return trimmed;
 }
-
-export const DEFAULT_CRAFT_FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1605289355680-75fb41239154?w=600&q=80';

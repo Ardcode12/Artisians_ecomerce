@@ -260,10 +260,34 @@ def init_db():
             review_flagged      INTEGER DEFAULT 0,
             last_verified_date  TEXT,
             simple_summary      TEXT,
+            simple_summary_en   TEXT,
+            simple_summary_hi   TEXT,
+            simple_summary_ta   TEXT,
             created_at          TEXT,
             updated_at          TEXT
         );
         """)
+
+        # Migration: Ensure simple_summary and multilingual summary columns exist if table pre-existed
+        if is_postgres():
+            cursor.execute("ALTER TABLE schemes ADD COLUMN IF NOT EXISTS simple_summary TEXT;")
+            cursor.execute("ALTER TABLE schemes ADD COLUMN IF NOT EXISTS simple_summary_en TEXT;")
+            cursor.execute("ALTER TABLE schemes ADD COLUMN IF NOT EXISTS simple_summary_hi TEXT;")
+            cursor.execute("ALTER TABLE schemes ADD COLUMN IF NOT EXISTS simple_summary_ta TEXT;")
+        else:
+            try:
+                cursor.execute("PRAGMA table_info(schemes);")
+                schemes_cols = [row[1] for row in cursor.fetchall()]
+                if "simple_summary" not in schemes_cols:
+                    cursor.execute("ALTER TABLE schemes ADD COLUMN simple_summary TEXT;")
+                if "simple_summary_en" not in schemes_cols:
+                    cursor.execute("ALTER TABLE schemes ADD COLUMN simple_summary_en TEXT;")
+                if "simple_summary_hi" not in schemes_cols:
+                    cursor.execute("ALTER TABLE schemes ADD COLUMN simple_summary_hi TEXT;")
+                if "simple_summary_ta" not in schemes_cols:
+                    cursor.execute("ALTER TABLE schemes ADD COLUMN simple_summary_ta TEXT;")
+            except Exception:
+                pass
 
         # 11. Artisan Scheme Progress & Checklists Tracking
         cursor.execute(f"""
@@ -384,6 +408,8 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_reel_jobs_user ON reel_jobs(user_id, created_at DESC);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_schemes_category ON schemes(category);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_schemes_active ON schemes(is_active);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_schemes_provider_type ON schemes(provider_type);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_schemes_scheme_category ON schemes(scheme_category);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_artisan_scheme_progress_user ON artisan_scheme_progress(user_id);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_design_ideas_product ON design_ideas(product_id);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_design_ideas_status ON design_ideas(status);")
@@ -409,7 +435,8 @@ def _migrate_json_data():
         if profiles_file.exists():
             try:
                 with open(profiles_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                    content = f.read().strip()
+                    data = json.loads(content) if content else {}
                     if isinstance(data, dict):
                         for phone, p in data.items():
                             pid = p.get("id") or f"11111111-2222-3333-4444-91{phone[-10:]}"
@@ -451,7 +478,8 @@ def _migrate_json_data():
         if buyer_file.exists():
             try:
                 with open(buyer_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                    content = f.read().strip()
+                    data = json.loads(content) if content else {}
                     if isinstance(data, dict):
                         for phone, b in data.items():
                             bid = b.get("id") or f"22222222-3333-4444-5555-91{phone[-10:]}"
@@ -485,7 +513,8 @@ def _migrate_json_data():
         if products_file.exists():
             try:
                 with open(products_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                    content = f.read().strip()
+                    data = json.loads(content) if content else []
                     if isinstance(data, list):
                         for prod in data:
                             pid = prod.get("id")
@@ -525,7 +554,8 @@ def _migrate_json_data():
         if inquiries_file.exists():
             try:
                 with open(inquiries_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                    content = f.read().strip()
+                    data = json.loads(content) if content else []
                     if isinstance(data, list):
                         for inq in data:
                             iid = inq.get("id")
