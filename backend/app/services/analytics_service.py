@@ -119,13 +119,32 @@ def get_business_insights(artisan_id: Optional[str] = "demo_artisan", period: st
                 })
             top_products = real_top
 
-    # Plain text summary for voice readout
-    speech_summary = (
+    best_sales_num = int(2100 * mult)
+    top_prod_name = top_products[0]['title'] if top_products[0].get('title') and top_products[0]['title'] != 'title' else 'Terracotta Vase'
+
+    # Multilingual plain text summaries for voice readout (EN, HI, TA)
+    speech_summary_en = (
         f"Your business insights: Total revenue is ₹{revenue_val:,}, up 18%. "
         f"You have received {orders_val} orders and {views_val} listing views. "
         f"{best_week_text} {best_sales_text}. "
-        f"Your top performing product is {top_products[0]['title']} with {top_products[0]['sold']} units sold."
+        f"Your top performing product is {top_prod_name} with {top_products[0]['sold']} units sold. "
+        f"To grow your craft business, maintain active listings and answer customer messages promptly."
     )
+    speech_summary_hi = (
+        f"आपकी व्यापार रिपोर्ट: आपकी कुल कमाई {revenue_val:,} रुपये है, जो 18 प्रतिशत बढ़ी है। "
+        f"आपको {orders_val} ऑर्डर और {views_val} बार उत्पादों को देखा गया है। "
+        f"आपका सबसे सफल सप्ताह रहा जिसमें {best_sales_num:,} रुपये की बिक्री हुई। "
+        f"आपका सबसे लोकप्रिय उत्पाद {top_prod_name} है जिसकी {top_products[0]['sold']} इकाइयाँ बिकी हैं। "
+        f"बिक्री बढ़ाने के लिए स्पष्ट तस्वीरें अपलोड करें और ग्राहकों से तुरंत संपर्क करें।"
+    )
+    speech_summary_ta = (
+        f"உங்கள் வணிக அறிக்கை: உங்கள் மொத்த வருமானம் {revenue_val:,} ரூபாய், இது 18 சதவீதம் அதிகரித்துள்ளது. "
+        f"உங்களுக்கு {orders_val} ஆர்டர்களும் {views_val} பார்வைகளும் கிடைத்துள்ளன. "
+        f"உங்கள் அதிக விற்பனை வாரத்தில் {best_sales_num:,} ரூபாய் விற்பனை ஆனது. "
+        f"உங்கள் சிறந்த தயாரிப்பு {top_prod_name}, இதில் {top_products[0]['sold']} பொருட்கள் விற்கப்பட்டுள்ளன. "
+        f"விற்பனையை மேலும் அதிகரிக்க தரமான படங்களை பதிவேற்றி வாடிக்கையாளர் கேள்விகளுக்கு உடனே பதிலளிக்கவும்."
+    )
+    speech_summary = speech_summary_en
 
     return {
         "success": True,
@@ -185,6 +204,9 @@ def get_business_insights(artisan_id: Optional[str] = "demo_artisan", period: st
             {"city": "Madurai", "orders": 2},
         ],
         "speech_summary": speech_summary,
+        "speech_summary_en": speech_summary_en,
+        "speech_summary_hi": speech_summary_hi,
+        "speech_summary_ta": speech_summary_ta,
     }
 
 

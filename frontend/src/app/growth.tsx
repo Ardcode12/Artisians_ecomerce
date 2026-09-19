@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Linking,
   Alert,
   Image,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -28,13 +29,71 @@ import {
   Tag,
   Clock,
   Layers,
+  Volume2,
+  Square,
 } from 'lucide-react-native';
 
 import { Fonts, Shadow, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
+import { useLanguage } from '@/context/LanguageContext';
+import {
+  getSelectedLanguage,
+  speak as centralSpeak,
+  stopSpeech,
+  isSpeechSupported,
+  AppLanguage,
+} from '@/utils/language-utils';
 
 const CARD_GAP = 12;
 const HORIZONTAL_PADDING = 18;
+
+// ── Multilingual Voice Guides for Growth Hub (EN, HI, TA) ──────────────────
+export const GROWTH_PAGE_OVERVIEW_TEXTS: Record<AppLanguage, string> = {
+  en:
+    "Welcome to Growth Hub! This section gives you tools to expand your handicraft business and earn more. " +
+    "First, tap 'Design Ideas' to see modern fusion trends and creative product ideas that urban buyers love. " +
+    "Second, tap 'Raw Materials and Tools' to connect directly with trusted bulk suppliers for yarn, clay, brass, and tools at wholesale prices. " +
+    "Third, tap 'Government Schemes' to explore financial subsidies, collateral-free loans, and PM Vishwakarma benefits. " +
+    "Fourth, tap 'Demand Forecast' to prepare your stock and materials 45 days in advance for upcoming festival seasons like Diwali and Pongal. " +
+    "Tap any card's speaker icon to hear more about that specific tool.",
+  hi:
+    "ग्रोथ हब में आपका स्वागत है! यह सेक्शन आपके हस्तशिल्प व्यवसाय को बढ़ाने और अधिक कमाई करने के लिए टूल्स प्रदान करता है। " +
+    "सबसे पहले, 'डिज़ाइन आइडियाज़' पर टैप करके आधुनिक ट्रेंड्स और नए उत्पाद विचार देखें जिन्हें शहरी खरीदार पसंद करते हैं। " +
+    "दूसरा, थोक कीमतों पर धागा, मिट्टी, पीतल और औज़ारों के विश्वसनीय आपूर्तिकर्ताओं से सीधे संपर्क के लिए 'कच्चा माल और उपकरण' पर टैप करें। " +
+    "तीसरा, वित्तीय सहायता, बिना गारंटी ऋण और पीएम विश्वकर्मा लाभ खोजने के लिए 'सरकारी योजनाएं' पर टैप करें। " +
+    "चौथा, दिवाली और पोंगल जैसे आगामी त्यौहारों के लिए 45 दिन पहले से स्टॉक तैयार करने के लिए 'त्यौहार मांग' पर टैप करें। " +
+    "किसी भी टूल के बारे में विस्तार से सुनने के लिए उसके स्पीकर आइकन पर टैप करें।",
+  ta:
+    "வளர்ச்சி மையத்திற்கு நல்வரவு! இந்த பகுதி உங்கள் கைவினைத் தொழிலை விரிவுபடுத்தி கூடுதல் வருமானம் ஈட்ட உதவுகிறது. " +
+    "முதலாவதாக, 'வடிவமைப்பு யோசனைகள்' என்பதைத் தட்டி நவீன வடிவமைப்பு மற்றும் நகர்ப்புற வாடிக்கையாளர்கள் விரும்பும் புதிய கைவினை யோசனைகளைப் பார்க்கலாம். " +
+    "இரண்டாவதாக, 'மூலப்பொருட்கள் & கருவிகள்' என்பதைத் தட்டி களிமண், நூல், பித்தளை போன்றவற்றை மொத்த விலையில் தரும் சப்ளையர்களுடன் நேரடியாகப் பேசலாம். " +
+    "மூன்றாவதாக, 'அரசு நலத்திட்டங்கள்' என்பதைத் தட்டி பி.எம் விஸ்வகர்மா, மானியங்கள் மற்றும் கடன் உதவிகளை அறியலாம். " +
+    "நான்காவதாக, 'தேவை கணிப்பு' என்பதைத் தட்டி தீபாவளி, பொங்கல் போன்ற பண்டிகைகளுக்கு 45 நாட்களுக்கு முன்பே பொருட்களைத் தயாரித்து வைக்கலாம். " +
+    "ஒவ்வொரு பகுதியைப் பற்றியும் அறிய அதன் ஸ்பீக்கர் ஐகானைத் தட்டவும்.",
+};
+
+export const GROWTH_SECTION_TEXTS: Record<string, Record<AppLanguage, string>> = {
+  design: {
+    en: "Design Ideas. Discover modern fusion concepts, trending color palettes, and contemporary styling to make your traditional crafts appeal to urban buyers and gift markets.",
+    hi: "डिज़ाइन आइडियाज़। पारंपरिक शिल्पों को आधुनिक खरीदारों और उपहार बाज़ार के अनुकूल बनाने के लिए नए डिज़ाइन और कलर पैलेट देखें।",
+    ta: "வடிவமைப்பு யோசனைகள். உங்கள் பாரம்பரிய கைவினைப் பொருட்களை நகர்ப்புற வாங்குபவர்கள் விரும்பும் வகையில் நவீன வடிவமைப்பு மற்றும் வண்ணங்களை அறிந்து பயன்பெறுங்கள்.",
+  },
+  materials: {
+    en: "Raw Materials and Tools. Connect directly with verified suppliers for clay, unbleached yarn, seasoned wood, brass ingots, and precision carving tools at wholesale cluster prices.",
+    hi: "कच्चा माल और उपकरण। मिट्टी, सूती धागे, लकड़ी, पीतल और नक्काशी औजारों के सत्यापित थोक सप्लायर्स से सीधे फ़ोन पर जुड़ें।",
+    ta: "மூலப்பொருட்கள் & கருவிகள். களிமண், நூல், மரம், பித்தளை மற்றும் செதுக்கும் கருவிகளை மொத்த விலையில் வழங்கும் சப்ளையர்களுடன் நேரடியாகப் பேசுங்கள்.",
+  },
+  schemes: {
+    en: "Government Schemes. Check financial assistance, 15,000 rupee toolkit grants, collateral-free credit, and stipend training under PM Vishwakarma and National Handicraft Development Programme.",
+    hi: "सरकारी योजनाएं। पीएम विश्वकर्मा और राष्ट्रीय हस्तशिल्प विकास कार्यक्रम के तहत ₹15,000 टूलकिट अनुदान, कम ब्याज वाले ऋण और स्टाइपेंड प्रशिक्षण का लाभ उठाएं।",
+    ta: "அரசு நலத்திட்டங்கள். பி.எம் விஸ்வகர்மா திட்டத்தின் கீழ் ₹15,000 கருவித்தொகுப்பு மானியம், குறைந்த வட்டி கடன் மற்றும் உதவித்தொகையுடன் கூடிய பயிற்சியைப் பெறுங்கள்.",
+  },
+  forecast: {
+    en: "Demand Forecast. Plan your production 45 days in advance for Diwali, wedding season, and harvest festivals to maximize your profit and prevent stockouts.",
+    hi: "त्यौहार मांग पूर्वानुमान। दिवाली, शादी के मौसम और कटाई उत्सवों के लिए 45 दिन पहले उत्पादन की योजना बनाएं ताकि भरपूर लाभ कमा सकें।",
+    ta: "தேவை கணிப்பு. தீபாவளி, திருமண காலம் மற்றும் அறுவடைத் திருவிழாக்களுக்கு 45 நாட்களுக்கு முன்பே தயாரிப்பைத் திட்டமிட்டு அதிக லாபம் ஈட்டுங்கள்.",
+  },
+};
 
 // ── Color Schemes & Visual Images for the 4 Grid Cards ─────────────────────
 const CARDS_CONFIG = [
@@ -100,8 +159,58 @@ export default function GrowthHubScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  const { language } = useLanguage();
+  const currentAppLang = (language as AppLanguage) || getSelectedLanguage() || 'en';
+  const [speakingKey, setSpeakingKey] = useState<string | null>(null);
+  const [speechSupported, setSpeechSupported] = useState(true);
+
   const [activeTab, setActiveTab] = useState<ArtisanTab>('growth');
   const [selectedModal, setSelectedModal] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSpeechSupported(isSpeechSupported());
+    return () => {
+      stopSpeech();
+    };
+  }, []);
+
+  const handleToggleSpeech = (key: string, e?: any) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+
+    if (speakingKey === key) {
+      stopSpeech();
+      setSpeakingKey(null);
+      return;
+    }
+
+    stopSpeech();
+    setSpeakingKey(key);
+
+    let textToSpeak = '';
+    if (key === 'overview') {
+      textToSpeak = GROWTH_PAGE_OVERVIEW_TEXTS[currentAppLang] || GROWTH_PAGE_OVERVIEW_TEXTS.en;
+    } else if (GROWTH_SECTION_TEXTS[key]) {
+      textToSpeak = GROWTH_SECTION_TEXTS[key][currentAppLang] || GROWTH_SECTION_TEXTS[key].en;
+    }
+
+    if (!textToSpeak) {
+      setSpeakingKey(null);
+      return;
+    }
+
+    try {
+      centralSpeak(textToSpeak, currentAppLang, {
+        onDone: () => setSpeakingKey(null),
+        onStopped: () => setSpeakingKey(null),
+        onError: () => setSpeakingKey(null),
+      });
+    } catch (err) {
+      console.warn('[Growth Speech] error:', err);
+      setSpeakingKey(null);
+    }
+  };
 
   const handleTabChange = (tab: ArtisanTab) => {
     setActiveTab(tab);
@@ -117,6 +226,21 @@ export default function GrowthHubScreen() {
       Alert.alert('Supplier Contact', `Direct phone: ${phone}`);
     });
   };
+
+  const mainListenTitleText =
+    speakingKey === 'overview'
+      ? (currentAppLang === 'ta' ? 'நிறுத்தவும்' : currentAppLang === 'hi' ? 'सुनना बंद करें' : 'Stop Listening')
+      : (currentAppLang === 'ta' ? 'கேட்கவும்: வளர்ச்சி மையம் என்ன செய்யும்?' : currentAppLang === 'hi' ? 'सुनिए: ग्रोथ हब में क्या कर सकते हैं?' : 'Listen: What Can I Do Here?');
+
+  const mainListenSubText =
+    speakingKey === 'overview'
+      ? (currentAppLang === 'ta' ? 'வழிகாட்டலை நிறுத்த எங்கு வேண்டுமானாலும் தட்டவும்' : currentAppLang === 'hi' ? 'गाइड रोकने के लिए कहीं भी टैप करें' : 'Tap anywhere to stop the voice guide')
+      : (currentAppLang === 'ta' ? 'வளர்ச்சி வழிகாட்டலைக் கேட்க தட்டவும்' : currentAppLang === 'hi' ? 'शिल्प विकास टूल्स के बारे में सुनने के लिए टैप करें' : 'Tap to hear a 30-sec tour of growth tools');
+
+  const mainListenBadgeText =
+    speakingKey === 'overview'
+      ? (currentAppLang === 'ta' ? 'நிறுத்து' : currentAppLang === 'hi' ? 'रोकें' : 'STOP')
+      : (currentAppLang === 'ta' ? 'கேட்க' : currentAppLang === 'hi' ? 'सुनें' : 'LISTEN');
 
   const renderCard = (card: (typeof CARDS_CONFIG)[0]) => {
     const IconComp = card.icon;
@@ -169,8 +293,26 @@ export default function GrowthHubScreen() {
           </Text>
         </View>
 
-        {/* Bottom Arrow Indicator */}
+        {/* Bottom Row: Speaker Audio Button + Arrow Indicator */}
         <View style={styles.cardBottomRow}>
+          <TouchableOpacity
+            style={[
+              styles.cardAudioBtn,
+              speakingKey === card.id && styles.cardAudioBtnActive,
+            ]}
+            onPress={(e) => handleToggleSpeech(card.id, e)}
+            activeOpacity={0.75}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel={`Listen to ${card.title}`}
+            accessibilityRole="button"
+          >
+            {speakingKey === card.id ? (
+              <Square size={13} color="#FFFFFF" fill="#FFFFFF" />
+            ) : (
+              <Volume2 size={15} color={card.iconCol} strokeWidth={2.3} />
+            )}
+          </TouchableOpacity>
+
           <View style={[styles.arrowCircle, { backgroundColor: card.arrowBg }]}>
             <ArrowRight size={14} color={card.arrowCol} strokeWidth={2.4} />
           </View>
@@ -183,14 +325,16 @@ export default function GrowthHubScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF8F5" />
 
-      <View
-        style={[
-          styles.body,
+      <ScrollView
+        style={styles.scrollRoot}
+        contentContainerStyle={[
+          styles.scrollBody,
           {
             paddingTop: insets.top + 8,
-            paddingBottom: NAV_HEIGHT + insets.bottom + 10,
+            paddingBottom: NAV_HEIGHT + insets.bottom + 20,
           },
         ]}
+        showsVerticalScrollIndicator={false}
       >
         {/* ── Top Header matching reference image ─────────────────────── */}
         <View style={styles.header}>
@@ -209,7 +353,55 @@ export default function GrowthHubScreen() {
           </Text>
         </View>
 
-        {/* ── 2x2 Grid of Growth Hub Cards (Full Fitted Viewport) ─────── */}
+        {/* ── Primary Audio Guide / Overview Listen Banner ──────────── */}
+        {speechSupported && (
+          <TouchableOpacity
+            style={[
+              styles.mainListenBanner,
+              speakingKey === 'overview' && styles.mainListenBannerActive,
+            ]}
+            onPress={(e) => handleToggleSpeech('overview', e)}
+            activeOpacity={0.85}
+            accessibilityLabel={mainListenTitleText}
+            accessibilityRole="button"
+          >
+            <View
+              style={[
+                styles.mainListenIconCircle,
+                speakingKey === 'overview' && styles.mainListenIconCircleActive,
+              ]}
+            >
+              {speakingKey === 'overview' ? (
+                <Square size={20} color="#FFFFFF" fill="#FFFFFF" />
+              ) : (
+                <Volume2 size={24} color="#FFFFFF" strokeWidth={2.3} />
+              )}
+            </View>
+            <View style={styles.mainListenContent}>
+              <Text style={styles.mainListenTitle}>{mainListenTitleText}</Text>
+              <Text style={styles.mainListenSubtitle} numberOfLines={1}>
+                {mainListenSubText}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.mainListenBadge,
+                speakingKey === 'overview' && styles.mainListenBadgeActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.mainListenBadgeText,
+                  speakingKey === 'overview' && styles.mainListenBadgeTextActive,
+                ]}
+              >
+                {mainListenBadgeText}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* ── 2x2 Grid of Growth Hub Cards ─────── */}
         <View style={styles.gridContainer}>
           <View style={styles.gridRow}>
             {renderCard(CARDS_CONFIG[0])}
@@ -220,7 +412,7 @@ export default function GrowthHubScreen() {
             {renderCard(CARDS_CONFIG[3])}
           </View>
         </View>
-      </View>
+      </ScrollView>
 
       {/* ── Interactive Modals for Each Growth Section ──────────────── */}
 
@@ -599,14 +791,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAF8F5',
   },
-  body: {
+  scrollRoot: {
     flex: 1,
+    backgroundColor: '#FAF8F5',
+  },
+  scrollBody: {
     paddingHorizontal: HORIZONTAL_PADDING,
   },
 
   /* ── Header ──────────────────────────────────────────────────────── */
   header: {
-    marginBottom: 14,
+    marginBottom: 12,
   },
   backBtn: {
     width: 38,
@@ -635,20 +830,98 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
+  /* ── Main Audio Guide Banner ─────────────────────────────────────── */
+  mainListenBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#059669', // Emerald green
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#047857',
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        boxShadow: '0 4px 14px rgba(5, 150, 105, 0.35)',
+      },
+      default: {
+        ...Shadow.card,
+      },
+    }),
+  },
+  mainListenBannerActive: {
+    backgroundColor: '#DC2626',
+    borderColor: '#B91C1C',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 16px rgba(220, 38, 38, 0.45)',
+      },
+    }),
+  },
+  mainListenIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mainListenIconCircleActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  mainListenContent: {
+    flex: 1,
+  },
+  mainListenTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  mainListenSubtitle: {
+    fontSize: 11.5,
+    fontFamily: Fonts.body,
+    color: 'rgba(255, 255, 255, 0.92)',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  mainListenBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+  },
+  mainListenBadgeActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  mainListenBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    fontFamily: Fonts.headingBold,
+    color: '#059669',
+    letterSpacing: 0.6,
+  },
+  mainListenBadgeTextActive: {
+    color: '#DC2626',
+  },
+
   /* ── 2x2 Grid Layout (Full Fitted Viewport) ──────────────────────── */
   gridContainer: {
-    flex: 1,
     justifyContent: 'space-between',
     gap: CARD_GAP,
-    marginBottom: 6,
+    marginBottom: 10,
   },
   gridRow: {
-    flex: 1,
     flexDirection: 'row',
     gap: CARD_GAP,
   },
   card: {
     flex: 1,
+    minHeight: 220,
     borderRadius: 20,
     borderWidth: 1,
     padding: 8,
@@ -657,7 +930,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: '100%',
-    height: '44%',
+    height: 105,
     borderRadius: 13,
     overflow: 'hidden',
     position: 'relative',
@@ -712,8 +985,22 @@ const styles = StyleSheet.create({
   cardBottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginTop: 2,
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  cardAudioBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+  },
+  cardAudioBtnActive: {
+    backgroundColor: '#DC2626',
+    borderColor: '#B91C1C',
   },
   arrowCircle: {
     width: 26,

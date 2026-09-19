@@ -69,15 +69,27 @@ def get_activity_history_endpoint(
 def get_speech_summary_endpoint(
     response: Response,
     artisan_id: Optional[str] = Query("demo_artisan"),
+    lang: Optional[str] = Query("en"),
 ):
     """
-    Returns plain text summary for voice synthesis ('Read my stats aloud').
+    Returns plain text summary for voice synthesis ('Read my stats aloud') in requested language.
     """
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     insights = get_business_insights(artisan_id=artisan_id, period="30_days")
+    l = (lang or "en").lower()
+    if l.startswith("hi"):
+        chosen_text = insights.get("speech_summary_hi") or insights.get("speech_summary", "")
+    elif l.startswith("ta"):
+        chosen_text = insights.get("speech_summary_ta") or insights.get("speech_summary", "")
+    else:
+        chosen_text = insights.get("speech_summary_en") or insights.get("speech_summary", "")
+
     return {
         "success": True,
-        "summary_text": insights.get("speech_summary", ""),
+        "summary_text": chosen_text,
+        "speech_summary_en": insights.get("speech_summary_en", ""),
+        "speech_summary_hi": insights.get("speech_summary_hi", ""),
+        "speech_summary_ta": insights.get("speech_summary_ta", ""),
     }
 
 

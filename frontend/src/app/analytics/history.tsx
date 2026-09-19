@@ -21,10 +21,20 @@ import {
   MessageSquare,
   Landmark,
   ChevronRight,
+  Volume2,
+  Square,
 } from 'lucide-react-native';
 import { InstagramIcon } from '@/components/ui/InstagramIcon';
 
 import { BACKEND_URL } from '@/config/api';
+import { useLanguage } from '@/context/LanguageContext';
+import {
+  getSelectedLanguage,
+  speak as centralSpeak,
+  stopSpeech,
+  isSpeechSupported,
+  AppLanguage,
+} from '@/utils/language-utils';
 import { Fonts, Shadow } from '@/constants/artisan-theme';
 
 const FILTERS = ['All', 'Orders', 'Listings', 'Inquiries', 'Payments'];
@@ -33,10 +43,22 @@ export default function ActivityHistoryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  const { language } = useLanguage();
+  const currentAppLang = (language as AppLanguage) || getSelectedLanguage() || 'en';
+  const [speaking, setSpeaking] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<any[]>([]);
+
+  useEffect(() => {
+    setSpeechSupported(isSpeechSupported());
+    return () => {
+      stopSpeech();
+    };
+  }, []);
 
   useEffect(() => {
     fetchHistory();
@@ -180,6 +202,45 @@ export default function ActivityHistoryScreen() {
     }
   };
 
+  const handleReadAloud = () => {
+    if (speaking) {
+      stopSpeech();
+      setSpeaking(false);
+      return;
+    }
+
+    stopSpeech();
+
+    const totalEvents = groups.reduce((acc, g) => acc + (g.events?.length || 0), 0);
+    let speechText = '';
+    if (currentAppLang === 'ta') {
+      speechText = `உங்கள் வணிகச் செயல்பாடு வரலாறு: மொத்தம் ${totalEvents} சமீபத்திய நிகழ்வுகள் பதிவாகியுள்ளன. இதில் ஆர்டர்கள், வாடிக்கையாளர் விசாரணைகள், மற்றும் வங்கி கட்டணப் பரிவர்த்தனைகள் அடங்கும்.`;
+    } else if (currentAppLang === 'hi') {
+      speechText = `आपकी व्यावसायिक गतिविधि का इतिहास: कुल ${totalEvents} हालिया गतिविधियाँ दर्ज हैं, जिनमें ऑर्डर, ग्राहकों की पूछताछ और बैंक भुगतान निपटान शामिल हैं।`;
+    } else {
+      speechText = `Your business activity history: A total of ${totalEvents} recent events recorded, including customer orders, inquiries, product listings, and bank payment settlements.`;
+    }
+
+    try {
+      setSpeaking(true);
+      centralSpeak(speechText, currentAppLang, {
+        rate: 0.95,
+        pitch: 1.0,
+        onDone: () => setSpeaking(false),
+        onStopped: () => setSpeaking(false),
+        onError: () => setSpeaking(false),
+      });
+    } catch (err) {
+      console.warn('[Activity History Speech] error:', err);
+      setSpeaking(false);
+    }
+  };
+
+  const listenBtnText =
+    speaking
+      ? (currentAppLang === 'ta' ? 'நிறுத்தவும்' : currentAppLang === 'hi' ? 'रोकें' : 'Stop')
+      : (currentAppLang === 'ta' ? 'கேட்க' : currentAppLang === 'hi' ? 'सुनें' : 'Listen');
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF8F5" />
@@ -194,6 +255,25 @@ export default function ActivityHistoryScreen() {
         >
           <ArrowLeft size={24} color="#0F2438" strokeWidth={2.2} />
         </TouchableOpacity>
+
+        {speechSupported && (
+          <TouchableOpacity
+            style={[styles.listenBtn, speaking && styles.listenBtnActive]}
+            activeOpacity={0.8}
+            onPress={handleReadAloud}
+            accessibilityLabel={listenBtnText}
+            accessibilityRole="button"
+          >
+            {speaking ? (
+              <Square size={13} color="#C04B25" fill="#C04B25" style={{ marginRight: 6 }} />
+            ) : (
+              <Volume2 size={16} color="#0F2438" strokeWidth={2.2} style={{ marginRight: 6 }} />
+            )}
+            <Text style={[styles.listenBtnText, speaking && styles.listenBtnTextActive]}>
+              {listenBtnText}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Title and Subtitle */}
@@ -319,9 +399,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF8F5',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 4,
+  },
+  listenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDF0E6',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  listenBtnActive: {
+    backgroundColor: '#FBE8E3',
+    borderWidth: 1,
+    borderColor: '#C04B25',
+  },
+  listenBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F2438',
+  },
+  listenBtnTextActive: {
+    color: '#C04B25',
   },
   backBtn: {
     width: 40,

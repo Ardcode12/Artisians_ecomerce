@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   Volume2,
   VolumeX,
+  Square,
   ShoppingBag,
   Eye,
   BarChart2,
@@ -27,11 +28,18 @@ import {
   MapPin,
   Clock,
 } from 'lucide-react-native';
-import * as Speech from 'expo-speech';
 import { InstagramIcon } from '@/components/ui/InstagramIcon';
 
 import { BACKEND_URL } from '@/config/api';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
+import {
+  getSelectedLanguage,
+  speak as centralSpeak,
+  stopSpeech,
+  isSpeechSupported,
+  AppLanguage,
+} from '@/utils/language-utils';
 import { Colors, Fonts, Shadow, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
 
@@ -50,10 +58,20 @@ export default function AnalyticsHomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
+  const { language } = useLanguage();
+  const currentAppLang = (language as AppLanguage) || getSelectedLanguage() || 'en';
   const [activePeriod, setActivePeriod] = useState('30_days');
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [speaking, setSpeaking] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+
+  useEffect(() => {
+    setSpeechSupported(isSpeechSupported());
+    return () => {
+      stopSpeech();
+    };
+  }, []);
 
   useEffect(() => {
     fetchInsights();
@@ -62,7 +80,7 @@ export default function AnalyticsHomeScreen() {
   const fetchInsights = async () => {
     try {
       setLoading(true);
-      const url = `${BACKEND_URL}/api/analytics/insights?period=${activePeriod}&artisan_id=${user?.id || 'demo_artisan'}`;
+      const url = `${BACKEND_URL}/api/analytics/insights?period=${activePeriod}&artisan_id=${user?.id || 'demo_artisan'}&lang=${currentAppLang}`;
       const res = await fetch(url);
       if (!res.ok) {
         throw new Error(`HTTP error ${res.status}`);
@@ -143,42 +161,54 @@ export default function AnalyticsHomeScreen() {
         ],
         speech_summary:
           'Your business insights: Total revenue is ₹8,450, up 18 percent. You received 12 orders and 340 views. Your best week was September 8 to 14 with ₹2,100 in sales.',
+        speech_summary_en:
+          'Your business insights: Total revenue is ₹8,450, up 18 percent. You received 12 orders and 340 views. Your best week was September 8 to 14 with ₹2,100 in sales. Your top product is Terracotta Vase with 3 units sold.',
+        speech_summary_hi:
+          'आपकी व्यापार रिपोर्ट: आपकी कुल कमाई 8,450 रुपये है, जो 18 प्रतिशत बढ़ी है। आपको 12 ऑर्डर और 340 बार उत्पादों को देखा गया है। सितंबर 8 से 14 में 2,100 रुपये की सबसे अधिक बिक्री हुई। आपका सबसे लोकप्रिय उत्पाद टेराकोटा फूलदान है।',
+        speech_summary_ta:
+          'உங்கள் வணிக அறிக்கை: உங்கள் மொத்த வருமானம் 8,450 ரூபாய், இது 18 சதவீதம் அதிகரித்துள்ளது. உங்களுக்கு 12 ஆர்டர்களும் 340 பார்வைகளும் கிடைத்துள்ளன. செப்டம்பர் 8 முதல் 14 வரை 2,100 ரூபாய் விற்பனை ஆனது. உங்கள் சிறந்த தயாரிப்பு களிமண் பூந்தொட்டி ஆகும்.',
       });
     } finally {
       setLoading(false);
     }
   };
 
-  // Cleanup speech if user leaves screen
-  useEffect(() => {
-    return () => {
-      try {
-        Speech.stop();
-      } catch (e) {
-        // ignore
-      }
-    };
-  }, []);
-
-  const handleReadStatsAloud = async () => {
+  const handleReadStatsAloud = () => {
     // If speaking right now, stop immediately
     if (speaking) {
-      try {
-        await Speech.stop();
-      } catch (e) {}
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+      stopSpeech();
       setSpeaking(false);
       return;
     }
 
-    const rawText =
-      data?.speech_summary ||
-      'Your business insights: Total revenue is 8,450 rupees, up 18 percent. You received 12 orders and 340 views. Your best week was September 8 to 14 with 2,100 in sales.';
+    stopSpeech();
+
+    const revRaw = data?.hero_stats?.revenue?.value || '₹8,450';
+    const revClean = revRaw.replace(/[₹,]/g, '').trim();
+    const ordersCount = data?.hero_stats?.orders?.value || '12';
+    const viewsCount = data?.hero_stats?.listing_views?.value || '340';
+    const bestSales = (data?.revenue_chart?.sub_headline || 'with ₹2,100 in sales').replace(/[₹]/g, '').trim();
+    const topProd = data?.top_products?.[0]?.title || 'Terracotta Vase';
+    const topProdSold = data?.top_products?.[0]?.sold || 3;
+
+    let speechText = '';
+    if (currentAppLang === 'ta') {
+      speechText =
+        data?.speech_summary_ta ||
+        `உங்கள் வணிக அறிக்கை: உங்கள் மொத்த வருமானம் ${revClean} ரூபாய், இது 18 சதவீதம் அதிகரித்துள்ளது. உங்களுக்கு ${ordersCount} வாடிக்கையாளர் ஆர்டர்களும் ${viewsCount} பார்வைகளும் கிடைத்துள்ளன. சிறந்த விற்பனை காலத்தில் ${bestSales} ரூபாய் விற்பனை ஆனது. உங்கள் சிறந்த தயாரிப்பு ${topProd}, இதில் ${topProdSold} பொருட்கள் விற்கப்பட்டுள்ளன. உங்கள் விற்பனையை மேலும் அதிகரிக்க தரமான படங்களைப் பதிவேற்றி வாங்குபவர்களின் கேள்விகளுக்கு உடனே பதிலளிக்கவும்.`;
+    } else if (currentAppLang === 'hi') {
+      speechText =
+        data?.speech_summary_hi ||
+        `आपकी व्यापार रिपोर्ट: आपकी कुल कमाई ${revClean} रुपये है, जो 18 प्रतिशत बढ़ी है। आपको ${ordersCount} ऑर्डर और ${viewsCount} बार उत्पाद देखे गए हैं। आपका सबसे सफल समय रहा जिसमें ${bestSales} रुपये की बिक्री हुई। आपका सबसे लोकप्रिय उत्पाद ${topProd} है जिसकी ${topProdSold} इकाइयाँ बिकी हैं। बिक्री बढ़ाने के लिए साफ़ तस्वीरें अपलोड करें और ग्राहकों से तुरंत संपर्क करें।`;
+    } else {
+      speechText =
+        data?.speech_summary_en ||
+        data?.speech_summary ||
+        `Your business insights: Total revenue is ${revClean} rupees, up 18 percent. You have received ${ordersCount} orders and ${viewsCount} listing views. Best performing period had ${bestSales} in sales. Your top performing product is ${topProd} with ${topProdSold} units sold. To grow your craft business, maintain active listings and answer customer messages promptly.`;
+    }
 
     // Clean text for natural speech pronunciation
-    const speechText = rawText
+    speechText = speechText
       .replace(/₹\s*([0-9,]+)/g, '$1 rupees')
       .replace(/%/g, ' percent')
       .replace(/↑/g, 'up ')
@@ -189,39 +219,41 @@ export default function AnalyticsHomeScreen() {
 
     try {
       setSpeaking(true);
-
-      // Cancel any ongoing utterances
-      try {
-        await Speech.stop();
-      } catch (e) {}
-
-      // Cross-platform native TTS: Android, iOS & Web
-      Speech.speak(speechText, {
-        language: 'en-IN',
+      centralSpeak(speechText, currentAppLang, {
+        rate: 0.95,
         pitch: 1.0,
-        rate: 0.92,
-        onStart: () => setSpeaking(true),
         onDone: () => setSpeaking(false),
         onStopped: () => setSpeaking(false),
         onError: (err) => {
-          console.warn('Speech error:', err);
+          console.warn('[Analytics Speech] error:', err);
           setSpeaking(false);
         },
       });
     } catch (err) {
-      console.warn('Expo speech error, trying fallback:', err);
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(speechText);
-        utterance.rate = 0.95;
-        utterance.onend = () => setSpeaking(false);
-        utterance.onerror = () => setSpeaking(false);
-        window.speechSynthesis.speak(utterance);
-      } else {
-        setSpeaking(false);
-      }
+      console.warn('[Analytics Speech] error:', err);
+      setSpeaking(false);
     }
   };
+
+  const topPillText =
+    speaking
+      ? (currentAppLang === 'ta' ? 'நிறுத்தவும்' : currentAppLang === 'hi' ? 'सुनना बंद करें' : 'Stop reading')
+      : (currentAppLang === 'ta' ? 'அறிக்கையைக் கேட்க' : currentAppLang === 'hi' ? 'रिपोर्ट सुनें' : 'Read my stats aloud');
+
+  const mainListenTitleText =
+    speaking
+      ? (currentAppLang === 'ta' ? 'நிறுத்தவும்' : currentAppLang === 'hi' ? 'सुनना बंद करें' : 'Stop Listening')
+      : (currentAppLang === 'ta' ? 'கேட்கவும்: உங்கள் வணிக அறிக்கை' : currentAppLang === 'hi' ? 'सुनिए: आपकी व्यापार रिपोर्ट' : 'Listen: Your Business Report');
+
+  const mainListenSubText =
+    speaking
+      ? (currentAppLang === 'ta' ? 'அறிக்கையை நிறுத்த எங்கு வேண்டுமானாலும் தட்டவும்' : currentAppLang === 'hi' ? 'रिपोर्ट रोकने के लिए कहीं भी टैप करें' : 'Tap anywhere to stop the voice report')
+      : (currentAppLang === 'ta' ? 'வருமானம், ஆர்டர்கள் & பார்வைகளைக் கேட்க தட்டவும்' : currentAppLang === 'hi' ? 'अपनी कमाई, व्यूज और ऑर्डर सुनने के लिए टैप करें' : 'Tap to hear revenue, views, orders & top craft spoken aloud');
+
+  const mainListenBadgeText =
+    speaking
+      ? (currentAppLang === 'ta' ? 'நிறுத்து' : currentAppLang === 'hi' ? 'रोकें' : 'STOP')
+      : (currentAppLang === 'ta' ? 'கேட்க' : currentAppLang === 'hi' ? 'सुनें' : 'LISTEN');
 
   const handleTabChange = (tab: ArtisanTab) => {
     if (tab === 'home') router.push('/');
@@ -283,20 +315,24 @@ export default function AnalyticsHomeScreen() {
         </TouchableOpacity>
 
         {/* Read my stats aloud button */}
-        <TouchableOpacity
-          style={[styles.readAloudBtn, speaking && styles.readAloudBtnActive]}
-          activeOpacity={0.8}
-          onPress={handleReadStatsAloud}
-        >
-          {speaking ? (
-            <VolumeX size={16} color="#C04B25" strokeWidth={2.2} style={{ marginRight: 6 }} />
-          ) : (
-            <Volume2 size={16} color="#0F2438" strokeWidth={2.2} style={{ marginRight: 6 }} />
-          )}
-          <Text style={[styles.readAloudText, speaking && styles.readAloudTextActive]}>
-            {speaking ? 'Stop reading' : 'Read my stats aloud'}
-          </Text>
-        </TouchableOpacity>
+        {speechSupported && (
+          <TouchableOpacity
+            style={[styles.readAloudBtn, speaking && styles.readAloudBtnActive]}
+            activeOpacity={0.8}
+            onPress={handleReadStatsAloud}
+            accessibilityLabel={topPillText}
+            accessibilityRole="button"
+          >
+            {speaking ? (
+              <Square size={13} color="#C04B25" fill="#C04B25" style={{ marginRight: 6 }} />
+            ) : (
+              <Volume2 size={16} color="#0F2438" strokeWidth={2.2} style={{ marginRight: 6 }} />
+            )}
+            <Text style={[styles.readAloudText, speaking && styles.readAloudTextActive]}>
+              {topPillText}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView
@@ -308,6 +344,54 @@ export default function AnalyticsHomeScreen() {
           <Text style={styles.pageTitle}>Your Business Insights</Text>
           <Text style={styles.pageSubtitle}>See what's working and what to do next</Text>
         </View>
+
+        {/* ── Primary Audio Guide / Overview Listen Banner ──────────── */}
+        {speechSupported && (
+          <TouchableOpacity
+            style={[
+              styles.mainListenBanner,
+              speaking && styles.mainListenBannerActive,
+            ]}
+            onPress={handleReadStatsAloud}
+            activeOpacity={0.85}
+            accessibilityLabel={mainListenTitleText}
+            accessibilityRole="button"
+          >
+            <View
+              style={[
+                styles.mainListenIconCircle,
+                speaking && styles.mainListenIconCircleActive,
+              ]}
+            >
+              {speaking ? (
+                <Square size={20} color="#FFFFFF" fill="#FFFFFF" />
+              ) : (
+                <Volume2 size={24} color="#FFFFFF" strokeWidth={2.3} />
+              )}
+            </View>
+            <View style={styles.mainListenContent}>
+              <Text style={styles.mainListenTitle}>{mainListenTitleText}</Text>
+              <Text style={styles.mainListenSubtitle} numberOfLines={1}>
+                {mainListenSubText}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.mainListenBadge,
+                speaking && styles.mainListenBadgeActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.mainListenBadgeText,
+                  speaking && styles.mainListenBadgeTextActive,
+                ]}
+              >
+                {mainListenBadgeText}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Time Period Selector Pills */}
         <View style={styles.periodPillsRow}>
@@ -621,7 +705,85 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   titleSection: {
-    marginBottom: 16,
+    marginBottom: 14,
+  },
+  /* ── Main Audio Guide Banner ── */
+  mainListenBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F2438', // Deep artisan navy
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 12,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#1E3A8A',
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        boxShadow: '0 4px 14px rgba(15, 36, 56, 0.35)',
+      },
+      default: {
+        ...Shadow.card,
+      },
+    }),
+  },
+  mainListenBannerActive: {
+    backgroundColor: '#DC2626',
+    borderColor: '#B91C1C',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 16px rgba(220, 38, 38, 0.45)',
+      },
+    }),
+  },
+  mainListenIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mainListenIconCircleActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  mainListenContent: {
+    flex: 1,
+  },
+  mainListenTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  mainListenSubtitle: {
+    fontSize: 11.5,
+    fontFamily: Fonts.body,
+    color: 'rgba(255, 255, 255, 0.92)',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  mainListenBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+  },
+  mainListenBadgeActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  mainListenBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    fontFamily: Fonts.headingBold,
+    color: '#0F2438',
+    letterSpacing: 0.6,
+  },
+  mainListenBadgeTextActive: {
+    color: '#DC2626',
   },
   pageTitle: {
     fontSize: 26,

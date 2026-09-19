@@ -15,9 +15,19 @@ import {
   ArrowLeft,
   TrendingUp,
   Activity,
+  Volume2,
+  Square,
 } from 'lucide-react-native';
 
 import { BACKEND_URL } from '@/config/api';
+import { useLanguage } from '@/context/LanguageContext';
+import {
+  getSelectedLanguage,
+  speak as centralSpeak,
+  stopSpeech,
+  isSpeechSupported,
+  AppLanguage,
+} from '@/utils/language-utils';
 import { Fonts, Shadow } from '@/constants/artisan-theme';
 
 export default function ProductPerformanceDetailScreen() {
@@ -26,8 +36,20 @@ export default function ProductPerformanceDetailScreen() {
   const params = useLocalSearchParams();
   const productId = (params.id as string) || 'prod_vase';
 
+  const { language } = useLanguage();
+  const currentAppLang = (language as AppLanguage) || getSelectedLanguage() || 'en';
+  const [speaking, setSpeaking] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    setSpeechSupported(isSpeechSupported());
+    return () => {
+      stopSpeech();
+    };
+  }, []);
 
   useEffect(() => {
     fetchProductDetail();
@@ -91,6 +113,57 @@ export default function ProductPerformanceDetailScreen() {
     }
   };
 
+  const handleReadAloud = () => {
+    if (speaking) {
+      stopSpeech();
+      setSpeaking(false);
+      return;
+    }
+
+    stopSpeech();
+
+    const p = data?.product || {};
+    const f = data?.funnel || {};
+    const c = data?.category_comparison || {};
+
+    let speechText = '';
+    if (currentAppLang === 'ta') {
+      speechText = `${p.title || 'தயாரிப்பு'}. விலை ${p.price || 0} ரூபாய். நிலவரம்: ${f.views || 0} பார்வைகள், ${f.inquiries || 0} விசாரணைகள் மற்றும் ${f.orders || 0} ஆர்டர்கள். விற்பனை விகிதம் ${f.conversion_pct || 0} சதவீதம். ${c.headline || ''}`;
+    } else if (currentAppLang === 'hi') {
+      speechText = `${p.title || 'उत्पाद'}। कीमत ₹${p.price || 0}। इस उत्पाद को ${f.views || 0} बार देखा गया, ${f.inquiries || 0} पूछताछ और ${f.orders || 0} ऑर्डर मिले। खरीद दर ${f.conversion_pct || 0} प्रतिशत है। ${c.headline || ''}`;
+    } else {
+      speechText = `${p.title || 'Product'}. Price is ${p.price || 0} rupees. Performance: ${f.views || 0} views, ${f.inquiries || 0} inquiries, and ${f.orders || 0} orders. Conversion rate is ${f.conversion_pct || 0} percent. ${c.headline || ''}`;
+    }
+
+    speechText = speechText
+      .replace(/₹\s*([0-9,]+)/g, '$1 rupees')
+      .replace(/%/g, ' percent')
+      .replace(/[–—]/g, ' to ')
+      .trim();
+
+    try {
+      setSpeaking(true);
+      centralSpeak(speechText, currentAppLang, {
+        rate: 0.95,
+        pitch: 1.0,
+        onDone: () => setSpeaking(false),
+        onStopped: () => setSpeaking(false),
+        onError: (err) => {
+          console.warn('[Product Performance Speech] error:', err);
+          setSpeaking(false);
+        },
+      });
+    } catch (err) {
+      console.warn('[Product Performance Speech] error:', err);
+      setSpeaking(false);
+    }
+  };
+
+  const listenBtnText =
+    speaking
+      ? (currentAppLang === 'ta' ? 'நிறுத்தவும்' : currentAppLang === 'hi' ? 'रोकें' : 'Stop')
+      : (currentAppLang === 'ta' ? 'கேட்க' : currentAppLang === 'hi' ? 'सुनें' : 'Listen');
+
   if (loading || !data) {
     return (
       <View style={[styles.container, styles.centerBox, { paddingTop: insets.top }]}>
@@ -115,6 +188,25 @@ export default function ProductPerformanceDetailScreen() {
         >
           <ArrowLeft size={24} color="#0F2438" strokeWidth={2.2} />
         </TouchableOpacity>
+
+        {speechSupported && (
+          <TouchableOpacity
+            style={[styles.listenBtn, speaking && styles.listenBtnActive]}
+            activeOpacity={0.8}
+            onPress={handleReadAloud}
+            accessibilityLabel={listenBtnText}
+            accessibilityRole="button"
+          >
+            {speaking ? (
+              <Square size={13} color="#C04B25" fill="#C04B25" style={{ marginRight: 6 }} />
+            ) : (
+              <Volume2 size={16} color="#0F2438" strokeWidth={2.2} style={{ marginRight: 6 }} />
+            )}
+            <Text style={[styles.listenBtnText, speaking && styles.listenBtnTextActive]}>
+              {listenBtnText}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView
@@ -244,9 +336,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 4,
+  },
+  listenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDF0E6',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  listenBtnActive: {
+    backgroundColor: '#FBE8E3',
+    borderWidth: 1,
+    borderColor: '#C04B25',
+  },
+  listenBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F2438',
+  },
+  listenBtnTextActive: {
+    color: '#C04B25',
   },
   backBtn: {
     width: 40,
