@@ -46,7 +46,6 @@ export default function RootLayout() {
               <Stack.Screen name="inventory-alerts" />
               <Stack.Screen name="help-support" />
               <Stack.Screen name="manage-stock" />
-              <Stack.Screen name="select-language" />
               <Stack.Screen name="growth" />
               {/* Analytics Screens */}
               <Stack.Screen name="analytics/index" />
