@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -102,7 +103,7 @@ export default function ArtisanHomeScreen() {
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { session, user, profile, isLoading, userRole } = useAuth();
+  const { session, user, profile, isLoading, userRole, signOut } = useAuth();
   const { language: contextLang } = useLanguage();
 
   const [fontsLoaded] = useFonts({
@@ -208,13 +209,16 @@ export default function ArtisanHomeScreen() {
     );
   }
 
-  // FIRST SCREEN GATE: Show 3-Option Language Selection screen on initial entry
-  if (hasLanguageChosen === false) {
-    return <SelectLanguageScreen />;
+  // User is only considered authenticated as an artisan if they have both session and an artisan profile
+  const isArtisanLoggedIn = userRole === 'artisan' && Boolean(session && profile);
+  const isBuyerLoggedIn = userRole === 'buyer' && Boolean(session);
+
+  // If not fully authenticated, always show welcome screen (Get Started / Log In)
+  // Language selection is handled when the user taps "Get Started"
+  if (!isArtisanLoggedIn && !isBuyerLoggedIn) {
+    return <WelcomeScreen />;
   }
 
-  // Always show login if no active session (QR scan → login page)
-  if (!session) return <WelcomeScreen />;
   if (userRole === 'buyer') return <BuyerHomeScreen />;
 
   const handleTabChange = (tab: ArtisanTab) => {
@@ -299,15 +303,9 @@ export default function ArtisanHomeScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.greetingRed}>
-            {greetingLocal}{artisanName ? ` ${artisanName}` : ''}
-          </Text>
-          <Text style={styles.questionText}>{questionLocal}</Text>
-        </View>
-
-        <View style={styles.headerRight}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        {/* Top Action Pills: Language, Help, Profile */}
+        <View style={styles.topActionsRow}>
           {/* Change Language accessible button */}
           <TouchableOpacity
             style={styles.langPill}
@@ -325,6 +323,7 @@ export default function ArtisanHomeScreen() {
             style={styles.helpPill}
             onPress={() => router.push('/help-support' as any)}
             activeOpacity={0.8}
+            accessibilityLabel="Help and Support"
           >
             <Mic size={16} color={Colors.primary} strokeWidth={2} />
             <Text style={styles.helpPillText}>{helpLabelLocal}</Text>
@@ -334,9 +333,27 @@ export default function ArtisanHomeScreen() {
             style={styles.profileBtn}
             onPress={() => router.push('/profile')}
             activeOpacity={0.8}
+            accessibilityLabel="Artisan Profile"
           >
-            <UserIcon size={18} color={Colors.primary} strokeWidth={2} />
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImg} />
+            ) : (
+              <UserIcon size={18} color={Colors.primary} strokeWidth={2} />
+            )}
           </TouchableOpacity>
+        </View>
+
+        {/* Greeting Section: full width so regional greeting fits cleanly on a single line */}
+        <View style={styles.greetingSection}>
+          <Text
+            style={styles.greetingRed}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+          >
+            {greetingLocal}{artisanName ? ` ${artisanName}` : ''}
+          </Text>
+          <Text style={styles.questionText}>{questionLocal}</Text>
         </View>
       </View>
 
@@ -602,26 +619,37 @@ const styles = StyleSheet.create({
 
   /* Header */
   header: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  topActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginBottom: 8,
   },
-  headerLeft: { flex: 1, paddingRight: 10 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  greetingSection: {
+    width: '100%',
+  },
   greetingRed: {
     fontSize: 28,
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
     color: Colors.greetingRed,
     marginBottom: 2,
+    letterSpacing: -0.2,
   },
   questionText: {
     fontSize: 14,
     fontFamily: Fonts.body,
     color: Colors.textDark,
     lineHeight: 20,
+  },
+  avatarImg: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
   langPill: {
     flexDirection: 'row',

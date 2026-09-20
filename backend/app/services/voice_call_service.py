@@ -44,14 +44,101 @@ def _twilio_credentials() -> tuple[str, str, str]:
     return sid, token, from_
 
 def _public_base_url() -> str:
-    url = os.getenv("PUBLIC_BASE_URL", "http://localhost:5000").rstrip("/")
+    url = (os.getenv("WEBHOOK_BASE_URL") or os.getenv("PUBLIC_BASE_URL") or "").strip().rstrip("/")
     return url
 
 # --------------------------------------------------------------------------- #
-# In-memory call store (replace with DB table in production)                  #
+# DB helpers — all call records persisted in SQLite voice_calls table         #
 # --------------------------------------------------------------------------- #
-# Key: call_sid  → value: call record dict
-CALL_STORE: Dict[str, Dict[str, Any]] = {}
+
+def _row_to_dict(row) -> Optional[Dict[str, Any]]:
+    """Convert a sqlite3.Row or tuple to a plain dict."""
+    if row is None:
+        return None
+    if isinstance(row, dict):
+        return row
+    # sqlite3.Row supports keys()
+    try:
+        return dict(row)
+    except Exception:
+        cols = [
+            "call_id", "order_id", "seller_phone", "seller_name", "seller_lang",
+            "product_title", "quantity", "amount", "order_source", "buyer_name",
+            "delivery_address", "status", "twilio_call_sid", "seller_response",
+            "created_at", "updated_at",
+        ]
+        return dict(zip(cols, row))
+
+
+def _upsert_call(record: Dict[str, Any]) -> None:
+    """Insert or replace a full call record in the DB (PostgreSQL + SQLite compatible)."""
+    from app.db.database import get_db
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+        INSERT INTO voice_calls (
+            call_id, order_id, seller_phone, seller_name, seller_lang,
+            product_title, quantity, amount, order_source, buyer_name,
+            delivery_address, status, twilio_call_sid, seller_response,
+            created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (call_id) DO UPDATE SET
+            order_id = excluded.order_id,
+            seller_phone = excluded.seller_phone,
+            seller_name = excluded.seller_name,
+            seller_lang = excluded.seller_lang,
+            product_title = excluded.product_title,
+            quantity = excluded.quantity,
+            amount = excluded.amount,
+            order_source = excluded.order_source,
+            buyer_name = excluded.buyer_name,
+            delivery_address = excluded.delivery_address,
+            status = excluded.status,
+            twilio_call_sid = excluded.twilio_call_sid,
+            seller_response = excluded.seller_response,
+            updated_at = excluded.updated_at
+        """, (
+            record.get("call_id"), record.get("order_id"),
+            record.get("seller_phone"), record.get("seller_name"),
+            record.get("seller_lang"), record.get("product_title"),
+            record.get("quantity", 1), record.get("amount"),
+            record.get("order_source"), record.get("buyer_name"),
+            record.get("delivery_address"), record.get("status"),
+            record.get("twilio_call_sid"), record.get("seller_response"),
+            record.get("created_at"), record.get("updated_at"),
+        ))
+
+
+def _update_call_fields(call_id: str, **fields) -> Optional[Dict[str, Any]]:
+    """Update specific columns of a call record and return updated record."""
+    from app.db.database import get_db
+    if not fields:
+        return _get_call(call_id)
+    set_clause = ", ".join(f"{k} = ?" for k in fields)
+    values = list(fields.values()) + [call_id]
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            f"UPDATE voice_calls SET {set_clause} WHERE call_id = ?",
+            values
+        )
+        cursor.execute(
+            "SELECT * FROM voice_calls WHERE call_id = ?", (call_id,)
+        )
+        row = cursor.fetchone()
+        return _row_to_dict(row)
+
+
+def _get_call(call_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch a call record by call_id."""
+    from app.db.database import get_db
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM voice_calls WHERE call_id = ?", (call_id,)
+        )
+        row = cursor.fetchone()
+        return _row_to_dict(row)
 
 # --------------------------------------------------------------------------- #
 # Language Configuration                                                       #
@@ -172,15 +259,29 @@ def supported_languages() -> list[Dict[str, str]]:
 # TwiML Builder — builds the voice script for the outbound call               #
 # --------------------------------------------------------------------------- #
 
+def _say_or_play(text: str, lang_code: str, base: str, lc: dict) -> str:
+    """
+    Returns a TwiML fragment: <Play> (Sarvam audio) for regional languages,
+    or <Say> (Polly) for English and Hindi.
+    """
+    from app.services.sarvam_tts_service import needs_sarvam, get_audio_url
+    if needs_sarvam(lang_code) and base.startswith("https://"):
+        audio_url = get_audio_url(text, lang_code, base)
+        if audio_url:
+            return f'<Play>{audio_url}</Play>'
+    # Fallback to Polly Say (always works for en-IN / hi-IN)
+    return f'<Say voice="{lc["voice"]}" language="{lc["lang"]}">{text}</Say>'
+
+
 def build_twiml_greeting(call_id: str, lang_code: str, product: str, quantity: int,
                           amount: str, order_source: str) -> str:
     """
     Build TwiML XML that Twilio executes when seller picks up.
-    The seller hears order details and presses 1 or 2 to respond.
+    Uses Sarvam TTS <Play> for Tamil/Telugu/Kannada/Malayalam,
+    and Amazon Polly <Say> for English/Hindi.
     """
     lc = get_lang_config(lang_code)
     base = _public_base_url()
-    gather_url = f"{base}/api/calls/webhook/gather"
 
     message = (
         f"{lc['greeting']} "
@@ -192,32 +293,43 @@ def build_twiml_greeting(call_id: str, lang_code: str, product: str, quantity: i
         f"{lc['confirm_ask']}"
     )
 
-    # Polly voices handle romanized Tamil/Hindi reasonably; for better output
-    # use a neural TTS (Sarvam/Krutrim) piped through a custom TwiML <Play>.
+    audio_fragment = _say_or_play(message, lang_code, base, lc)
+
+    if base.startswith(("http://", "https://")) and not ("localhost" in base or "127.0.0.1" in base):
+        gather_attr = f'action="{base}/api/calls/webhook/gather?call_id={call_id}" method="POST"'
+    else:
+        gather_attr = ""
+
+    no_response_fragment = _say_or_play(lc['no_response'], lang_code, base, lc)
+
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather numDigits="1" action="{gather_url}?call_id={call_id}" method="POST" timeout="10" finishOnKey="">
-    <Say voice="{lc['voice']}" language="{lc['lang']}">{message}</Say>
+  <Gather numDigits="1" {gather_attr} timeout="10" finishOnKey="">
+    {audio_fragment}
   </Gather>
-  <Say voice="{lc['voice']}" language="{lc['lang']}">{lc['no_response']}</Say>
+  {no_response_fragment}
 </Response>"""
     return twiml
 
 
 def build_twiml_confirmed(lang_code: str) -> str:
     lc = get_lang_config(lang_code)
+    base = _public_base_url()
+    fragment = _say_or_play(lc['confirmed'], lang_code, base, lc)
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="{lc['voice']}" language="{lc['lang']}">{lc['confirmed']}</Say>
+  {fragment}
   <Hangup/>
 </Response>"""
 
 
 def build_twiml_rejected(lang_code: str) -> str:
     lc = get_lang_config(lang_code)
+    base = _public_base_url()
+    fragment = _say_or_play(lc['rejected'], lang_code, base, lc)
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="{lc['voice']}" language="{lc['lang']}">{lc['rejected']}</Say>
+  {fragment}
   <Hangup/>
 </Response>"""
 
@@ -227,14 +339,21 @@ def build_twiml_invalid(call_id: str, lang_code: str, product: str, quantity: in
     """Re-prompt once on invalid input."""
     lc = get_lang_config(lang_code)
     base = _public_base_url()
-    gather_url = f"{base}/api/calls/webhook/gather"
+    if base.startswith(("http://", "https://")) and not ("localhost" in base or "127.0.0.1" in base):
+        gather_attr = f'action="{base}/api/calls/webhook/gather?call_id={call_id}" method="POST"'
+    else:
+        gather_attr = ""
+
+    invalid_msg = f"{lc['invalid']} {lc['confirm_ask']}"
+    audio_fragment    = _say_or_play(invalid_msg, lang_code, base, lc)
+    no_resp_fragment  = _say_or_play(lc['no_response'], lang_code, base, lc)
 
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather numDigits="1" action="{gather_url}?call_id={call_id}" method="POST" timeout="10" finishOnKey="">
-    <Say voice="{lc['voice']}" language="{lc['lang']}">{lc['invalid']} {lc['confirm_ask']}</Say>
+  <Gather numDigits="1" {gather_attr} timeout="10" finishOnKey="">
+    {audio_fragment}
   </Gather>
-  <Say voice="{lc['voice']}" language="{lc['lang']}">{lc['no_response']}</Say>
+  {no_resp_fragment}
 </Response>"""
 
 
@@ -271,8 +390,6 @@ def trigger_seller_confirmation_call(
 
     call_id = f"call-{int(time.time()*1000)}-{uuid.uuid4().hex[:6]}"
     base = _public_base_url()
-    twiml_url = f"{base}/api/calls/webhook/voice?call_id={call_id}&lang={seller_lang}&product={requests.utils.quote(product_title)}&qty={quantity}&amount={requests.utils.quote(amount)}&source={requests.utils.quote(order_source)}"
-    status_url = f"{base}/api/calls/webhook/status?call_id={call_id}"
 
     now_iso = datetime.now(timezone.utc).isoformat()
     call_record = {
@@ -293,27 +410,41 @@ def trigger_seller_confirmation_call(
         "created_at":      now_iso,
         "updated_at":      now_iso,
     }
-    CALL_STORE[call_id] = call_record
+    _upsert_call(call_record)
 
     try:
+        twiml = build_twiml_greeting(
+            call_id=call_id,
+            lang_code=seller_lang,
+            product=product_title,
+            quantity=quantity,
+            amount=amount,
+            order_source=order_source,
+        )
+
         call_url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Calls.json"
         payload = {
-            "To":         seller_phone,
-            "From":       from_num,
-            "Url":        twiml_url,
-            "StatusCallback": status_url,
-            "StatusCallbackMethod": "POST",
-            "StatusCallbackEvent": "initiated ringing answered completed",
-            "Timeout":    30,
+            "To":      seller_phone,
+            "From":    from_num,
+            "Twiml":   twiml,
+            "Timeout": 30,
         }
+
+        if base.startswith(("http://", "https://")) and not ("localhost" in base or "127.0.0.1" in base):
+            payload["StatusCallback"] = f"{base}/api/calls/webhook/status?call_id={call_id}"
+            payload["StatusCallbackMethod"] = "POST"
+            payload["StatusCallbackEvent"] = "initiated ringing answered completed"
+
         res = requests.post(call_url, data=payload, auth=(sid, token), timeout=10)
         res_data = res.json()
 
         if res.status_code in (200, 201) and "sid" in res_data:
             twilio_sid = res_data["sid"]
-            call_record["twilio_call_sid"] = twilio_sid
-            call_record["status"] = "call_initiated"
-            call_record["updated_at"] = datetime.now(timezone.utc).isoformat()
+            _update_call_fields(call_id,
+                twilio_call_sid=twilio_sid,
+                status="call_initiated",
+                updated_at=datetime.now(timezone.utc).isoformat()
+            )
             logger.info(f"[VOICE CALL] Call placed → seller={seller_phone} | SID={twilio_sid} | call_id={call_id}")
             return {
                 "success":         True,
@@ -325,8 +456,7 @@ def trigger_seller_confirmation_call(
             }
         else:
             err_msg = res_data.get("message") or res_data.get("code") or str(res_data)
-            call_record["status"] = "call_failed"
-            call_record["seller_response"] = "failed"
+            _update_call_fields(call_id, status="call_failed", seller_response="failed")
             logger.error(f"[VOICE CALL] Twilio error: {err_msg}")
             return {
                 "success": False,
@@ -336,8 +466,7 @@ def trigger_seller_confirmation_call(
             }
 
     except Exception as e:
-        call_record["status"] = "call_failed"
-        call_record["seller_response"] = "failed"
+        _update_call_fields(call_id, status="call_failed", seller_response="failed")
         logger.exception(f"[VOICE CALL] Exception during call trigger: {e}")
         return {
             "success": False,
@@ -354,10 +483,10 @@ def trigger_seller_confirmation_call(
 def handle_voice_webhook(call_id: str, lang: str, product: str, qty: int,
                           amount: str, source: str) -> str:
     """Return TwiML for the initial voice greeting (Twilio calls this URL)."""
-    record = CALL_STORE.get(call_id)
+    record = _get_call(call_id)
     if record:
-        record["status"] = "ringing"
-        record["updated_at"] = datetime.now(timezone.utc).isoformat()
+        _update_call_fields(call_id, status="ringing",
+                            updated_at=datetime.now(timezone.utc).isoformat())
     return build_twiml_greeting(call_id, lang, product, qty, amount, source)
 
 
@@ -366,7 +495,7 @@ def handle_gather_webhook(call_id: str, digit: Optional[str]) -> str:
     Called by Twilio after seller presses a digit.
     digit=1 → confirmed, digit=2 → rejected, else → invalid/retry
     """
-    record = CALL_STORE.get(call_id)
+    record = _get_call(call_id)
     now_iso = datetime.now(timezone.utc).isoformat()
 
     lang = record.get("seller_lang", DEFAULT_LANGUAGE) if record else DEFAULT_LANGUAGE
@@ -377,17 +506,15 @@ def handle_gather_webhook(call_id: str, digit: Optional[str]) -> str:
 
     if digit == "1":
         if record:
-            record["status"] = "seller_confirmed"
-            record["seller_response"] = "confirmed"
-            record["updated_at"] = now_iso
+            _update_call_fields(call_id, status="seller_confirmed",
+                                seller_response="confirmed", updated_at=now_iso)
         logger.info(f"[VOICE CALL] {call_id} → Seller CONFIRMED")
         return build_twiml_confirmed(lang)
 
     elif digit == "2":
         if record:
-            record["status"] = "seller_rejected"
-            record["seller_response"] = "rejected"
-            record["updated_at"] = now_iso
+            _update_call_fields(call_id, status="seller_rejected",
+                                seller_response="rejected", updated_at=now_iso)
         logger.info(f"[VOICE CALL] {call_id} → Seller REJECTED")
         return build_twiml_rejected(lang)
 
@@ -400,12 +527,11 @@ def handle_status_webhook(call_id: str, call_status: str, twilio_sid: str = "") 
     """
     Twilio posts call status events: initiated, ringing, answered, completed, failed, etc.
     """
-    record = CALL_STORE.get(call_id)
+    record = _get_call(call_id)
     if not record:
         return
 
     now_iso = datetime.now(timezone.utc).isoformat()
-    record["updated_at"] = now_iso
 
     status_map = {
         "initiated":  "call_initiated",
@@ -420,17 +546,21 @@ def handle_status_webhook(call_id: str, call_status: str, twilio_sid: str = "") 
     }
 
     mapped = status_map.get(call_status.lower(), call_status.lower())
+    updates: Dict[str, Any] = {"updated_at": now_iso}
 
     # Only overwrite terminal status if seller hasn't already responded
     if record.get("seller_response") not in ("confirmed", "rejected"):
         if call_status.lower() in ("completed", "no-answer", "failed", "busy", "canceled"):
             if not record.get("seller_response"):
-                record["seller_response"] = "no_response" if call_status.lower() in ("no-answer", "busy") else "failed"
-        record["status"] = mapped
+                updates["seller_response"] = (
+                    "no_response" if call_status.lower() in ("no-answer", "busy") else "failed"
+                )
+        updates["status"] = mapped
 
     if twilio_sid:
-        record["twilio_call_sid"] = twilio_sid
+        updates["twilio_call_sid"] = twilio_sid
 
+    _update_call_fields(call_id, **updates)
     logger.info(f"[VOICE CALL STATUS] call_id={call_id} | twilio_status={call_status} | mapped={mapped}")
 
 
@@ -439,8 +569,17 @@ def handle_status_webhook(call_id: str, call_status: str, twilio_sid: str = "") 
 # --------------------------------------------------------------------------- #
 
 def get_call_status(call_id: str) -> Optional[Dict[str, Any]]:
-    return CALL_STORE.get(call_id)
+    """Fetch call record from SQLite (survives restarts)."""
+    return _get_call(call_id)
 
 
 def list_calls() -> list[Dict[str, Any]]:
-    return sorted(CALL_STORE.values(), key=lambda x: x.get("created_at", ""), reverse=True)
+    """List all call records from DB, most recent first."""
+    from app.db.database import get_db
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM voice_calls ORDER BY created_at DESC LIMIT 200"
+        )
+        rows = cursor.fetchall()
+        return [_row_to_dict(r) for r in rows if r]

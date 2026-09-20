@@ -561,35 +561,49 @@ export default function AnalyticsHomeScreen() {
               </View>
 
               <View style={styles.productsList}>
-                {(data?.top_products || []).map((prod: any) => (
-                  <TouchableOpacity
-                    key={prod.id}
-                    style={styles.productCardRow}
-                    activeOpacity={0.85}
-                    onPress={() =>
-                      router.push({
-                        pathname: `/analytics/product/${prod.id}` as any,
-                      })
-                    }
-                  >
-                    <Image
-                      source={{ uri: prod.image_url }}
-                      style={styles.productThumb}
-                      resizeMode="cover"
-                    />
-                    <View style={styles.productInfoWrap}>
-                      <Text style={styles.productTitle} numberOfLines={1}>
-                        {prod.title}
-                      </Text>
-                      <View style={styles.productStatsRow}>
-                        <Text style={styles.statSnippet}>👁 {prod.views} views</Text>
-                        <Text style={styles.statSnippet}>💬 {prod.inquiries} inquiries</Text>
-                        <Text style={styles.statSnippet}>🛒 {prod.sold} sold</Text>
+                {(data?.top_products || []).map((prod: any, idx: number) => {
+                  if (!prod || typeof prod !== 'object') return null;
+                  const prodId = prod.id || `prod_${idx}`;
+                  const prodTitle = typeof prod.title === 'string' && prod.title !== 'title'
+                    ? prod.title
+                    : `Product #${idx + 1}`;
+                  const imgUri = typeof prod.image_url === 'string' && (prod.image_url.startsWith('http://') || prod.image_url.startsWith('https://') || prod.image_url.startsWith('file://'))
+                    ? prod.image_url
+                    : 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=500&q=80';
+                  const viewsCount = typeof prod.views === 'number' ? prod.views : (parseInt(prod.views, 10) || 0);
+                  const inqCount = typeof prod.inquiries === 'number' ? prod.inquiries : (parseInt(prod.inquiries, 10) || 0);
+                  const soldCount = typeof prod.sold === 'number' ? prod.sold : (parseInt(prod.sold, 10) || 0);
+
+                  return (
+                    <TouchableOpacity
+                      key={`top_prod_${prodId}_${idx}`}
+                      style={styles.productCardRow}
+                      activeOpacity={0.85}
+                      onPress={() =>
+                        router.push({
+                          pathname: `/analytics/product/${prodId}` as any,
+                        })
+                      }
+                    >
+                      <Image
+                        source={{ uri: imgUri }}
+                        style={styles.productThumb}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.productInfoWrap}>
+                        <Text style={styles.productTitle} numberOfLines={1}>
+                          {prodTitle}
+                        </Text>
+                        <View style={styles.productStatsRow}>
+                          <Text style={styles.statSnippet}>👁 {viewsCount} views</Text>
+                          <Text style={styles.statSnippet}>💬 {inqCount} inquiries</Text>
+                          <Text style={styles.statSnippet}>🛒 {soldCount} sold</Text>
+                        </View>
                       </View>
-                    </View>
-                    <ChevronRight size={18} color="#94A3B8" strokeWidth={2.2} />
-                  </TouchableOpacity>
-                ))}
+                      <ChevronRight size={18} color="#94A3B8" strokeWidth={2.2} />
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 

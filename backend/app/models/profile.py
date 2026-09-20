@@ -25,6 +25,10 @@ class ProfileUpsertRequest(BaseModel):
     bank_holder_name: Optional[str] = None
     bank_name: Optional[str] = None
     upi_id: Optional[str] = None
+    pehchan_id: Optional[str] = None
+    gstin: Optional[str] = None
+    age: Optional[int] = None
+    experience: Optional[str] = None
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -43,6 +47,11 @@ class ProfileUpdateRequest(BaseModel):
     bank_holder_name: Optional[str] = None
     bank_name: Optional[str] = None
     upi_id: Optional[str] = None
+    pehchan_id: Optional[str] = None
+    gstin: Optional[str] = None
+    age: Optional[int] = None
+    experience: Optional[str] = None
+
 
 
 class BankUpdateRequest(BaseModel):

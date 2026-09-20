@@ -289,16 +289,43 @@ def call_gemini(prompt: str) -> Dict[str, Any]:
     raise RuntimeError(f"All Gemini models failed: {last_error}")
 
 
-def _build_prompt(input_text: str, craft_type: str) -> str:
+# Language definitions
+REGIONAL_LANG_MAP = {
+    "ta": {"name": "Tamil", "native": "தமிழ்", "script": "pure Tamil script (தமிழ்)"},
+    "te": {"name": "Telugu", "native": "తెలుగు", "script": "pure Telugu script (తెలుగు)"},
+    "bn": {"name": "Bengali", "native": "বাংলা", "script": "pure Bengali script (বাংলা)"},
+    "mr": {"name": "Marathi", "native": "मराठी", "script": "Devanagari script for Marathi (मराठी)"},
+    "pa": {"name": "Punjabi", "native": "ਪੰਜਾਬੀ", "script": "Gurmukhi script for Punjabi (ਪੰਜਾਬੀ)"},
+    "kn": {"name": "Kannada", "native": "ಕನ್ನಡ", "script": "pure Kannada script (ಕನ್ನಡ)"},
+    "ml": {"name": "Malayalam", "native": "മലയാളം", "script": "pure Malayalam script (മലയാളം)"},
+}
+
+def _build_prompt(input_text: str, craft_type: str, language: str = "ta") -> str:
+    lang_code = language.lower() if language else "ta"
+    if lang_code in ("en", "hi"):
+        regional_info = REGIONAL_LANG_MAP.get("ta")
+        regional_code = "ta"
+    else:
+        regional_info = REGIONAL_LANG_MAP.get(lang_code, REGIONAL_LANG_MAP["ta"])
+        regional_code = lang_code if lang_code in REGIONAL_LANG_MAP else "ta"
+
+    reg_name = regional_info["name"]
+    reg_native = regional_info["native"]
+    reg_script = regional_info["script"]
+
     return f"""You are an expert e-commerce product copywriter with deep knowledge of Indian handmade crafts AND general consumer products (electronics, personal care, kitchenware, clothing, toys, etc.).
 
 ARTISAN VOICE NOTES (use as seed keywords/hints — the artisan described this product in their own words):
 "{input_text}"
 
 PRODUCT CATEGORY: {craft_type}
+USER REGIONAL LANGUAGE: {reg_name} ({reg_native})
 
 YOUR TASK:
-The artisan's notes are raw seed keywords. Use them to identify the product, then write a RICH, PROFESSIONAL product description that goes FAR BEYOND just repeating what they said.
+The artisan's notes are raw seed keywords. Use them to identify the product, then write a RICH, PROFESSIONAL product description in THREE (3) distinct languages:
+1. English (common)
+2. Hindi (common)
+3. {reg_name} ({reg_native}) (regional)
 
 Think like a top Amazon/Flipkart copywriter:
 - Identify the product from the artisan's keywords
@@ -306,71 +333,73 @@ Think like a top Amazon/Flipkart copywriter:
 - Highlight WHY a customer should buy it (comfort, quality, durability, uniqueness, craftsmanship)
 - Include specific features they mentioned AND enrich with well-known category benefits
 
-EXAMPLE — If artisan says: "white gaming mouse, 8000 DPI, gaming lights"
-DO NOT write: "This is a white gaming mouse with 8000 DPI and gaming lights."
-WRITE: "Dominate every game with this precision white gaming mouse featuring ultra-high 8000 DPI sensitivity for pixel-perfect accuracy. RGB gaming lights add an electrifying aesthetic to your setup. Ergonomic design ensures fatigue-free marathon sessions. Perfect for FPS, MOBA, and competitive gaming."
-
-EXAMPLE — If artisan says: "wooden comb, handmade, smooth teeth"
-DO NOT write: "This is a handmade wooden comb with smooth teeth."
-WRITE: "Crafted by skilled artisans, this handmade wooden comb gently detangles hair without static or breakage. Smooth, wide teeth glide effortlessly through all hair types, distributing natural oils from root to tip for shinier, healthier hair. Eco-friendly and biodegradable — a beautiful alternative to plastic."
-
 OUTPUT RULES:
 1. title: Catchy, SEO-friendly product title (4-8 words). Make it sound premium.
-2. description_en: 50-80 words. Professional, benefit-rich, persuasive English. Use the artisan's keywords as the foundation, then ENRICH with real product knowledge.
-3. description_hi: 50-80 words in fluent Devanagari Hindi (हिंदी). Same enriched style — NOT a word-for-word translation. Natural, flowing sentences.
-4. description_ta: 50-80 words in pure Tamil script (தமிழ்). STRICTLY Tamil Unicode characters only — absolutely NO Roman/English letters. Same enriched style.
+2. description_en: 50-80 words. Professional, benefit-rich, persuasive English.
+3. description_hi: 50-80 words in fluent Devanagari Hindi (हिंदी). Same enriched style — NOT a word-for-word translation.
+4. description_regional: 50-80 words in {reg_script}. STRICTLY native script characters only — absolutely NO Roman/English letters.
+5. description_ta: 50-80 words in pure Tamil script (தமிழ்).
+6. description_te: 50-80 words in pure Telugu script (తెలుగు).
 
-ABSOLUTELY FORBIDDEN — YOUR OUTPUT WILL BE REJECTED IF:
-- Chinese characters (汉字) appear ANYWHERE in the output — you are outputting to Indian users, NOT Chinese users
-- You include your internal reasoning, chain-of-thought, or notes inside the JSON values
-- You add any text outside the JSON object
-- description_hi or description_ta contain Roman/English letters
+ABSOLUTELY FORBIDDEN:
+- Chinese characters (汉字) anywhere in the output
+- Any Roman letters inside Hindi, Tamil, or Telugu text
+- Internal chain-of-thought or reasoning text
 
 CRITICAL:
-- Never just echo back the voice notes — ALWAYS add value and professional copy
-- Return ONLY the raw JSON object below, nothing else — no explanation, no preamble
-
+Return ONLY a valid JSON object:
 {{
   "title": "...",
   "category": "{craft_type}",
   "description_en": "...",
   "description_hi": "...",
-  "description_ta": "..."
+  "description_regional": "...",
+  "description_ta": "...",
+  "description_te": "..."
 }}"""
 
 
-def _parse_result(parsed: Dict, craft_type: str) -> tuple:
+def _parse_result(parsed: Dict, craft_type: str, language: str = "ta") -> tuple:
     """Extract and validate fields from AI-parsed result."""
     desc_en = parsed.get("description_en", "")
     desc_hi = parsed.get("description_hi", "")
+    desc_reg = parsed.get("description_regional", "")
     desc_ta = parsed.get("description_ta", "")
+    desc_te = parsed.get("description_te", "")
     title = parsed.get("title", "")
     category = parsed.get("category", craft_type)
 
-    # Discard any field that contains Chinese characters leaking from the model's internal thinking
-    if _has_chinese_leak(desc_en):
-        logger.warning("English description contained Chinese characters (model thinking leak) — discarding.")
-        desc_en = ""
-    if _has_chinese_leak(desc_hi):
-        logger.warning("Hindi description contained Chinese characters (model thinking leak) — discarding.")
-        desc_hi = ""
-    if _has_chinese_leak(desc_ta):
-        logger.warning("Tamil description contained Chinese characters (model thinking leak) — discarding.")
-        desc_ta = ""
+    # Discard Chinese leaks
+    if _has_chinese_leak(desc_en): desc_en = ""
+    if _has_chinese_leak(desc_hi): desc_hi = ""
+    if _has_chinese_leak(desc_reg): desc_reg = ""
+    if _has_chinese_leak(desc_ta): desc_ta = ""
+    if _has_chinese_leak(desc_te): desc_te = ""
 
-    # Validate Tamil: if model returned Romanized text, discard it
+    # Validate Tamil if present
     if desc_ta and not _is_valid_tamil(desc_ta):
-        logger.warning("Tamil description contained non-Tamil (Romanized) text — discarding and using fallback.")
         desc_ta = ""
 
-    return desc_en, desc_hi, desc_ta, title, category
+    # Assign regional description appropriately
+    lang_code = language.lower() if language else "ta"
+    if lang_code == "ta" and not desc_reg and desc_ta:
+        desc_reg = desc_ta
+    elif lang_code == "te" and not desc_reg and desc_te:
+        desc_reg = desc_te
+    elif desc_reg and lang_code == "ta" and not desc_ta:
+        desc_ta = desc_reg
+    elif desc_reg and lang_code == "te" and not desc_te:
+        desc_te = desc_reg
+
+    return desc_en, desc_hi, desc_reg, desc_ta, desc_te, title, category
 
 
 def generate_descriptions(
     raw_text: str,
-    craft_type: str = "Handicraft"
+    craft_type: str = "Handicraft",
+    language: str = "ta"
 ) -> Dict[str, Any]:
-    """Generate professional SEO-friendly descriptions in EN, HI, and TA."""
+    """Generate professional SEO-friendly descriptions in EN, HI, and Regional (TA/TE/etc.)."""
     input_text = raw_text.strip() or f"Handmade {craft_type} crafted with authentic traditional techniques."
     
     # Add quality check for input text
@@ -378,11 +407,14 @@ def generate_descriptions(
         logger.warning("Very short input text detected, using fallback")
         input_text = f"Handmade {craft_type} crafted with authentic traditional techniques."
     
-    prompt = _build_prompt(input_text, craft_type)
+    lang_code = language.lower() if language else "ta"
+    prompt = _build_prompt(input_text, craft_type, lang_code)
 
     desc_en = ""
     desc_hi = ""
+    desc_reg = ""
     desc_ta = ""
+    desc_te = ""
     generated_title = ""
     generated_category = craft_type or "Handicraft"
 
@@ -390,18 +422,18 @@ def generate_descriptions(
     if GEMINI_API_KEY:
         try:
             parsed = call_gemini(prompt)
-            desc_en, desc_hi, desc_ta, generated_title, generated_category = _parse_result(parsed, craft_type)
+            desc_en, desc_hi, desc_reg, desc_ta, desc_te, generated_title, generated_category = _parse_result(parsed, craft_type, lang_code)
             if desc_en:
-                logger.info(f"Gemini generated descriptions successfully. Tamil valid: {bool(desc_ta)}")
+                logger.info(f"Gemini generated descriptions successfully. Regional: {lang_code}")
         except Exception as e:
             logger.warning(f"Gemini generation note: {e}")
 
-    # 2. Fallback to Ollama if Gemini was not available or did not produce results (preserving existing Ollama code)
+    # 2. Fallback to Ollama if Gemini was not available or did not produce results
     if not desc_en:
         try:
             parsed = call_ollama(prompt)
-            desc_en, desc_hi, desc_ta, generated_title, generated_category = _parse_result(parsed, craft_type)
-            logger.info(f"Ollama ({OLLAMA_MODEL}) generated descriptions. Tamil valid: {bool(desc_ta)}")
+            desc_en, desc_hi, desc_reg, desc_ta, desc_te, generated_title, generated_category = _parse_result(parsed, craft_type, lang_code)
+            logger.info(f"Ollama ({OLLAMA_MODEL}) generated descriptions.")
         except Exception as e:
             logger.warning(f"Ollama generation note ({OLLAMA_MODEL}): {e}")
 
@@ -419,7 +451,7 @@ def generate_descriptions(
             if "{" in resp_text and "}" in resp_text:
                 json_str = resp_text[resp_text.find("{"):resp_text.rfind("}")+1]
                 parsed = json.loads(json_str)
-                desc_en, desc_hi, desc_ta, generated_title, generated_category = _parse_result(parsed, craft_type)
+                desc_en, desc_hi, desc_reg, desc_ta, desc_te, generated_title, generated_category = _parse_result(parsed, craft_type, lang_code)
         except Exception as e:
             logger.warning(f"Claude API note: {e}")
 
@@ -436,11 +468,11 @@ def generate_descriptions(
                 response_format={"type": "json_object"}
             )
             parsed = json.loads(response.choices[0].message.content.strip())
-            desc_en, desc_hi, desc_ta, generated_title, generated_category = _parse_result(parsed, craft_type)
+            desc_en, desc_hi, desc_reg, desc_ta, desc_te, generated_title, generated_category = _parse_result(parsed, craft_type, lang_code)
         except Exception as e:
             logger.warning(f"OpenAI API note: {e}")
 
-    # Final fallback: clean native Tamil templates
+    # Final fallback: authentic native regional templates
     clean_notes = input_text.strip().rstrip('.')
     if not generated_title:
         generated_title = clean_notes[:60] if len(clean_notes) < 60 else f"Handcrafted {craft_type}"
@@ -449,18 +481,22 @@ def generate_descriptions(
     if not desc_hi:
         desc_hi = f"उत्कृष्ट हस्तनिर्मित {craft_type} — {clean_notes}। कुशल भारतीय कारीगरों द्वारा पारंपरिक कला और प्रामाणिक तकनीकों से तैयार।"
     if not desc_ta:
-        # Safe native Tamil template — always uses real Tamil script
         desc_ta = f"பாரம்பரிய கைவினை {craft_type} — {clean_notes}. திறமையான இந்திய கைவினைஞர்களால் பாரம்பரிய நுட்பங்களுடன் வடிவமைக்கப்பட்டது. தரமான மூலப்பொருட்களால் தயாரிக்கப்பட்ட இந்தப் பொருள் உங்கள் வீட்டிற்கு அழகு சேர்க்கும்."
+    if not desc_te:
+        desc_te = f"సాంప్రదాయ హస్తకళ {craft_type} — {clean_notes}. అనుభవజ్ఞులైన భారతీయ కళాకారులచే ప్రామాణిక పద్ధతులతో రూపొందించబడింది. నాణ్యమైన ముడి పదార్థాలతో తయారైన ఈ విశిష్ట కళ మీ ఇంటికి ఎంతో శోభను చేకూరుస్తుంది."
 
-    # Quality validation
-    if desc_en and len(desc_en) < 30:
-        logger.warning("Generated English description seems too short")
-        desc_en = f"Exquisite handcrafted {craft_type} — {clean_notes}. Meticulously created by skilled Indian artisans celebrating authentic cultural heritage and fine craftsmanship."
-        
-    if desc_ta and not _is_valid_tamil(desc_ta):
-        # Try to reconstruct proper Tamil description
-        logger.warning("Reconstructing Tamil description in valid script")
-        desc_ta = f"பாரம்பரிய கைவினை {craft_type} — {clean_notes}. திறமையான இந்திய கைவினைஞர்களால் பாரம்பரிய நுட்பங்களுடன் வடிவமைக்கப்பட்டது. தரமான மூலப்பொருட்களால் தயாரிக்கப்பட்ட இந்தப் பொருள் உங்கள் வீட்டிற்கு அழகு சேர்க்கும்."
+    # Map regional description if empty
+    if not desc_reg:
+        if lang_code == "te":
+            desc_reg = desc_te
+        elif lang_code == "ta":
+            desc_reg = desc_ta
+        elif lang_code == "bn":
+            desc_reg = f"ঐতিহ্যবাহী হস্তশিল্প {craft_type} — {clean_notes}। দক্ষ ভারতীয় কারিগরদের দ্বারা খাঁটি শিল্পকলায় তৈরি।"
+        elif lang_code == "mr":
+            desc_reg = f"उत्कृष्ट हस्तनिर्मित {craft_type} — {clean_notes}। कुशल भारतीय कारागिरांनी पारंपरिक पद्धतीने तयार केलेले सुंदर उत्पादन."
+        else:
+            desc_reg = desc_ta
 
     return {
         "success": True,
@@ -468,9 +504,12 @@ def generate_descriptions(
         "category": generated_category,
         "description_en": desc_en,
         "description_hi": desc_hi,
+        "description_regional": desc_reg,
         "description_ta": desc_ta,
+        "description_te": desc_te,
+        "regional_language": lang_code,
         "raw_transcription": input_text,
-        "detected_language": "en"
+        "detected_language": lang_code
     }
 
 

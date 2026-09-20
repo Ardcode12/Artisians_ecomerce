@@ -50,6 +50,8 @@ def init_db():
             bank_holder_name TEXT,
             bank_name TEXT,
             upi_id TEXT,
+            age INTEGER,
+            experience TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -393,6 +395,45 @@ def init_db():
                 cursor.execute("ALTER TABLE products ADD COLUMN target_units INTEGER DEFAULT 0;")
             except Exception:
                 pass
+
+        # ── GeM Portal Standardized Fields (HSN, Pehchan ID, GSTIN, Certs) ───
+        gem_columns = [
+            ("hsn_code", "TEXT DEFAULT '6912'"),
+            ("gstin", "TEXT DEFAULT ''"),
+            ("pehchan_id", "TEXT DEFAULT ''"),
+            ("artisan_cert_type", "TEXT DEFAULT 'Pehchan Card'"),
+            ("gi_tag_num", "TEXT DEFAULT ''"),
+            ("brand_oem", "TEXT DEFAULT ''"),
+            ("gem_category", "TEXT DEFAULT 'Handicrafts and Handlooms'"),
+            ("country_of_origin", "TEXT DEFAULT 'India'"),
+            ("local_content_pct", "INTEGER DEFAULT 100"),
+            ("dimensions", "TEXT DEFAULT ''"),
+            ("weight_kg", "REAL DEFAULT 0.5"),
+            ("package_contents", "TEXT DEFAULT ''"),
+        ]
+        for col_name, col_type in gem_columns:
+            if is_postgres():
+                cursor.execute(f"ALTER TABLE products ADD COLUMN IF NOT EXISTS {col_name} {col_type};")
+            else:
+                try:
+                    cursor.execute(f"ALTER TABLE products ADD COLUMN {col_name} {col_type};")
+                except Exception:
+                    pass
+
+        profile_gem_cols = [
+            ("pehchan_id", "TEXT DEFAULT ''"),
+            ("gstin", "TEXT DEFAULT ''"),
+            ("age", "INTEGER"),
+            ("experience", "TEXT"),
+        ]
+        for col_name, col_type in profile_gem_cols:
+            if is_postgres():
+                cursor.execute(f"ALTER TABLE profiles ADD COLUMN IF NOT EXISTS {col_name} {col_type};")
+            else:
+                try:
+                    cursor.execute(f"ALTER TABLE profiles ADD COLUMN {col_name} {col_type};")
+                except Exception:
+                    pass
 
         # Indexes for fast lookup
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_profiles_phone ON profiles(phone);")
@@ -1413,6 +1454,32 @@ def _seed_demand_forecasts():
             """)
 
             logger.info("Seeded initial analytics activities and product price histories.")
+
+        # ── Voice Calls table (persisted so records survive server restarts) ──
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS voice_calls (
+            call_id           TEXT PRIMARY KEY,
+            order_id          TEXT,
+            seller_phone      TEXT,
+            seller_name       TEXT,
+            seller_lang       TEXT,
+            product_title     TEXT,
+            quantity          INTEGER DEFAULT 1,
+            amount            TEXT,
+            order_source      TEXT,
+            buyer_name        TEXT,
+            delivery_address  TEXT,
+            status            TEXT DEFAULT 'triggering',
+            twilio_call_sid   TEXT,
+            seller_response   TEXT,
+            created_at        TEXT NOT NULL,
+            updated_at        TEXT NOT NULL
+        );
+        """)
+
+        conn.commit()
+        logger.info("voice_calls table ready.")
+
 
 
 

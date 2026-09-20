@@ -18,22 +18,27 @@ import {
   RefreshCw,
   Sparkles,
   AlertCircle,
+  Volume2,
+  VolumeX,
 } from 'lucide-react-native';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { LanguageCode } from '@/i18n/translations';
+import { speakText, stopSpeech } from '@/utils/speech';
 
 import { BACKEND_URL } from '@/constants/api';
 
 const BG = '#F5F0E8';
 
-const LANGUAGE_OPTIONS: { code: LanguageCode; label: string; local: string }[] = [
-  { code: 'ta', label: 'Tamil', local: 'தமிழ்' },
-  { code: 'hi', label: 'Hindi', local: 'हिन्दी' },
-  { code: 'en', label: 'English', local: 'English' },
-  { code: 'te', label: 'Telugu', local: 'తెలుగు' },
+const LANGUAGE_OPTIONS: { code: LanguageCode; label: string; local: string; bcp47: string }[] = [
+  { code: 'ta', label: 'Tamil', local: 'தமிழ்', bcp47: 'ta-IN' },
+  { code: 'te', label: 'Telugu', local: 'తెలుగు', bcp47: 'te-IN' },
+  { code: 'hi', label: 'Hindi', local: 'हिन्दी', bcp47: 'hi-IN' },
+  { code: 'en', label: 'English', local: 'English', bcp47: 'en-IN' },
+  { code: 'bn', label: 'Bengali', local: 'বাংলা', bcp47: 'bn-IN' },
+  { code: 'mr', label: 'Marathi', local: 'मराठी', bcp47: 'mr-IN' },
 ];
 
 const CATEGORIES = [
@@ -60,6 +65,8 @@ interface VoiceStepProps {
   description_en?: string;
   description_hi?: string;
   description_ta?: string;
+  description_te?: string;
+  description_regional?: string;
   onUpdate: (fields: {
     title?: string;
     description?: string;
@@ -67,11 +74,14 @@ interface VoiceStepProps {
     description_en?: string;
     description_hi?: string;
     description_ta?: string;
+    description_te?: string;
+    description_regional?: string;
   }) => void;
   onNext: () => void;
 }
 
 type Stage = 'idle' | 'recording' | 'processing' | 'done' | 'error';
+type DescLangTab = 'regional' | 'hi' | 'en';
 
 function isNativeAudioAvailable(): boolean {
   try {
@@ -90,6 +100,8 @@ export function VoiceStep({
   description_en,
   description_hi,
   description_ta,
+  description_te,
+  description_regional,
   onUpdate,
   onNext,
 }: VoiceStepProps) {
@@ -100,6 +112,8 @@ export function VoiceStep({
   const [localDescEn, setLocalDescEn] = useState(description_en || description || '');
   const [localDescHi, setLocalDescHi] = useState(description_hi || '');
   const [localDescTa, setLocalDescTa] = useState(description_ta || '');
+  const [localDescTe, setLocalDescTe] = useState(description_te || '');
+  const [localDescReg, setLocalDescReg] = useState(description_regional || description_ta || description_te || '');
   const [localCategory, setLocalCategory] = useState(category || '');
   const [errorMsg, setErrorMsg] = useState('');
   const [processingMsg, setProcessingMsg] = useState('');
@@ -108,6 +122,8 @@ export function VoiceStep({
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [showTextInput, setShowTextInput] = useState(false);
+  const [activeTab, setActiveTab] = useState<DescLangTab>('regional');
+  const [speakingTab, setSpeakingTab] = useState<string | null>(null);
 
   const [hasNativeAudio] = useState<boolean>(() => isNativeAudioAvailable());
   const [pulseAnim] = useState(new Animated.Value(1));
@@ -184,7 +200,7 @@ export function VoiceStep({
       await recorder.stop();
       const uri = recorder.uri;
       if (!uri) { setStage('error'); setErrorMsg('Recording failed. Please try again.'); return; }
-      setProcessingMsg('Analyzing with AI...');
+      setProcessingMsg('Analyzing and generating 3-language descriptions...');
       await sendAudioToBackend(uri);
     } catch (err: any) {
       setStage('error');
@@ -199,7 +215,12 @@ export function VoiceStep({
       const resp = await fetch(`${BACKEND_URL}/api/generate-description`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ audio_base64: base64Audio, image_base64: base64Image, craft_type: localCategory || '' }),
+        body: JSON.stringify({
+          audio_base64: base64Audio,
+          image_base64: base64Image,
+          craft_type: localCategory || '',
+          language: selectedLang || 'ta'
+        }),
       });
       if (resp.ok) {
         const data = await resp.json();
@@ -211,23 +232,33 @@ export function VoiceStep({
 
   const generateFromText = async (text: string) => {
     setStage('processing');
-    setProcessingMsg('Generating AI description...');
+    setProcessingMsg('Generating trilingual AI descriptions (Regional, Hindi, English)...');
     try {
       const base64Image = imageUri ? await readFileAsBase64(imageUri) : '';
       const resp = await fetch(`${BACKEND_URL}/api/generate-description`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ text, raw_text: text, image_base64: base64Image, craft_type: localCategory || '' }),
+        body: JSON.stringify({
+          text,
+          raw_text: text,
+          image_base64: base64Image,
+          craft_type: localCategory || '',
+          language: selectedLang || 'ta'
+        }),
       });
       const data = await resp.json();
       applyAiResults(data);
     } catch {
-      const craft = localCategory || 'Handcraft';
+      const craft = localCategory || 'Handicraft';
       applyAiResults({
         title: `Handcrafted ${craft}`,
-        description_en: `Exquisite handcrafted ${craft} by traditional Indian artisans.`,
-        description_hi: `पारंपरिक कारीगरों द्वारा हस्तनिर्मित ${craft}।`,
-        description_ta: `இந்திய கைவினைஞர்களால் உருவாக்கப்பட்ட ${craft}.`,
+        description_en: `Exquisite handcrafted ${craft} by traditional Indian artisans. Made with premium quality authentic materials.`,
+        description_hi: `कुशल भारतीय कारीगरों द्वारा हस्तनिर्मित उत्कृष्ट ${craft}। उच्च गुणवत्ता और पारंपरिक कला का बेजोड़ संगम।`,
+        description_ta: `பாரம்பரிய நுட்பங்களுடன் இந்திய கைவினைஞர்களால் உருவாக்கப்பட்ட நேர்த்தியான ${craft}.`,
+        description_te: `భారతీయ సాంప్రదాయ కళాకారులచే నైపుణ్యంతో రూపొందించబడిన అద్భుతమైన ${craft}.`,
+        description_regional: selectedLang === 'te'
+          ? `భారతీయ సాంప్రదాయ కళాకారులచే నైపుణ్యంతో రూపొందించబడిన అద్భుతమైన ${craft}.`
+          : `பாரம்பரிய நுட்பங்களுடன் இந்திய கைவினைஞர்களால் உருவாக்கப்பட்ட நேர்த்தியான ${craft}.`,
         category: craft,
       });
     }
@@ -237,12 +268,30 @@ export function VoiceStep({
     const en = data.description_en || '';
     const hi = data.description_hi || '';
     const ta = data.description_ta || '';
+    const te = data.description_te || '';
+    const reg = data.description_regional || (selectedLang === 'te' ? te : ta) || ta || te || en;
     const detectedTitle = data.title || localTitle || '';
     const detectedCategory = data.category || localCategory || '';
-    setLocalDescEn(en); setLocalDescHi(hi); setLocalDescTa(ta);
+
+    setLocalDescEn(en);
+    setLocalDescHi(hi);
+    setLocalDescTa(ta);
+    setLocalDescTe(te);
+    setLocalDescReg(reg);
+
     if (detectedTitle) setLocalTitle(detectedTitle);
     if (detectedCategory) setLocalCategory(detectedCategory);
-    onUpdate({ title: detectedTitle, category: detectedCategory, description: en, description_en: en, description_hi: hi, description_ta: ta });
+
+    onUpdate({
+      title: detectedTitle,
+      category: detectedCategory,
+      description: en,
+      description_en: en,
+      description_hi: hi,
+      description_ta: ta,
+      description_te: te,
+      description_regional: reg,
+    });
     setProcessingMsg('');
     setStage('done');
   };
@@ -250,8 +299,36 @@ export function VoiceStep({
   const handleSave = () => {
     if (!localTitle.trim()) { Alert.alert('Product Title Required', 'Please add a title.'); return; }
     if (!localDescEn.trim()) { Alert.alert('Description Required', 'Please add a description.'); return; }
-    onUpdate({ title: localTitle, description: localDescEn, description_en: localDescEn, description_hi: localDescHi, description_ta: localDescTa, category: localCategory });
+    stopSpeech();
+    onUpdate({
+      title: localTitle,
+      description: localDescEn,
+      description_en: localDescEn,
+      description_hi: localDescHi,
+      description_ta: localDescTa,
+      description_te: localDescTe,
+      description_regional: localDescReg,
+      category: localCategory
+    });
     onNext();
+  };
+
+  const handleListen = (text: string, langCode: string, tabKey: string) => {
+    if (speakingTab === tabKey) {
+      stopSpeech();
+      setSpeakingTab(null);
+      return;
+    }
+    stopSpeech();
+    setSpeakingTab(tabKey);
+    speakText(text, {
+      language: langCode,
+      rate: 0.95,
+      pitch: 1.0,
+      onDone: () => setSpeakingTab(null),
+      onError: () => setSpeakingTab(null),
+      onStopped: () => setSpeakingTab(null),
+    });
   };
 
   const retryRecording = () => {
@@ -445,12 +522,17 @@ export function VoiceStep({
       {showResults && (
         <View style={styles.resultsCard}>
           <View style={styles.resultsHeader}>
-            <Text style={styles.resultsTitle}>✅ AI Generated — tap to edit</Text>
-            <TouchableOpacity onPress={retryRecording} activeOpacity={0.7}>
-              <RefreshCw size={15} color={Colors.textMuted} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.resultsTitle}>✅ AI Generated — In 3 Languages</Text>
+              <Text style={styles.resultsSub}>Regional ({selectedLangMeta.local}), Hindi & English</Text>
+            </View>
+            <TouchableOpacity onPress={retryRecording} activeOpacity={0.7} style={styles.retryHeaderBtn}>
+              <RefreshCw size={14} color={Colors.textMuted} />
+              <Text style={styles.retryHeaderText}>Regenerate</Text>
             </TouchableOpacity>
           </View>
 
+          {/* Product Title */}
           <Text style={styles.fieldLabel}>Product Title *</Text>
           <TextInput
             style={styles.fieldInput}
@@ -460,38 +542,178 @@ export function VoiceStep({
             placeholderTextColor={Colors.textMuted}
           />
 
-          <Text style={styles.fieldLabel}>Description (English) *</Text>
-          <TextInput
-            style={[styles.fieldInput, styles.multiInput]}
-            value={localDescEn}
-            onChangeText={t => { setLocalDescEn(t); onUpdate({ description: t, description_en: t }); }}
-            placeholder="English description..."
-            placeholderTextColor={Colors.textMuted}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
+          {/* Trilingual Segmented Tabs */}
+          <View style={styles.descSection}>
+            <Text style={styles.fieldLabel}>Voice Description (Tap to view, edit & listen)</Text>
+            <View style={styles.tabBar}>
+              <TouchableOpacity
+                style={[styles.tabBtn, activeTab === 'regional' && styles.tabBtnActive]}
+                onPress={() => setActiveTab('regional')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.tabBtnText, activeTab === 'regional' && styles.tabBtnTextActive]}>
+                  {selectedLangMeta.local}
+                </Text>
+              </TouchableOpacity>
 
-          {localDescTa ? (
-            <>
-              <Text style={styles.fieldLabel}>விவரம் (தமிழ்)</Text>
-              <TextInput
-                style={[styles.fieldInput, styles.multiInput]}
-                value={localDescTa}
-                onChangeText={t => { setLocalDescTa(t); onUpdate({ description_ta: t }); }}
-                multiline numberOfLines={3} textAlignVertical="top"
-              />
-            </>
-          ) : null}
+              <TouchableOpacity
+                style={[styles.tabBtn, activeTab === 'hi' && styles.tabBtnActive]}
+                onPress={() => setActiveTab('hi')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.tabBtnText, activeTab === 'hi' && styles.tabBtnTextActive]}>
+                  हिन्दी (Hindi)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.tabBtn, activeTab === 'en' && styles.tabBtnActive]}
+                onPress={() => setActiveTab('en')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.tabBtnText, activeTab === 'en' && styles.tabBtnTextActive]}>
+                  English
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Tab 1: Regional Content */}
+            {activeTab === 'regional' && (
+              <View style={styles.tabContentBox}>
+                <View style={styles.tabActionRow}>
+                  <Text style={styles.tabLangHeader}>
+                    {selectedLangMeta.label} ({selectedLangMeta.local})
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.listenBtn}
+                    onPress={() => handleListen(localDescReg || localDescTa || localDescTe || '', selectedLangMeta.bcp47, 'regional')}
+                    activeOpacity={0.8}
+                  >
+                    {speakingTab === 'regional' ? (
+                      <>
+                        <VolumeX size={15} color="#C0392B" />
+                        <Text style={[styles.listenBtnText, { color: '#C0392B' }]}>Stop</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 size={15} color="#2D6A4F" />
+                        <Text style={styles.listenBtnText}>Listen</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                <TextInput
+                  style={[styles.fieldInput, styles.multiInput]}
+                  value={localDescReg || localDescTa || localDescTe}
+                  onChangeText={t => {
+                    setLocalDescReg(t);
+                    if (selectedLang === 'te') {
+                      setLocalDescTe(t);
+                      onUpdate({ description_te: t, description_regional: t });
+                    } else {
+                      setLocalDescTa(t);
+                      onUpdate({ description_ta: t, description_regional: t });
+                    }
+                  }}
+                  placeholder={`${selectedLangMeta.label} description...`}
+                  placeholderTextColor={Colors.textMuted}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+            )}
+
+            {/* Tab 2: Hindi Content */}
+            {activeTab === 'hi' && (
+              <View style={styles.tabContentBox}>
+                <View style={styles.tabActionRow}>
+                  <Text style={styles.tabLangHeader}>हिन्दी (Hindi)</Text>
+                  <TouchableOpacity
+                    style={styles.listenBtn}
+                    onPress={() => handleListen(localDescHi, 'hi-IN', 'hi')}
+                    activeOpacity={0.8}
+                  >
+                    {speakingTab === 'hi' ? (
+                      <>
+                        <VolumeX size={15} color="#C0392B" />
+                        <Text style={[styles.listenBtnText, { color: '#C0392B' }]}>Stop</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 size={15} color="#2D6A4F" />
+                        <Text style={styles.listenBtnText}>Listen</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                <TextInput
+                  style={[styles.fieldInput, styles.multiInput]}
+                  value={localDescHi}
+                  onChangeText={t => {
+                    setLocalDescHi(t);
+                    onUpdate({ description_hi: t });
+                  }}
+                  placeholder="हिन्दी विवरण..."
+                  placeholderTextColor={Colors.textMuted}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+            )}
+
+            {/* Tab 3: English Content */}
+            {activeTab === 'en' && (
+              <View style={styles.tabContentBox}>
+                <View style={styles.tabActionRow}>
+                  <Text style={styles.tabLangHeader}>English</Text>
+                  <TouchableOpacity
+                    style={styles.listenBtn}
+                    onPress={() => handleListen(localDescEn, 'en-IN', 'en')}
+                    activeOpacity={0.8}
+                  >
+                    {speakingTab === 'en' ? (
+                      <>
+                        <VolumeX size={15} color="#C0392B" />
+                        <Text style={[styles.listenBtnText, { color: '#C0392B' }]}>Stop</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 size={15} color="#2D6A4F" />
+                        <Text style={styles.listenBtnText}>Listen</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                <TextInput
+                  style={[styles.fieldInput, styles.multiInput]}
+                  value={localDescEn}
+                  onChangeText={t => {
+                    setLocalDescEn(t);
+                    onUpdate({ description: t, description_en: t });
+                  }}
+                  placeholder="English description..."
+                  placeholderTextColor={Colors.textMuted}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+            )}
+          </View>
         </View>
       )}
 
       {/* ── Next button ─────────────────────────────────────────── */}
       {showResults && (
         <TouchableOpacity
-          style={[styles.nextBtn, (!localTitle || !localDescEn) && styles.nextBtnDim]}
+          style={[styles.nextBtn, (!localTitle || (!localDescEn && !localDescReg && !localDescHi)) && styles.nextBtnDim]}
           onPress={handleSave}
-          disabled={!localTitle || !localDescEn}
+          disabled={!localTitle || (!localDescEn && !localDescReg && !localDescHi)}
           activeOpacity={0.88}
         >
           <Text style={styles.nextBtnText}>Next: Set Price →</Text>
@@ -722,7 +944,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
-    gap: 8,
+    gap: 10,
     ...Shadow.card,
   },
   resultsHeader: {
@@ -732,15 +954,37 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   resultsTitle: {
-    fontSize: 13,
-    fontFamily: Fonts.bodyMedium,
-    color: Colors.primary,
+    fontSize: 14,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '700',
+    color: '#2D6A4F',
+  },
+  resultsSub: {
+    fontSize: 12,
+    fontFamily: Fonts.body,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  retryHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  retryHeaderText: {
+    fontSize: 11,
+    fontFamily: Fonts.heading,
+    color: Colors.textSecondary,
+    fontWeight: '600',
   },
   fieldLabel: {
     fontSize: 12,
     fontFamily: Fonts.bodyMedium,
     color: Colors.textSecondary,
-    marginTop: 6,
+    marginTop: 4,
   },
   fieldInput: {
     backgroundColor: BG,
@@ -753,7 +997,78 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.body,
     color: Colors.textPrimary,
   },
-  multiInput: { minHeight: 80, textAlignVertical: 'top' },
+  multiInput: { minHeight: 88, textAlignVertical: 'top' },
+
+  // Trilingual tabs
+  descSection: {
+    marginTop: 6,
+    gap: 8,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#EDE8DF',
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
+  tabBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabBtnText: {
+    fontSize: 12,
+    fontFamily: Fonts.bodyMedium,
+    color: Colors.textSecondary,
+  },
+  tabBtnTextActive: {
+    color: '#2D6A4F',
+    fontFamily: Fonts.headingBold,
+    fontWeight: '700',
+  },
+  tabContentBox: {
+    gap: 8,
+    marginTop: 2,
+  },
+  tabActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+  },
+  tabLangHeader: {
+    fontSize: 12,
+    fontFamily: Fonts.headingBold,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
+  listenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#EDF7F2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#CBE5D8',
+  },
+  listenBtnText: {
+    fontSize: 12,
+    fontFamily: Fonts.headingBold,
+    color: '#2D6A4F',
+    fontWeight: '700',
+  },
 
   /* Next btn */
   nextBtn: {

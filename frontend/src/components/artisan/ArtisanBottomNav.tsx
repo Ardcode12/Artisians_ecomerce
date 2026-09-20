@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, Package, TrendingUp, BarChart3 } from 'lucide-react-native';
+import { Home, Package, TrendingUp, BarChart3, User } from 'lucide-react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 
 // 4-tab nav: Home | Products | Growth | Analytical (Profile accessible via header icon)
@@ -81,6 +81,22 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
           />
           <Text style={[styles.tabLabel, activeTab === 'analytical' && styles.tabLabelActive]}>
             Analytical
+          </Text>
+        </TouchableOpacity>
+
+        {/* Profile */}
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => onTabChange('profile')}
+          activeOpacity={0.75}
+        >
+          <User
+            size={22}
+            color={activeTab === 'profile' ? Colors.primary : Colors.navInactive}
+            strokeWidth={activeTab === 'profile' ? 2.2 : 1.6}
+          />
+          <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]}>
+            Profile
           </Text>
         </TouchableOpacity>
 

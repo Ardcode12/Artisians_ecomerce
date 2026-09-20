@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,10 @@ import {
   RefreshControl,
   Image,
   Platform,
+  Modal,
+  Alert,
+  Linking,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -23,9 +27,25 @@ import {
   Inter_500Medium,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
-import { ChevronRight, Plus, Package, Globe } from 'lucide-react-native';
+import {
+  ChevronRight,
+  Plus,
+  Package,
+  Globe,
+  CloudOff,
+  RefreshCw,
+  Building2,
+  Download,
+  FileSpreadsheet,
+  FileJson,
+  CheckCircle2,
+  ShieldCheck,
+  X,
+  AlertCircle,
+  ExternalLink,
+} from 'lucide-react-native';
 
-import { Colors, Fonts, NAV_HEIGHT } from '@/constants/artisan-theme';
+import { Colors, Fonts, NAV_HEIGHT, Shadow } from '@/constants/artisan-theme';
 import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -33,6 +53,12 @@ import { EditProductModal, EditableProduct } from '@/components/artisan/EditProd
 import { BACKEND_URL, normalizeImageUrl } from '@/config/api';
 import { useProductSpeech } from '@/utils/speech';
 import { ProductListenButton } from '@/components/ui/ProductListenButton';
+import {
+  getOfflineProducts,
+  subscribeToOfflineQueue,
+  syncOfflineProductsToServer,
+  OfflineProduct,
+} from '@/services/offlineProductSync';
 
 // ── Design tokens matching reference image ─────────────────────────────────
 const BG           = '#F5F0E8';   // warm cream background
@@ -57,7 +83,21 @@ interface Product {
   status?: string;
   artisan_id?: string;
   created_at?: string;
+  hsn_code?: string;
+  pehchan_id?: string;
+  gstin?: string;
+  artisan_cert_type?: string;
+  dimensions?: string;
+  weight_kg?: number;
+  package_contents?: string;
+  gem_compliance?: {
+    is_gem_ready: boolean;
+    readiness_score: number;
+    compliance_grade: string;
+    missing_fields: string[];
+  };
 }
+
 
 function isAvailable(p: Product): boolean {
   const s = (p.status || 'published').toLowerCase();
@@ -95,6 +135,9 @@ export default function ListingsScreen() {
 
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [productToEdit, setProductToEdit]       = useState<EditableProduct | null>(null);
+  const [gemModalVisible, setGemModalVisible]   = useState(false);
+  const [exportingCsv, setExportingCsv]         = useState(false);
+  const [exportingJson, setExportingJson]       = useState(false);
   const { isSpeaking, toggle: toggleSpeech } = useProductSpeech();
 
   const insets = useSafeAreaInsets();
@@ -110,43 +153,130 @@ export default function ListingsScreen() {
     Inter_700Bold,
   });
 
+  const [offlineItems, setOfflineItems] = useState<OfflineProduct[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // ── Manual Sync Trigger ──────────────────────────────────────────────────
+  const handleManualSync = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      const res = await syncOfflineProductsToServer((localId, serverProduct) => {
+        console.log(`[Listings] Synced offline product ${localId} -> Server`);
+      });
+      if (res.synced > 0) {
+        fetchProducts(true);
+      }
+    } catch (e) {
+      console.warn('[Listings] Manual sync error:', e);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
+  // ── GeM Catalog Export Handlers ───────────────────────────────────────────
+  const handleExportGeMCSV = useCallback(async () => {
+    setExportingCsv(true);
+    try {
+      const artisanParam = user?.id ? `?artisan_id=${encodeURIComponent(user.id)}` : '';
+      const url = `${BACKEND_URL}/api/gem/export/csv${artisanParam}`;
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        await Linking.openURL(url);
+      }
+      Alert.alert('GeM Export', 'Official GeM Bulk Catalog CSV generated and downloaded.');
+    } catch (err: any) {
+      Alert.alert('Export Error', err?.message || 'Could not download GeM CSV catalog.');
+    } finally {
+      setExportingCsv(false);
+    }
+  }, [user?.id]);
+
+  const handleExportGeMJSON = useCallback(async () => {
+    setExportingJson(true);
+    try {
+      const artisanParam = user?.id ? `?artisan_id=${encodeURIComponent(user.id)}` : '';
+      const url = `${BACKEND_URL}/api/gem/export/json${artisanParam}`;
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        await Linking.openURL(url);
+      }
+      Alert.alert('GeM Export', 'Standardized GeM Ingestion JSON exported successfully.');
+    } catch (err: any) {
+      Alert.alert('Export Error', err?.message || 'Could not export GeM JSON catalog.');
+    } finally {
+      setExportingJson(false);
+    }
+  }, [user?.id]);
+
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchProducts = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setFetchError('');
+
+    // 1. Always load locally saved offline products first
+    const localQueue = await getOfflineProducts();
+    setOfflineItems(localQueue);
+
+    const formattedOffline: Product[] = localQueue.map((item) => ({
+      id: item.localId,
+      title: item.title,
+      price: item.price,
+      image_url: item.localImageUri,
+      status:
+        item.syncStatus === 'syncing'
+          ? 'syncing'
+          : item.syncStatus === 'failed'
+          ? 'sync_failed'
+          : 'pending_sync',
+      category: item.category,
+      craft_type: item.craft_type,
+      units: item.units,
+      description_en: item.description_en,
+      description_hi: item.description_hi,
+      description_ta: item.description_ta,
+      created_at: item.createdAt,
+    }));
+
+    // If refresh triggered, also attempt to sync any pending items
+    if (isRefresh && localQueue.length > 0) {
+      syncOfflineProductsToServer().then((res) => {
+        if (res.synced > 0) fetchProducts();
+      }).catch(() => {});
+    }
+
     try {
-      let url = `${BACKEND_URL}/api/products?limit=100`;
-      if (user?.id) url += `&artisan_id=${user.id}`;
-      const resp = await fetch(url, { headers: { Accept: 'application/json' } });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || `Server error ${resp.status}`);
-      let list = data.products || [];
-      // If filtering by specific artisan_id yielded no products (e.g. newly signed-in user exploring),
-      // fallback to showing all demo marketplace products so the user is never left with a blank list
-      if (list.length === 0 && user?.id) {
-        try {
-          const fallbackResp = await fetch(`${BACKEND_URL}/api/products?limit=100`, {
-            headers: { Accept: 'application/json' },
-          });
-          if (fallbackResp.ok) {
-            const fallbackData = await fallbackResp.json();
-            if (fallbackData.products && fallbackData.products.length > 0) {
-              list = fallbackData.products;
-            }
-          }
-        } catch (_) {}
-      }
-      setProducts(list);
+      const params = new URLSearchParams();
+      if (user?.id) params.append('artisan_id', user.id);
+      params.append('limit', '50');
+
+      const res = await fetch(`${BACKEND_URL}/api/products?${params.toString()}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const serverProducts = data.products || [];
+
+      setProducts([...formattedOffline, ...serverProducts]);
     } catch (err: any) {
-      console.warn('[Listings] fetchProducts error:', err);
-      setFetchError(err.message || 'Failed to load products');
-      setProducts([]);
+      console.warn('[Listings] fetch error:', err.message);
+      if (formattedOffline.length > 0) {
+        setProducts(formattedOffline);
+      } else {
+        setFetchError(err.message || 'Could not connect to server.');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    const unsub = subscribeToOfflineQueue(() => {
+      fetchProducts();
+    });
+    return unsub;
+  }, [fetchProducts]);
 
   useFocusEffect(
     useCallback(() => { fetchProducts(); }, [fetchProducts])
@@ -176,6 +306,12 @@ export default function ListingsScreen() {
       description_hi: item.description_hi || '',
       description_ta: item.description_ta || '',
       image_url: item.image_url || '',
+      hsn_code: item.hsn_code || '6912',
+      pehchan_id: item.pehchan_id || '',
+      gstin: item.gstin || '',
+      artisan_cert_type: item.artisan_cert_type || 'Pehchan Card',
+      dimensions: item.dimensions || '',
+      weight_kg: item.weight_kg !== undefined ? item.weight_kg : 0.5,
     });
     setEditModalVisible(true);
   };
@@ -209,6 +345,13 @@ export default function ListingsScreen() {
                 category:       item.category || item.craft_type || 'Handicraft',
                 units:          String(item.units || 1),
                 status:         item.status || 'published',
+                hsn_code:       item.hsn_code || '6912',
+                pehchan_id:     item.pehchan_id || '',
+                gstin:          item.gstin || '',
+                artisan_cert_type: item.artisan_cert_type || 'Pehchan Card',
+                dimensions:     item.dimensions || '',
+                weight_kg:      String(item.weight_kg !== undefined ? item.weight_kg : 0.5),
+                package_contents: item.package_contents || '',
               },
             })
           }
@@ -227,12 +370,63 @@ export default function ListingsScreen() {
               {item.price?.startsWith('₹') ? item.price : `₹ ${item.price}`}
             </Text>
             <View style={styles.statusRow}>
-              <View style={[styles.dot, { backgroundColor: available ? GREEN : '#F59E0B' }]} />
-              <Text style={[styles.statusText, { color: available ? GREEN : '#F59E0B' }]}>
-                {available
-                  ? (language === 'ta' ? 'கிடைக்கிறது' : language === 'hi' ? 'उपलब्ध' : 'Available')
-                  : (language === 'ta' ? 'வரைவு' : language === 'hi' ? 'ड्राफ्ट' : 'Draft')}
-              </Text>
+              {item.status === 'pending_sync' ? (
+                <>
+                  <View style={[styles.dot, { backgroundColor: '#D97706' }]} />
+                  <Text style={[styles.statusText, { color: '#D97706', fontWeight: '600' }]}>
+                    {language === 'ta'
+                      ? '⏳ ஆஃப்லைன்'
+                      : language === 'hi'
+                      ? '⏳ ऑफलाइन'
+                      : '⏳ Saved to Phone'}
+                  </Text>
+                </>
+              ) : item.status === 'syncing' ? (
+                <>
+                  <View style={[styles.dot, { backgroundColor: '#2563EB' }]} />
+                  <Text style={[styles.statusText, { color: '#2563EB', fontWeight: '600' }]}>
+                    {language === 'ta'
+                      ? '🔄 சர்வருடன் இணைகிறது...'
+                      : language === 'hi'
+                      ? '🔄 सिंक हो रहा है...'
+                      : '🔄 Syncing...'}
+                  </Text>
+                </>
+              ) : item.status === 'sync_failed' ? (
+                <>
+                  <View style={[styles.dot, { backgroundColor: '#DC2626' }]} />
+                  <Text style={[styles.statusText, { color: '#DC2626', fontWeight: '600' }]}>
+                    {language === 'ta'
+                      ? '⚠️ பதிவேற்றம் காத்திருக்கிறது'
+                      : language === 'hi'
+                      ? '⚠️ अपलोड रुका है'
+                      : '⚠️ Sync Paused'}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <View style={[styles.dot, { backgroundColor: available ? GREEN : '#F59E0B' }]} />
+                  <Text style={[styles.statusText, { color: available ? GREEN : '#F59E0B' }]}>
+                    {available
+                      ? (language === 'ta' ? 'கிடைக்கிறது' : language === 'hi' ? 'उपलब्ध' : 'Available')
+                      : (language === 'ta' ? 'வரைவு' : language === 'hi' ? 'ड्राफ्ट' : 'Draft')}
+                  </Text>
+                </>
+              )}
+
+              {/* GeM Portal HSN Badge */}
+              <View style={[
+                styles.gemBadge,
+                item.gem_compliance?.is_gem_ready && styles.gemBadgeReady
+              ]}>
+                <Building2 size={10} color={item.gem_compliance?.is_gem_ready ? '#1E3A8A' : '#78350F'} strokeWidth={2.4} />
+                <Text style={[
+                  styles.gemBadgeText,
+                  item.gem_compliance?.is_gem_ready && styles.gemBadgeTextReady
+                ]}>
+                  {item.hsn_code ? `GeM ${item.hsn_code}` : 'GeM 6912'}
+                </Text>
+              </View>
             </View>
           </View>
         </TouchableOpacity>
@@ -264,6 +458,13 @@ export default function ListingsScreen() {
                 category:       item.category || item.craft_type || 'Handicraft',
                 units:          String(item.units || 1),
                 status:         item.status || 'published',
+                hsn_code:       item.hsn_code || '6912',
+                pehchan_id:     item.pehchan_id || '',
+                gstin:          item.gstin || '',
+                artisan_cert_type: item.artisan_cert_type || 'Pehchan Card',
+                dimensions:     item.dimensions || '',
+                weight_kg:      String(item.weight_kg !== undefined ? item.weight_kg : 0.5),
+                package_contents: item.package_contents || '',
               },
             })
           }
@@ -286,17 +487,59 @@ export default function ListingsScreen() {
           <Text style={styles.screenTitle}>
             {language === 'ta' ? 'என் பொருட்கள்' : language === 'hi' ? 'मेरे उत्पाद' : 'My Products'}
           </Text>
-          <TouchableOpacity
-            style={styles.langPill}
-            onPress={() => router.push('/select-language')}
-            activeOpacity={0.7}
-          >
-            <Globe size={14} color="#7A6F62" />
-            <Text style={styles.langPillText}>
-              {language === 'ta' ? 'தமிழ்' : language === 'hi' ? 'हिंदी' : 'English'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.headerActionsRight}>
+            <TouchableOpacity
+              style={styles.gemHeaderBtn}
+              onPress={() => setGemModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Building2 size={13} color="#1E3A8A" strokeWidth={2.4} />
+              <Text style={styles.gemHeaderBtnText}>GeM Export</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.langPill}
+              onPress={() => router.push('/select-language')}
+              activeOpacity={0.7}
+            >
+              <Globe size={14} color="#7A6F62" />
+              <Text style={styles.langPillText}>
+                {language === 'ta' ? 'தமிழ்' : language === 'hi' ? 'हिंदी' : 'English'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
+
+
+        {/* ── Offline Products Auto-Sync Banner ── */}
+        {offlineItems.length > 0 && (
+          <TouchableOpacity
+            style={styles.offlineSyncBanner}
+            onPress={handleManualSync}
+            activeOpacity={0.8}
+            disabled={isSyncing}
+          >
+            <View style={styles.offlineBannerLeft}>
+              <CloudOff size={20} color="#B45309" strokeWidth={2.2} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.offlineBannerTitle}>
+                  {offlineItems.length} {offlineItems.length === 1 ? 'Product' : 'Products'} Saved to Phone 💾
+                </Text>
+                <Text style={styles.offlineBannerSubtitle}>
+                  {isSyncing ? 'Syncing to marketplace...' : 'Offline game-save mode • Tap to sync now'}
+                </Text>
+              </View>
+            </View>
+            {isSyncing ? (
+              <ActivityIndicator size="small" color="#B45309" />
+            ) : (
+              <View style={styles.syncNowBtn}>
+                <RefreshCw size={13} color="#FFFFFF" strokeWidth={2.4} />
+                <Text style={styles.syncNowBtnText}>Sync</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* ── Loading ── */}
@@ -365,10 +608,132 @@ export default function ListingsScreen() {
         onSuccess={handleEditSuccess}
       />
 
+      {/* ── GeM Catalog Export Modal ── */}
+      <Modal
+        visible={gemModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setGemModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.gemModalCard}>
+            {/* Modal Header */}
+            <View style={styles.gemModalHeader}>
+              <View style={styles.gemModalHeaderLeft}>
+                <View style={styles.gemModalIconCircle}>
+                  <Building2 size={22} color="#1E3A8A" strokeWidth={2.4} />
+                </View>
+                <View>
+                  <Text style={styles.gemModalTitle}>GeM Catalog Export</Text>
+                  <Text style={styles.gemModalSubtitle}>Govt. e-Marketplace standardized bulk format</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.gemModalCloseBtn}
+                onPress={() => setGemModalVisible(false)}
+                activeOpacity={0.7}
+              >
+                <X size={18} color="#4B5563" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Compliance & Stats Banner */}
+            <View style={styles.gemSummaryBox}>
+              <View style={styles.gemSummaryRow}>
+                <View style={styles.gemSummaryItem}>
+                  <Text style={styles.gemSummaryVal}>{products.length}</Text>
+                  <Text style={styles.gemSummaryLabel}>Listed Items</Text>
+                </View>
+                <View style={styles.gemSummaryDivider} />
+                <View style={styles.gemSummaryItem}>
+                  <Text style={[styles.gemSummaryVal, { color: '#059669' }]}>
+                    {products.filter(p => p.gem_compliance?.is_gem_ready !== false).length}
+                  </Text>
+                  <Text style={styles.gemSummaryLabel}>GeM Compliant</Text>
+                </View>
+                <View style={styles.gemSummaryDivider} />
+                <View style={styles.gemSummaryItem}>
+                  <Text style={[styles.gemSummaryVal, { color: '#1E3A8A' }]}>100%</Text>
+                  <Text style={styles.gemSummaryLabel}>Make In India</Text>
+                </View>
+              </View>
+              <View style={styles.gemVerifiedNotice}>
+                <ShieldCheck size={14} color="#059669" strokeWidth={2.2} />
+                <Text style={styles.gemVerifiedNoticeText}>
+                  Class-I Local Supplier (Artisan & Weaver Public Procurement Priority)
+                </Text>
+              </View>
+            </View>
+
+            {/* Export Actions */}
+            <View style={styles.gemActionGroup}>
+              {/* Option 1: Official GeM Bulk CSV */}
+              <TouchableOpacity
+                style={styles.gemExportCardBtn}
+                onPress={handleExportGeMCSV}
+                disabled={exportingCsv}
+                activeOpacity={0.85}
+              >
+                <View style={styles.gemExportCardLeft}>
+                  <View style={[styles.gemExportIconBox, { backgroundColor: '#ECFDF5' }]}>
+                    <FileSpreadsheet size={24} color="#059669" strokeWidth={2.2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.gemExportCardTitle}>Download GeM CSV Catalog</Text>
+                    <Text style={styles.gemExportCardDesc}>
+                      Official 21-column template for GeM Seller Portal Bulk Upload (HSN, Pehchan ID, dimensions)
+                    </Text>
+                  </View>
+                </View>
+                {exportingCsv ? (
+                  <ActivityIndicator size="small" color="#059669" />
+                ) : (
+                  <Download size={18} color="#059669" strokeWidth={2.4} />
+                )}
+              </TouchableOpacity>
+
+              {/* Option 2: GeM Direct API JSON */}
+              <TouchableOpacity
+                style={styles.gemExportCardBtn}
+                onPress={handleExportGeMJSON}
+                disabled={exportingJson}
+                activeOpacity={0.85}
+              >
+                <View style={styles.gemExportCardLeft}>
+                  <View style={[styles.gemExportIconBox, { backgroundColor: '#EFF6FF' }]}>
+                    <FileJson size={24} color="#2563EB" strokeWidth={2.2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.gemExportCardTitle}>Export GeM Product API JSON</Text>
+                    <Text style={styles.gemExportCardDesc}>
+                      Machine-readable JSON schema for automated GeM Ingestion API linking
+                    </Text>
+                  </View>
+                </View>
+                {exportingJson ? (
+                  <ActivityIndicator size="small" color="#2563EB" />
+                ) : (
+                  <ExternalLink size={18} color="#2563EB" strokeWidth={2.4} />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Info notice */}
+            <View style={styles.gemFootnote}>
+              <AlertCircle size={13} color="#6B7280" />
+              <Text style={styles.gemFootnoteText}>
+                Pre-formatted for Ministry of Commerce & Industry / gem.gov.in integration.
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ArtisanBottomNav activeTab={activeTab} onTabChange={handleTabChange} />
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   root: {
@@ -586,4 +951,268 @@ const styles = StyleSheet.create({
       android: { elevation: 8 },
     }),
   },
+
+  // ── Offline Banner ────────────────────────────────────────────────────────
+  offlineSyncBanner: {
+    marginTop: 12,
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  offlineBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    marginRight: 10,
+  },
+  offlineBannerTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400E',
+    fontFamily: Fonts.headingBold,
+  },
+  offlineBannerSubtitle: {
+    fontSize: 11,
+    color: '#B45309',
+    fontFamily: Fonts.body,
+    marginTop: 1,
+  },
+  syncNowBtn: {
+    backgroundColor: '#D97706',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  syncNowBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+  },
+
+  // ── GeM Portal Badges & Header Button ─────────────────────────────────────
+  headerActionsRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  gemHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1.2,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 5,
+  },
+  gemHeaderBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E3A8A',
+    fontFamily: Fonts.heading,
+  },
+  gemBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: 6,
+  },
+  gemBadgeReady: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  gemBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#78350F',
+  },
+  gemBadgeTextReady: {
+    color: '#1E3A8A',
+    fontWeight: '700',
+  },
+
+  // ── GeM Catalog Export Modal Styles ───────────────────────────────────────
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+  },
+  gemModalCard: {
+    width: '100%',
+    maxWidth: 480,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 22,
+    ...Shadow.hero,
+  },
+  gemModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  gemModalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  gemModalIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  gemModalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1E3A8A',
+    fontFamily: Fonts.headingBold,
+  },
+  gemModalSubtitle: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontFamily: Fonts.body,
+    marginTop: 1,
+  },
+  gemModalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gemSummaryBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    marginTop: 16,
+    gap: 10,
+  },
+  gemSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  gemSummaryItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  gemSummaryVal: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+    fontFamily: Fonts.headingBold,
+  },
+  gemSummaryLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontFamily: Fonts.body,
+    marginTop: 2,
+  },
+  gemSummaryDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: '#CBD5E1',
+  },
+  gemVerifiedNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  gemVerifiedNoticeText: {
+    fontSize: 11,
+    color: '#065F46',
+    fontWeight: '500',
+    flex: 1,
+  },
+  gemActionGroup: {
+    marginTop: 16,
+    gap: 12,
+  },
+  gemExportCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    padding: 14,
+    gap: 12,
+  },
+  gemExportCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  gemExportIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gemExportCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+    fontFamily: Fonts.heading,
+  },
+  gemExportCardDesc: {
+    fontSize: 11,
+    color: '#64748B',
+    fontFamily: Fonts.body,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  gemFootnote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  gemFootnoteText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontFamily: Fonts.body,
+    flex: 1,
+  },
 });
+

@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import * as Speech from 'expo-speech';
 import { safeStorage } from '@/utils/storage';
 
-export type AppLanguage = 'ta' | 'hi' | 'en';
+export type AppLanguage = 'ta' | 'hi' | 'en' | 'te' | 'bn' | 'mr';
 
 export const APP_LANGUAGE_KEY = 'app_language';
 
@@ -43,11 +43,23 @@ let isLanguageInitialized = false;
 /**
  * Initializes and caches the selected language from storage.
  */
+const VALID_LANGS: AppLanguage[] = ['ta', 'hi', 'en', 'te', 'bn', 'mr'];
+
 export async function initLanguage(): Promise<AppLanguage> {
   try {
+    // Check app_language key first
     const stored = await safeStorage.getItem(APP_LANGUAGE_KEY);
-    if (stored === 'ta' || stored === 'hi' || stored === 'en') {
+    if (stored && VALID_LANGS.includes(stored as AppLanguage)) {
       cachedLanguage = stored as AppLanguage;
+      isLanguageInitialized = true;
+      return cachedLanguage;
+    }
+    // Fall back to LanguageContext key (@artisanlink_language)
+    const langCtxStored = await safeStorage.getItem('@artisanlink_language');
+    if (langCtxStored && VALID_LANGS.includes(langCtxStored as AppLanguage)) {
+      cachedLanguage = langCtxStored as AppLanguage;
+      // Backfill the app_language key for future reads
+      safeStorage.setItem(APP_LANGUAGE_KEY, cachedLanguage).catch(() => {});
     } else {
       cachedLanguage = 'en';
     }
@@ -67,7 +79,10 @@ initLanguage().catch(() => {});
 export async function hasSelectedLanguage(): Promise<boolean> {
   try {
     const stored = await safeStorage.getItem(APP_LANGUAGE_KEY);
-    return stored === 'ta' || stored === 'hi' || stored === 'en';
+    if (stored && VALID_LANGS.includes(stored as AppLanguage)) return true;
+    // Also check LanguageContext key in case user selected language via auth flow
+    const langCtxStored = await safeStorage.getItem('@artisanlink_language');
+    return Boolean(langCtxStored && VALID_LANGS.includes(langCtxStored as AppLanguage));
   } catch {
     return false;
   }
@@ -81,7 +96,7 @@ export function getSelectedLanguage(): AppLanguage {
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
     try {
       const webStored = window.localStorage.getItem(APP_LANGUAGE_KEY);
-      if (webStored === 'ta' || webStored === 'hi' || webStored === 'en') {
+      if (webStored && VALID_LANGS.includes(webStored as AppLanguage)) {
         cachedLanguage = webStored as AppLanguage;
         return cachedLanguage;
       }
@@ -97,8 +112,11 @@ export async function setSelectedLanguage(lang: AppLanguage): Promise<void> {
   cachedLanguage = lang;
   try {
     await safeStorage.setItem(APP_LANGUAGE_KEY, lang);
+    // Also write to the LanguageContext key for cross-system consistency
+    safeStorage.setItem('@artisanlink_language', lang).catch(() => {});
     if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.setItem(APP_LANGUAGE_KEY, lang);
+      window.localStorage.setItem('@artisanlink_language', lang);
     }
   } catch (err) {
     console.warn('Failed to persist app_language:', err);

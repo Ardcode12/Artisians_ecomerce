@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   ActivityIndicator,
   Platform,
   Dimensions,
+  Animated,
 } from 'react-native';
-import { Image as ImageIcon, RefreshCw } from 'lucide-react-native';
+import { Image as ImageIcon, RefreshCw, Sparkles, Wand2 } from 'lucide-react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import * as ImagePicker from 'expo-image-picker';
 import { useLanguage } from '@/context/LanguageContext';
@@ -31,16 +32,82 @@ interface CameraStepProps {
 
 type ProcessingState = 'idle' | 'picking' | 'uploading' | 'enhancing' | 'done' | 'error';
 
+const PROCESSING_STEPS = [
+  'Scanning craft photo...',
+  'AI auto-enhancing studio lighting...',
+  'Sharpening textures & removing backdrop...',
+  'Preparing final high-resolution preview...',
+];
+
 export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProps) {
   const [processingState, setProcessingState] = useState<ProcessingState>(imageUri ? 'done' : 'idle');
   const [capturedUri, setCapturedUri] = useState(imageUri || '');
   const [errorMsg, setErrorMsg] = useState('');
+  const [stepIndex, setStepIndex] = useState(0);
   const { language } = useLanguage();
+
+  const scanAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    let scanLoop: Animated.CompositeAnimation | null = null;
+    let pulseLoop: Animated.CompositeAnimation | null = null;
+    let stepTimer: ReturnType<typeof setInterval> | null = null;
+
+    if (processingState === 'enhancing' || processingState === 'uploading') {
+      scanAnim.setValue(0);
+      scanLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(scanAnim, {
+            toValue: 1,
+            duration: 1800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scanAnim, {
+            toValue: 0,
+            duration: 1800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      scanLoop.start();
+
+      pulseLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.08,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulseLoop.start();
+
+      stepTimer = setInterval(() => {
+        setStepIndex((idx) => (idx + 1) % PROCESSING_STEPS.length);
+      }, 1500);
+    } else {
+      scanAnim.setValue(0);
+      pulseAnim.setValue(1);
+    }
+
+    return () => {
+      scanLoop?.stop();
+      pulseLoop?.stop();
+      if (stepTimer) clearInterval(stepTimer);
+    };
+  }, [processingState]);
 
   // ── Process & enhance image ───────────────────────────────────────────────
   const processImage = async (localUri: string, base64Data?: string | null) => {
     setCapturedUri(localUri);
     setProcessingState('enhancing');
+    setStepIndex(0);
     setErrorMsg('');
     try {
       const filename = localUri.split('/').pop() || 'photo.jpg';
@@ -131,14 +198,47 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
       {/* ── Viewfinder / Preview ─────────────────────────────────── */}
       <View style={styles.viewfinderWrap}>
         {capturedUri ? (
-          <Image source={{ uri: capturedUri }} style={styles.preview} resizeMode="cover" />
+          <View style={styles.previewContainer}>
+            <Image source={{ uri: capturedUri }} style={styles.preview} resizeMode="cover" />
+            {isProcessing && (
+              <View style={styles.processingOverlay}>
+                {/* Animated scanning beam */}
+                <Animated.View
+                  style={[
+                    styles.scanBeam,
+                    {
+                      transform: [
+                        {
+                          translateY: scanAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, FINDER_SIZE * 1.08 - 8],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                />
+
+                {/* AI Processing Card overlay */}
+                <Animated.View style={[styles.aiStatusCard, { transform: [{ scale: pulseAnim }] }]}>
+                  <View style={styles.aiBadge}>
+                    <Sparkles size={14} color="#059669" />
+                    <Text style={styles.aiBadgeText}>AI Studio Enhancer</Text>
+                  </View>
+                  <ActivityIndicator size="large" color="#FFFFFF" style={{ marginVertical: 10 }} />
+                  <Text style={styles.aiStepText}>{PROCESSING_STEPS[stepIndex]}</Text>
+                  <Text style={styles.aiSubText}>Enhancing lighting, textures & backdrop</Text>
+                </Animated.View>
+              </View>
+            )}
+          </View>
         ) : isProcessing ? (
           <View style={styles.processingBox}>
             <ActivityIndicator size="large" color={GREEN} />
             <Text style={styles.processingText}>
-              {processingState === 'picking'   ? 'Opening...'  :
-               processingState === 'uploading' ? 'Uploading...' :
-               'AI enhancing...'}
+              {processingState === 'picking'   ? 'Opening photo...'  :
+               processingState === 'uploading' ? 'Uploading photo...' :
+               PROCESSING_STEPS[stepIndex]}
             </Text>
           </View>
         ) : (
@@ -155,6 +255,19 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
           </View>
         )}
       </View>
+
+      {/* ── Processing Bottom Card ───────────────────────────────── */}
+      {isProcessing && (
+        <View style={styles.processingBottomCard}>
+          <View style={styles.wandCircle}>
+            <Wand2 size={20} color="#FFFFFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.processingBottomTitle}>AI is polishing your photo</Text>
+            <Text style={styles.processingBottomSub}>{PROCESSING_STEPS[stepIndex]}</Text>
+          </View>
+        </View>
+      )}
 
       {/* ── Controls ─────────────────────────────────────────────── */}
       {!isProcessing && (
@@ -343,5 +456,109 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: Fonts.bodyMedium,
     color: Colors.textSecondary,
+  },
+
+  // Scanning & Overlay
+  previewContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  processingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(13, 26, 18, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scanBeam: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 4,
+    backgroundColor: '#34D399',
+    shadowColor: '#34D399',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  aiStatusCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderRadius: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    width: '84%',
+    ...Shadow.hero,
+  },
+  aiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  aiBadgeText: {
+    fontSize: 12,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  aiStepText: {
+    fontSize: 15,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '700',
+    color: '#111827',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  aiSubText: {
+    fontSize: 12,
+    fontFamily: Fonts.body,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+
+  // Bottom processing banner
+  processingBottomCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 14,
+    width: FINDER_SIZE,
+    borderWidth: 1,
+    borderColor: '#D1E7DD',
+    ...Shadow.card,
+  },
+  wandCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2D6A4F',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  processingBottomTitle: {
+    fontSize: 14,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  processingBottomSub: {
+    fontSize: 12,
+    fontFamily: Fonts.body,
+    color: '#6B7280',
+    marginTop: 2,
   },
 });

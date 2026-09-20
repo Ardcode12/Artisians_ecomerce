@@ -29,7 +29,21 @@ export interface TranslationKeys {
   auth_details_headline: string;
   auth_details_subtext: string;
   auth_details_placeholder: string;
+  auth_details_age_label?: string;
+  auth_details_age_placeholder?: string;
+  auth_details_experience_label?: string;
+  auth_details_experience_placeholder?: string;
   auth_continue: string;
+
+  // Auth — Shop
+  auth_shop_headline?: string;
+  auth_shop_subtext?: string;
+  auth_shop_name_label?: string;
+  auth_shop_name_placeholder?: string;
+  auth_shop_location_label?: string;
+  auth_shop_location_placeholder?: string;
+  auth_shop_gps_btn?: string;
+  auth_shop_gps_detecting?: string;
 
   // Auth — Craft
   auth_craft_headline: string;
@@ -107,10 +121,38 @@ export interface TranslationKeys {
 
   // ── Profile ───────────────────────────────────────────────────────
   profile_title: string;
+  profile_subtitle?: string;
   profile_edit: string;
   profile_craft_story: string;
   profile_edit_story: string;
   profile_logout: string;
+  profile_personal_info?: string;
+  profile_shop_details?: string;
+  profile_payment_details?: string;
+  profile_payment_bank?: string;
+  profile_app_settings?: string;
+  profile_full_name?: string;
+  profile_enter_name?: string;
+  profile_phone?: string;
+  profile_save_changes?: string;
+  profile_craft_type?: string;
+  profile_save_shop?: string;
+  profile_holder_name?: string;
+  profile_bank_name?: string;
+  profile_account_no?: string;
+  profile_ifsc?: string;
+  profile_upi?: string;
+  profile_save_payment?: string;
+  profile_update_photo?: string;
+  profile_take_photo?: string;
+  profile_from_gallery?: string;
+  profile_choose_avatar?: string;
+  profile_not_found?: string;
+  profile_not_found_sub?: string;
+  profile_signout_return?: string;
+  profile_retry?: string;
+  profile_go_home?: string;
+  profile_artisan_from?: string;
   profile_section_business: string;
   profile_section_app: string;
   profile_section_help: string;
@@ -208,9 +250,22 @@ export const translations: Translations = {
     auth_otp_resend: 'Resend OTP',
 
     auth_details_headline: 'Tell us about yourself',
-    auth_details_subtext: 'Just your name to get started',
-    auth_details_placeholder: 'Your Name',
+    auth_details_subtext: 'Your name, age and experience to setup your artisan identity',
+    auth_details_placeholder: 'Your Full Name',
+    auth_details_age_label: 'Your Age',
+    auth_details_age_placeholder: 'e.g. 35',
+    auth_details_experience_label: 'Craft Experience (Years)',
+    auth_details_experience_placeholder: 'e.g. 8 years',
     auth_continue: 'Continue',
+
+    auth_shop_headline: 'Your Shop & Location',
+    auth_shop_subtext: 'Provide your workshop or brand name and your village/city so buyers and B2B clients can discover you.',
+    auth_shop_name_label: 'Shop or Studio Name *',
+    auth_shop_name_placeholder: 'e.g. Meera Handlooms, Jaipur Pottery',
+    auth_shop_location_label: 'Village, Town or Craft Cluster',
+    auth_shop_location_placeholder: 'e.g. Madurai, Tamil Nadu or Varanasi, UP',
+    auth_shop_gps_btn: 'Detect Live Location (GPS)',
+    auth_shop_gps_detecting: 'Detecting your live location...',
 
     auth_craft_headline: 'What do you make?',
     auth_craft_subtext: 'Pick the one that fits best',
@@ -277,11 +332,39 @@ export const translations: Translations = {
     add_product_publishing: 'Publishing…',
     add_product_next: 'Next',
 
-    profile_title: 'Profile',
+    profile_title: 'My Profile',
+    profile_subtitle: 'Manage your account',
     profile_edit: 'Edit',
     profile_craft_story: 'My Craft Story',
     profile_edit_story: 'Edit Story',
     profile_logout: 'Log Out',
+    profile_personal_info: 'Personal Information',
+    profile_shop_details: 'Shop Details',
+    profile_payment_details: 'Payment Details',
+    profile_payment_bank: 'Payment & Bank Details',
+    profile_app_settings: 'App Settings',
+    profile_full_name: 'Full Name',
+    profile_enter_name: 'Enter your name',
+    profile_phone: 'Phone Number',
+    profile_save_changes: 'Save Changes',
+    profile_craft_type: 'Primary Craft Type',
+    profile_save_shop: 'Save Shop Details',
+    profile_holder_name: 'Account Holder Name',
+    profile_bank_name: 'Bank Name',
+    profile_account_no: 'Account Number *',
+    profile_ifsc: 'IFSC Code *',
+    profile_upi: 'UPI ID (Optional)',
+    profile_save_payment: 'Save Payment Details',
+    profile_update_photo: 'Update Profile Photo',
+    profile_take_photo: 'Take Photo',
+    profile_from_gallery: 'From Gallery',
+    profile_choose_avatar: 'Or choose an avatar:',
+    profile_not_found: 'Profile Not Found',
+    profile_not_found_sub: "We couldn't load your profile data. You can retry loading, or sign out.",
+    profile_signout_return: 'Sign Out / Return to Login',
+    profile_retry: 'Retry Loading',
+    profile_go_home: 'Go to Home',
+    profile_artisan_from: 'Artisan from',
     profile_section_business: 'Business',
     profile_section_app: 'App',
     profile_section_help: 'Help & Legal',
@@ -401,9 +484,22 @@ export const translations: Translations = {
     auth_otp_resend: 'OTP दोबारा भेजें',
 
     auth_details_headline: 'अपने बारे में बताएं',
-    auth_details_subtext: 'शुरुआत के लिए बस अपना नाम',
-    auth_details_placeholder: 'आपका नाम',
+    auth_details_subtext: 'अपनी कारीगर पहचान के लिए अपना नाम, आयु और अनुभव दर्ज करें',
+    auth_details_placeholder: 'आपका पूरा नाम',
+    auth_details_age_label: 'आपकी आयु',
+    auth_details_age_placeholder: 'उदा. 35',
+    auth_details_experience_label: 'शिल्प अनुभव (वर्ष)',
+    auth_details_experience_placeholder: 'उदा. 8 वर्ष',
     auth_continue: 'जारी रखें',
+
+    auth_shop_headline: 'आपकी दुकान और स्थान',
+    auth_shop_subtext: 'अपनी कार्यशाला या ब्रांड का नाम और गांव/शहर दर्ज करें ताकि खरीदार आपको ढूंढ सकें।',
+    auth_shop_name_label: 'दुकान या स्टूडियो का नाम *',
+    auth_shop_name_placeholder: 'उदा. मीरा हैंडलूम, जयपुर पॉटरी',
+    auth_shop_location_label: 'गाँव, कस्बा या शिल्प क्लस्टर',
+    auth_shop_location_placeholder: 'उदा. वाराणसी, उत्तर प्रदेश या जयपुर',
+    auth_shop_gps_btn: 'लाइव स्थान का पता लगाएं (GPS)',
+    auth_shop_gps_detecting: 'स्थान का पता लगाया जा रहा है...',
 
     auth_craft_headline: 'आप क्या बनाते हैं?',
     auth_craft_subtext: 'जो सबसे उचित लगे चुनें',
@@ -470,11 +566,39 @@ export const translations: Translations = {
     add_product_publishing: 'प्रकाशित हो रहा है…',
     add_product_next: 'आगे',
 
-    profile_title: 'प्रोफ़ाइल',
+    profile_title: 'मेरी प्रोफ़ाइल',
+    profile_subtitle: 'अपना खाता प्रबंधित करें',
     profile_edit: 'संपादित करें',
     profile_craft_story: 'मेरी शिल्प कहानी',
     profile_edit_story: 'कहानी संपादित करें',
     profile_logout: 'लॉग आउट',
+    profile_personal_info: 'व्यक्तिगत जानकारी',
+    profile_shop_details: 'दुकान का विवरण',
+    profile_payment_details: 'भुगतान विवरण',
+    profile_payment_bank: 'भुगतान और बैंक विवरण',
+    profile_app_settings: 'ऐप सेटिंग्स',
+    profile_full_name: 'पूरा नाम',
+    profile_enter_name: 'अपना नाम दर्ज करें',
+    profile_phone: 'फ़ोन नंबर',
+    profile_save_changes: 'परिवर्तन सहेजें',
+    profile_craft_type: 'मुख्य शिल्प प्रकार',
+    profile_save_shop: 'दुकान का विवरण सहेजें',
+    profile_holder_name: 'खाताधारक का नाम',
+    profile_bank_name: 'बैंक का नाम',
+    profile_account_no: 'खाता संख्या *',
+    profile_ifsc: 'आईएफएससी कोड *',
+    profile_upi: 'यूपीआई आईडी (वैकल्पिक)',
+    profile_save_payment: 'भुगतान विवरण सहेजें',
+    profile_update_photo: 'प्रोफ़ाइल फ़ोटो अपडेट करें',
+    profile_take_photo: 'फ़ोटो लें',
+    profile_from_gallery: 'गैलरी से',
+    profile_choose_avatar: 'या कोई अवतार चुनें:',
+    profile_not_found: 'प्रोफ़ाइल नहीं मिली',
+    profile_not_found_sub: 'हम आपका प्रोफ़ाइल डेटा लोड नहीं कर सके।',
+    profile_signout_return: 'लॉग आउट करें / लॉगिन पर लौटें',
+    profile_retry: 'पुनः प्रयास करें',
+    profile_go_home: 'होम पर जाएं',
+    profile_artisan_from: 'कारीगर -',
     profile_section_business: 'व्यवसाय',
     profile_section_app: 'ऐप',
     profile_section_help: 'सहायता और कानूनी',
@@ -594,9 +718,22 @@ export const translations: Translations = {
     auth_otp_resend: 'OTP மீண்டும் அனுப்பு',
 
     auth_details_headline: 'உங்களைப் பற்றி சொல்லுங்கள்',
-    auth_details_subtext: 'தொடங்க உங்கள் பெயர் மட்டும் போதும்',
-    auth_details_placeholder: 'உங்கள் பெயர்',
+    auth_details_subtext: 'உங்கள் கைவினைஞர் அடையாளத்திற்கு உங்கள் பெயர், வயது மற்றும் அனுபவத்தை உள்ளிடவும்',
+    auth_details_placeholder: 'உங்கள் முழு பெயர்',
+    auth_details_age_label: 'உங்கள் வயது',
+    auth_details_age_placeholder: 'எ.கா. 35',
+    auth_details_experience_label: 'கைவினை அனுபவம் (ஆண்டுகள்)',
+    auth_details_experience_placeholder: 'எ.கா. 8 ஆண்டுகள்',
     auth_continue: 'தொடர்',
+
+    auth_shop_headline: 'உங்கள் கடை & இருப்பிடம்',
+    auth_shop_subtext: 'வாங்குபவர்கள் உங்களைக் கண்டறிய உங்கள் கடை பெயர் மற்றும் ஊரை உள்ளிடவும்.',
+    auth_shop_name_label: 'கடை அல்லது பட்டறை பெயர் *',
+    auth_shop_name_placeholder: 'எ.கா. மீரா கைத்தறி, மதுரை மண்பாண்டம்',
+    auth_shop_location_label: 'கிராமம், நகரம் அல்லது கைவினை மையம்',
+    auth_shop_location_placeholder: 'எ.கா. மதுரை, தமிழ்நாடு அல்லது காஞ்சிபுரம்',
+    auth_shop_gps_btn: 'நேரலை இருப்பிடத்தைக் கண்டறி (GPS)',
+    auth_shop_gps_detecting: 'இருப்பிடத்தைக் கண்டறிகிறது...',
 
     auth_craft_headline: 'நீங்கள் என்ன செய்கிறீர்கள்?',
     auth_craft_subtext: 'பொருத்தமானதை தேர்வு செய்யவும்',
@@ -663,22 +800,50 @@ export const translations: Translations = {
     add_product_publishing: 'வெளியிடுகிறோம்…',
     add_product_next: 'அடுத்து',
 
-    profile_title: 'சுயவிவரம்',
+    profile_title: 'என் சுயவிவரம்',
+    profile_subtitle: 'உங்கள் கணக்கை நிர்வகிக்கவும்',
     profile_edit: 'திருத்து',
     profile_craft_story: 'என் கைவினை கதை',
     profile_edit_story: 'கதையைத் திருத்து',
     profile_logout: 'வெளியேறு',
+    profile_personal_info: 'தனிப்பட்ட தகவல்',
+    profile_shop_details: 'கடை விவரங்கள்',
+    profile_payment_details: 'கட்டண விவரங்கள்',
+    profile_payment_bank: 'கட்டணம் மற்றும் வங்கி விவரங்கள்',
+    profile_app_settings: 'செயலி அமைப்புகள்',
+    profile_help_support: 'உதவி & ஆதரவு',
+    profile_full_name: 'முழு பெயர்',
+    profile_enter_name: 'உங்கள் பெயரை உள்ளிடவும்',
+    profile_phone: 'தொலைபேசி எண்',
+    profile_save_changes: 'மாற்றங்களைச் சேமி',
+    profile_craft_type: 'முதன்மை கைவினை வகை',
+    profile_save_shop: 'கடை விவரங்களைச் சேமி',
+    profile_holder_name: 'கணக்கு வைத்திருப்பவர் பெயர்',
+    profile_bank_name: 'வங்கி பெயர்',
+    profile_account_no: 'கணக்கு எண் *',
+    profile_ifsc: 'IFSC குறியீடு *',
+    profile_upi: 'UPI ID (விருப்பத்தேர்வு)',
+    profile_save_payment: 'கட்டண விவரங்களைச் சேமி',
+    profile_update_photo: 'சுயவிவரப் புகைப்படத்தைப் புதுப்பிக்கவும்',
+    profile_take_photo: 'புகைப்படம் எடுக்கவும்',
+    profile_from_gallery: 'கேலரியிலிருந்து',
+    profile_choose_avatar: 'அல்லது ஒரு அவதாரத்தைத் தேர்ந்தெடுக்கவும்:',
+    profile_not_found: 'சுயவிவரம் கிடைக்கவில்லை',
+    profile_not_found_sub: 'உங்கள் சுயவிவரத் தரவை ஏற்ற முடியவில்லை.',
+    profile_signout_return: 'வெளியேறி உள்நுழையவும்',
+    profile_retry: 'மீண்டும் முயற்சிக்கவும்',
+    profile_go_home: 'முகப்புக்குச் செல்லவும்',
+    profile_artisan_from: 'கைவினைஞர் -',
     profile_section_business: 'வணிகம்',
     profile_section_app: 'ஆப்',
     profile_section_help: 'உதவி & சட்டம்',
     profile_shop_name: 'கடை பெயர்',
     profile_scheme_id: 'திட்டம் / கிளஸ்டர் ID',
-    profile_location: 'இடம்',
+    profile_location: 'மாநிலம் / இருப்பிடம்',
     profile_bank_account: 'வங்கி கணக்கு',
     profile_language: 'மொழி',
     profile_push_notifications: 'புஷ் அறிவிப்புகள்',
     profile_biometric: 'உயிரியல் உள்நுழைவு',
-    profile_help_support: 'உதவி & ஆதரவு',
     profile_terms: 'சேவை விதிமுறைகள்',
     profile_privacy: 'தனியுரிமை கொள்கை',
     profile_rate_app: 'ஆப்பை மதிப்பிடு',
@@ -856,11 +1021,39 @@ export const translations: Translations = {
     add_product_publishing: 'ప్రచురిస్తున్నాము…',
     add_product_next: 'తదుపరి',
 
-    profile_title: 'ప్రొఫైల్',
+    profile_title: 'నా ప్రొఫైల్',
+    profile_subtitle: 'మీ ఖాతాను నిర్వహించండి',
     profile_edit: 'సవరించు',
     profile_craft_story: 'నా చేతిపని కథ',
     profile_edit_story: 'కథను సవరించు',
     profile_logout: 'లాగ్ అవుట్',
+    profile_personal_info: 'వ్యక్తిగత సమాచారం',
+    profile_shop_details: 'దుకాణం వివరాలు',
+    profile_payment_details: 'చెల్లింపు వివరాలు',
+    profile_payment_bank: 'చెల్లింపు & బ్యాంక్ వివరాలు',
+    profile_app_settings: 'యాప్ సెట్టింగులు',
+    profile_full_name: 'పూర్తి పేరు',
+    profile_enter_name: 'మీ పేరు నమోదు చేయండి',
+    profile_phone: 'ఫోన్ నంబర్',
+    profile_save_changes: 'మార్పులను సేవ్ చేయి',
+    profile_craft_type: 'ప్రధాన చేతిపని రకం',
+    profile_save_shop: 'దుకాణం వివరాలు సేవ్ చేయి',
+    profile_holder_name: 'ఖాతాదారుని పేరు',
+    profile_bank_name: 'బ్యాంకు పేరు',
+    profile_account_no: 'ఖాతా సంఖ్య *',
+    profile_ifsc: 'IFSC కోడ్ *',
+    profile_upi: 'UPI ID (ఐచ్ఛికం)',
+    profile_save_payment: 'చెల్లింపు వివరాలు సేవ్ చేయి',
+    profile_update_photo: 'ప్రొఫైల్ ఫోటోను మార్చండి',
+    profile_take_photo: 'ఫోటో తీయండి',
+    profile_from_gallery: 'గ్యాలరీ నుండి',
+    profile_choose_avatar: 'లేదా అవతార్ ఎంచుకోండి:',
+    profile_not_found: 'ప్రొఫైల్ కనుగొనబడలేదు',
+    profile_not_found_sub: 'మీ ప్రొఫైల్ డేటాను లోడ్ చేయడం సాధ్యం కాలేదు.',
+    profile_signout_return: 'లాగ్ అవుట్ చేసి లాగిన్ అవ్వండి',
+    profile_retry: 'మళ్లీ ప్రయత్నించండి',
+    profile_go_home: 'హోమ్‌కు వెళ్లండి',
+    profile_artisan_from: 'చేతివృత్తిదారుడు -',
     profile_section_business: 'వ్యాపారం',
     profile_section_app: 'యాప్',
     profile_section_help: 'సహాయం & చట్టం',

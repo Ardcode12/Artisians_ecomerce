@@ -95,7 +95,7 @@ export const buildProductSpeechText = (
   const selectedLang = getSelectedLanguage(); // 'ta' | 'hi' | 'en'
   const explicitLang = options?.lang?.toLowerCase() || '';
 
-  let targetLang: 'ta' | 'hi' | 'en' = selectedLang;
+  let targetLang: 'ta' | 'hi' | 'en' = (selectedLang === 'ta' || selectedLang === 'hi') ? selectedLang : 'en';
   if (explicitLang === 'hi' || explicitLang === 'हिं' || explicitLang === 'hindi') {
     targetLang = 'hi';
   } else if (explicitLang === 'ta' || explicitLang === 'தமிழ்' || explicitLang === 'tamil') {

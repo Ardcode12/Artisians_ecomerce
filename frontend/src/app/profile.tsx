@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -59,14 +59,24 @@ export default function ProfileScreen() {
     profile,
     buyerProfile,
     userRole,
+    isLoading,
     signOut,
     updateProfile,
     updateBankDetails,
     uploadAvatar,
     phone,
+    refreshProfile,
   } = useAuth();
   const { t, language } = useLanguage();
   const { cartCount } = useCart();
+
+  // Auto-retry profile fetch if it's missing after loading completes
+  useEffect(() => {
+    if (!isLoading && !profile && userRole !== 'buyer') {
+      refreshProfile().catch(() => {});
+    }
+  }, [isLoading]);
+
 
   // Modals state
   const [personalInfoOpen, setPersonalInfoOpen] = useState(false);
@@ -92,18 +102,65 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  if (!profile && userRole !== 'buyer') return null;
-
   const handleTabChange = (tab: ArtisanTab) => {
     setActiveTab(tab);
     if (tab === 'home') router.push('/');
     if (tab === 'listings') router.push('/listings');
+    if (tab === 'growth') router.push('/growth' as any);
+    if (tab === 'analytical') router.push('/analytics' as any);
+    if (tab === 'add') router.push('/add-product');
+    if (tab === 'profile') { /* already on profile */ }
   };
 
   const handleSignOut = async () => {
     await signOut();
-    router.push('/welcome');
+    router.replace('/welcome');
   };
+
+  // Show loading spinner while auth/profile data is being fetched
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F5F0E8', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color="#2D6A4F" />
+      </View>
+    );
+  }
+
+  if (!profile && userRole !== 'buyer') {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F5F0E8', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <Text style={{ fontSize: 20, fontWeight: '700', color: '#0D0D0D', textAlign: 'center', marginBottom: 8 }}>
+          {t('profile_not_found') || 'Profile Not Found'}
+        </Text>
+        <Text style={{ fontSize: 14, color: '#8E8E93', textAlign: 'center', marginBottom: 28, lineHeight: 20 }}>
+          {t('profile_not_found_sub') || "We couldn't load your profile data. You can retry loading, or sign out to return to the login screen."}
+        </Text>
+        <View style={{ width: '100%', maxWidth: 280, gap: 12 }}>
+          <TouchableOpacity
+            style={{ backgroundColor: '#C0392B', borderRadius: 24, paddingVertical: 14, alignItems: 'center' }}
+            onPress={handleSignOut}
+            activeOpacity={0.85}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>{t('profile_signout_return') || 'Sign Out / Return to Login'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ backgroundColor: '#2D6A4F', borderRadius: 24, paddingVertical: 14, alignItems: 'center' }}
+            onPress={() => refreshProfile()}
+            activeOpacity={0.85}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>{t('profile_retry') || 'Retry Loading'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ backgroundColor: '#E0DCD3', borderRadius: 24, paddingVertical: 14, alignItems: 'center' }}
+            onPress={() => router.replace('/')}
+            activeOpacity={0.85}
+          >
+            <Text style={{ color: '#0D0D0D', fontWeight: '600', fontSize: 15 }}>{t('profile_go_home') || 'Go to Home'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   // Open Personal Information modal
   const openPersonalInfo = () => {
@@ -281,7 +338,7 @@ export default function ProfileScreen() {
             activeOpacity={0.85}
           >
             <LogOut size={20} color="#D32F2F" />
-            <Text style={styles.logoutText}>Logout</Text>
+            <Text style={styles.logoutText}>{t('profile_logout') || 'Logout'}</Text>
           </TouchableOpacity>
         </ScrollView>
         <BuyerBottomNav
@@ -301,15 +358,15 @@ export default function ProfileScreen() {
   // ── Artisan Profile ───────────────────────────────────────────────────────
   const artisanName = profile?.name || 'Meena Devi';
   const locationSubtitle = profile?.location
-    ? `Artisan from ${profile.location}`
+    ? `${t('profile_artisan_from') || 'Artisan from'} ${profile.location}`
     : profile?.craft_type
-      ? `${profile.craft_type} Artisan`
-      : 'Artisan from Tamil Nadu';
+      ? `${profile.craft_type}`
+      : `${t('profile_artisan_from') || 'Artisan from'} Tamil Nadu`;
 
   const MENU_OPTIONS = [
     {
       id: 'personal',
-      title: 'Personal Information',
+      title: t('profile_personal_info') || 'Personal Information',
       Icon: User,
       iconColor: '#2D6A4F',
       iconBg: '#EDF7F2',
@@ -317,7 +374,7 @@ export default function ProfileScreen() {
     },
     {
       id: 'shop',
-      title: 'Shop Details',
+      title: t('profile_shop_details') || 'Shop Details',
       Icon: Store,
       iconColor: '#C26A3E',
       iconBg: '#FDF3EB',
@@ -325,7 +382,7 @@ export default function ProfileScreen() {
     },
     {
       id: 'payment',
-      title: 'Payment Details',
+      title: t('profile_payment_bank') || t('profile_payment_details') || 'Payment Details',
       Icon: CreditCard,
       iconColor: '#3B82F6',
       iconBg: '#EEF5F9',
@@ -333,7 +390,7 @@ export default function ProfileScreen() {
     },
     {
       id: 'settings',
-      title: 'App Settings',
+      title: t('profile_app_settings') || 'App Settings',
       Icon: Settings,
       iconColor: '#2D6A4F',
       iconBg: '#EDF7ED',
@@ -341,7 +398,7 @@ export default function ProfileScreen() {
     },
     {
       id: 'support',
-      title: 'Help & Support',
+      title: t('profile_help_support') || 'Help & Support',
       Icon: HelpCircle,
       iconColor: '#64748B',
       iconBg: '#EEF2F6',
@@ -367,8 +424,8 @@ export default function ProfileScreen() {
         {/* ── Top Header ────────────────────────────────────────────── */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.screenTitle}>My Profile</Text>
-            <Text style={styles.screenSubtitle}>Manage your account</Text>
+            <Text style={styles.screenTitle}>{t('profile_title') || 'My Profile'}</Text>
+            <Text style={styles.screenSubtitle}>{t('profile_subtitle') || 'Manage your account'}</Text>
           </View>
           <TouchableOpacity
             style={styles.editPillBtn}
@@ -376,7 +433,7 @@ export default function ProfileScreen() {
             activeOpacity={0.8}
           >
             <Pencil size={15} color="#111827" strokeWidth={2.2} />
-            <Text style={styles.editPillText}>Edit</Text>
+            <Text style={styles.editPillText}>{t('profile_edit') || 'Edit'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -435,7 +492,7 @@ export default function ProfileScreen() {
           activeOpacity={0.85}
         >
           <LogOut size={18} color="#D32F2F" strokeWidth={2.2} />
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>{t('profile_logout') || 'Logout'}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -447,21 +504,21 @@ export default function ProfileScreen() {
         >
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Personal Information</Text>
+              <Text style={styles.modalTitle}>{t('profile_personal_info') || 'Personal Information'}</Text>
               <TouchableOpacity onPress={() => setPersonalInfoOpen(false)}>
                 <X size={20} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputLabel}>Full Name</Text>
+              <Text style={styles.inputLabel}>{t('profile_full_name') || 'Full Name'}</Text>
               <TextInput
                 style={styles.input}
                 value={formName}
                 onChangeText={setFormName}
-                placeholder="Enter your name"
+                placeholder={t('profile_enter_name') || 'Enter your name'}
                 placeholderTextColor={Colors.textMuted}
               />
-              <Text style={styles.inputLabel}>State / Location</Text>
+              <Text style={styles.inputLabel}>{t('profile_location') || 'State / Location'}</Text>
               <TextInput
                 style={styles.input}
                 value={formLocation}
@@ -469,7 +526,7 @@ export default function ProfileScreen() {
                 placeholder="e.g. Tamil Nadu"
                 placeholderTextColor={Colors.textMuted}
               />
-              <Text style={styles.inputLabel}>Phone Number</Text>
+              <Text style={styles.inputLabel}>{t('profile_phone') || 'Phone Number'}</Text>
               <TextInput
                 style={[styles.input, styles.inputDisabled]}
                 value={formPhone}
@@ -484,7 +541,7 @@ export default function ProfileScreen() {
                 {isSaving ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Save Changes</Text>
+                  <Text style={styles.saveBtnText}>{t('profile_save_changes') || 'Save Changes'}</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -500,13 +557,13 @@ export default function ProfileScreen() {
         >
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Shop Details</Text>
+              <Text style={styles.modalTitle}>{t('profile_shop_details') || 'Shop Details'}</Text>
               <TouchableOpacity onPress={() => setShopDetailsOpen(false)}>
                 <X size={20} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputLabel}>Shop Name</Text>
+              <Text style={styles.inputLabel}>{t('profile_shop_name') || 'Shop Name'}</Text>
               <TextInput
                 style={styles.input}
                 value={formShopName}
@@ -514,7 +571,7 @@ export default function ProfileScreen() {
                 placeholder="e.g. Meena Handicrafts"
                 placeholderTextColor={Colors.textMuted}
               />
-              <Text style={styles.inputLabel}>Primary Craft Type</Text>
+              <Text style={styles.inputLabel}>{t('profile_craft_type') || 'Primary Craft Type'}</Text>
               <TextInput
                 style={styles.input}
                 value={formCraftType}
@@ -531,7 +588,7 @@ export default function ProfileScreen() {
                 {isSaving ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Save Shop Details</Text>
+                  <Text style={styles.saveBtnText}>{t('profile_save_shop') || 'Save Shop Details'}</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -547,13 +604,13 @@ export default function ProfileScreen() {
         >
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Payment & Bank Details</Text>
+              <Text style={styles.modalTitle}>{t('profile_payment_bank') || 'Payment & Bank Details'}</Text>
               <TouchableOpacity onPress={() => setPaymentDetailsOpen(false)}>
                 <X size={20} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputLabel}>Account Holder Name</Text>
+              <Text style={styles.inputLabel}>{t('profile_holder_name') || 'Account Holder Name'}</Text>
               <TextInput
                 style={styles.input}
                 value={formHolder}
@@ -561,7 +618,7 @@ export default function ProfileScreen() {
                 placeholder="Name as per bank"
                 placeholderTextColor={Colors.textMuted}
               />
-              <Text style={styles.inputLabel}>Bank Name</Text>
+              <Text style={styles.inputLabel}>{t('profile_bank_name') || 'Bank Name'}</Text>
               <TextInput
                 style={styles.input}
                 value={formBankName}
@@ -569,7 +626,7 @@ export default function ProfileScreen() {
                 placeholder="e.g. State Bank of India"
                 placeholderTextColor={Colors.textMuted}
               />
-              <Text style={styles.inputLabel}>Account Number *</Text>
+              <Text style={styles.inputLabel}>{t('profile_account_no') || 'Account Number *'}</Text>
               <TextInput
                 style={styles.input}
                 value={formBankAcc}
@@ -578,7 +635,7 @@ export default function ProfileScreen() {
                 keyboardType="numeric"
                 placeholderTextColor={Colors.textMuted}
               />
-              <Text style={styles.inputLabel}>IFSC Code *</Text>
+              <Text style={styles.inputLabel}>{t('profile_ifsc') || 'IFSC Code *'}</Text>
               <TextInput
                 style={styles.input}
                 value={formIfsc}
@@ -587,7 +644,7 @@ export default function ProfileScreen() {
                 autoCapitalize="characters"
                 placeholderTextColor={Colors.textMuted}
               />
-              <Text style={styles.inputLabel}>UPI ID (Optional)</Text>
+              <Text style={styles.inputLabel}>{t('profile_upi') || 'UPI ID (Optional)'}</Text>
               <TextInput
                 style={styles.input}
                 value={formUpi}
@@ -604,7 +661,7 @@ export default function ProfileScreen() {
                 {isSaving ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Save Payment Details</Text>
+                  <Text style={styles.saveBtnText}>{t('profile_save_payment') || 'Save Payment Details'}</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -617,7 +674,7 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>App Settings</Text>
+              <Text style={styles.modalTitle}>{t('profile_app_settings') || 'App Settings'}</Text>
               <TouchableOpacity onPress={() => setAppSettingsOpen(false)}>
                 <X size={20} color={Colors.textSecondary} />
               </TouchableOpacity>
@@ -628,15 +685,15 @@ export default function ProfileScreen() {
                 style={styles.settingItem}
                 onPress={() => {
                   setAppSettingsOpen(false);
-                  router.push('/auth/language');
+                  router.push({ pathname: '/select-language', params: { canGoBack: 'true' } });
                 }}
                 activeOpacity={0.8}
               >
                 <Globe size={20} color="#2D6A4F" />
                 <View style={styles.settingTextWrap}>
-                  <Text style={styles.settingLabel}>Language</Text>
+                  <Text style={styles.settingLabel}>{t('profile_language') || 'Language'}</Text>
                   <Text style={styles.settingSub}>
-                    {language === 'ta' ? 'தமிழ்' : language === 'hi' ? 'हिन्दी' : 'English'}
+                    {language === 'ta' ? 'தமிழ்' : language === 'hi' ? 'हिन्दी' : language === 'te' ? 'తెలుగు' : language === 'bn' ? 'বাংলা' : language === 'mr' ? 'मराठी' : 'English'}
                   </Text>
                 </View>
                 <ChevronRight size={18} color="#9CA3AF" />
@@ -656,7 +713,7 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Update Profile Photo</Text>
+              <Text style={styles.modalTitle}>{t('profile_update_photo') || 'Update Profile Photo'}</Text>
               <TouchableOpacity onPress={() => setPhotoPickerOpen(false)}>
                 <X size={20} color={Colors.textSecondary} />
               </TouchableOpacity>
@@ -672,7 +729,7 @@ export default function ProfileScreen() {
                 <View style={styles.photoActionIcon}>
                   <Camera size={22} color="#2D6A4F" />
                 </View>
-                <Text style={styles.photoActionText}>Take Photo</Text>
+                <Text style={styles.photoActionText}>{t('profile_take_photo') || 'Take Photo'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -683,12 +740,12 @@ export default function ProfileScreen() {
                 <View style={styles.photoActionIcon}>
                   <ImageIcon size={22} color="#2D6A4F" />
                 </View>
-                <Text style={styles.photoActionText}>From Gallery</Text>
+                <Text style={styles.photoActionText}>{t('profile_from_gallery') || 'From Gallery'}</Text>
               </TouchableOpacity>
             </View>
 
             {/* Preset Avatars */}
-            <Text style={styles.presetLabel}>Or choose an avatar:</Text>
+            <Text style={styles.presetLabel}>{t('profile_choose_avatar') || 'Or choose an avatar:'}</Text>
             <View style={styles.avatarGrid}>
               {PRESET_AVATARS.map((uri, idx) => (
                 <TouchableOpacity

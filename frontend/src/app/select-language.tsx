@@ -58,7 +58,7 @@ export default function SelectLanguageScreen() {
     stopSpeech();
     setActiveLang(code);
     await setSelectedLanguage(code);
-    syncLanguageContext(code);
+    syncLanguageContext(code as any);
 
     // If navigated from home page "change language", go back; otherwise go to root home
     if (params.canGoBack === 'true' && router.canGoBack()) {

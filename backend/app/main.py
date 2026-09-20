@@ -33,8 +33,65 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle."""
     logger.info("Initializing Artisans On-Device SQLite Database...")
     init_db()
-    # Speech-to-text is handled by the remote NVIDIA A100 Whisper Large V3 server;
-    # no local model loading or pre-warming is required.
+
+    # ── Auto-tunnel for Twilio webhooks ──────────────────────────────────────
+    # On each startup, if WEBHOOK_BASE_URL is not set (or unreachable), we
+    # spawn a cloudflared quick-tunnel so Twilio can POST to our webhook routes.
+    import os, subprocess, time, re as _re, threading as _threading
+    _webhook_url = (os.getenv("WEBHOOK_BASE_URL") or "").strip().rstrip("/")
+
+    def _probe_url(url: str) -> bool:
+        try:
+            import urllib.request
+            urllib.request.urlopen(f"{url}/health", timeout=8)
+            return True
+        except Exception:
+            return False
+
+    if not _webhook_url or not _webhook_url.startswith("https://") or not _probe_url(_webhook_url):
+        logger.warning(f"[TUNNEL] WEBHOOK_BASE_URL is missing or unreachable ({_webhook_url!r}). Starting cloudflared tunnel…")
+        try:
+            _cf_log = "/tmp/artisans_cf_tunnel.log"
+            with open(_cf_log, "w") as _f:
+                _cf_proc = subprocess.Popen(
+                    ["/tmp/cloudflared", "tunnel", "--url", "http://localhost:5000", "--no-autoupdate"],
+                    stdout=_f, stderr=_f,
+                    start_new_session=True,
+                )
+            # Wait up to 20s for the URL to appear in the log
+            _cf_url = None
+            for _ in range(20):
+                time.sleep(1)
+                try:
+                    with open(_cf_log) as _f:
+                        _m = _re.search(r"https://[^\s]+\.trycloudflare\.com", _f.read())
+                        if _m:
+                            _cf_url = _m.group(0).strip()
+                            break
+                except Exception:
+                    pass
+            if _cf_url:
+                os.environ["WEBHOOK_BASE_URL"] = _cf_url
+                logger.info(f"[TUNNEL] cloudflared tunnel ready → {_cf_url}")
+            else:
+                logger.error("[TUNNEL] Could not extract tunnel URL from cloudflared output")
+        except Exception as _e:
+            logger.warning(f"[TUNNEL] cloudflared not available: {_e}. Trying pyngrok…")
+            try:
+                from pyngrok import ngrok as _ngrok, conf as _ngrok_conf
+                _ngrok_auth = os.getenv("NGROK_AUTHTOKEN", "").strip()
+                if _ngrok_auth:
+                    _ngrok_conf.get_default().auth_token = _ngrok_auth
+                _tunnel = _ngrok.connect(int(os.getenv("PORT", 5000)), "http")
+                _public_url = _tunnel.public_url.replace("http://", "https://")
+                os.environ["WEBHOOK_BASE_URL"] = _public_url
+                logger.info(f"[TUNNEL] pyngrok tunnel started → {_public_url}")
+            except Exception as _e2:
+                logger.warning(f"[TUNNEL] Could not start any tunnel: {_e2} — Twilio gather callbacks may not work")
+    else:
+        logger.info(f"[TUNNEL] Using existing WEBHOOK_BASE_URL: {_webhook_url}")
+    # ─────────────────────────────────────────────────────────────────────────
+
     logger.info("Artisans backend initialized successfully. Remote Whisper STT enabled.")
     yield
     logger.info("Shutting down Artisans backend.")

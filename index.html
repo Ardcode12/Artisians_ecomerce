@@ -828,7 +828,15 @@
       indicator.textContent = `Polling status… (${count})`;
       try {
         const r = await fetch(`${API}/api/calls/${callId}`);
-        if (!r.ok) return;
+        if (!r.ok) {
+          if (r.status === 404 || count > 50) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+            indicator.textContent = r.status === 404 ? 'Call session expired.' : 'Polling timed out.';
+            setTimeout(() => { indicator.style.display = 'none'; }, 4000);
+          }
+          return;
+        }
         const d = await r.json();
         const call = d.call;
         updatePipelineFromCall(call);

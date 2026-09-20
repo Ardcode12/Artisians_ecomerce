@@ -581,6 +581,72 @@ export default function ProductDetailsScreen() {
             <Text style={styles.descText}>{getDisplayDescription()}</Text>
           </View>
 
+          {/* ── GeM Compliance Panel (Artisan Owner Only) ──────── */}
+          {isArtisanOwner && (
+            <View style={styles.gemPanel}>
+              <View style={styles.gemPanelHeader}>
+                <ShieldCheck size={15} color="#2563EB" />
+                <Text style={styles.gemPanelTitle}>GeM Portal Fields</Text>
+                {product.hsn_code ? (
+                  <View style={styles.gemReadyBadge}>
+                    <CheckCircle2 size={11} color="#059669" />
+                    <Text style={styles.gemReadyText}>GeM Ready</Text>
+                  </View>
+                ) : (
+                  <View style={styles.gemIncBadge}>
+                    <Text style={styles.gemIncText}>Incomplete</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.gemGrid}>
+                {/* Row 1 */}
+                <View style={styles.gemCell}>
+                  <Text style={styles.gemCellLabel}>HSN Code</Text>
+                  <Text style={styles.gemCellValue}>{product.hsn_code || '—'}</Text>
+                </View>
+                <View style={styles.gemCell}>
+                  <Text style={styles.gemCellLabel}>GSTIN</Text>
+                  <Text style={styles.gemCellValue} numberOfLines={1}>{product.gstin || '—'}</Text>
+                </View>
+                {/* Row 2 */}
+                <View style={styles.gemCell}>
+                  <Text style={styles.gemCellLabel}>Pehchan ID</Text>
+                  <Text style={styles.gemCellValue} numberOfLines={1}>{product.pehchan_id || '—'}</Text>
+                </View>
+                <View style={styles.gemCell}>
+                  <Text style={styles.gemCellLabel}>GI Tag No.</Text>
+                  <Text style={styles.gemCellValue}>{product.gi_tag_num || '—'}</Text>
+                </View>
+                {/* Row 3 */}
+                <View style={styles.gemCell}>
+                  <Text style={styles.gemCellLabel}>Origin</Text>
+                  <Text style={styles.gemCellValue}>{product.country_of_origin || 'India'}</Text>
+                </View>
+                <View style={styles.gemCell}>
+                  <Text style={styles.gemCellLabel}>Local Content</Text>
+                  <Text style={styles.gemCellValue}>{product.local_content_pct ?? 100}%</Text>
+                </View>
+                {/* Row 4 */}
+                <View style={styles.gemCell}>
+                  <Text style={styles.gemCellLabel}>Weight (kg)</Text>
+                  <Text style={styles.gemCellValue}>{product.weight_kg ?? '—'}</Text>
+                </View>
+                <View style={styles.gemCell}>
+                  <Text style={styles.gemCellLabel}>Dimensions</Text>
+                  <Text style={styles.gemCellValue} numberOfLines={1}>{product.dimensions || '—'}</Text>
+                </View>
+              </View>
+
+              {product.brand_oem ? (
+                <View style={styles.gemOEMRow}>
+                  <Text style={styles.gemCellLabel}>Brand / OEM: </Text>
+                  <Text style={styles.gemCellValue}>{product.brand_oem}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+
           {/* ── Ask Artisan Inquiry Action ──────────────────────── */}
           <TouchableOpacity
             style={styles.askArtisanBtn}
@@ -1658,5 +1724,92 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: Fonts.headingBold,
     color: '#FFFFFF',
+  },
+
+  // ── GeM Compliance Panel Styles ──────────────────────────────────
+  gemPanel: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    padding: 16,
+    marginBottom: 18,
+  },
+  gemPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 14,
+  },
+  gemPanelTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#1E3A8A',
+  },
+  gemReadyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#D1FAE5',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  gemReadyText: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#059669',
+  },
+  gemIncBadge: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  gemIncText: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#D97706',
+  },
+  gemGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  gemCell: {
+    width: '47%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E0EAFB',
+  },
+  gemCellLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: Fonts.bodyMedium,
+    color: '#6B7280',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  gemCellValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#1E40AF',
+  },
+  gemOEMRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#BFDBFE',
   },
 });

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@/utils/storage';
 import { translations, LanguageCode, TranslationKeys, LANGUAGE_META } from '@/i18n/translations';
+import { setSelectedLanguage } from '@/utils/language-utils';
 
 const STORAGE_KEY = '@artisanlink_language';
 const APP_LANGUAGE_KEY = 'app_language';
@@ -59,6 +60,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLanguageState(code);
     AsyncStorage.setItem(APP_LANGUAGE_KEY, code).catch(() => {});
     AsyncStorage.setItem(STORAGE_KEY, code).catch(() => {});
+    // Keep language-utils in sync so hasSelectedLanguage() returns true
+    setSelectedLanguage(code as any).catch(() => {});
   }, []);
 
   const t = useCallback(

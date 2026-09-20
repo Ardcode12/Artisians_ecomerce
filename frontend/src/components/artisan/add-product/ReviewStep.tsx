@@ -21,12 +21,14 @@ import {
   Send,
   Globe,
   AlertCircle,
+  CloudOff,
 } from 'lucide-react-native';
 import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { InstagramIcon } from '@/components/ui/InstagramIcon';
 import { BACKEND_URL } from '@/config/api';
+import { saveProductOffline } from '@/services/offlineProductSync';
 
 interface ProductData {
   imageUri: string;
@@ -35,6 +37,8 @@ interface ProductData {
   description_en?: string;
   description_hi?: string;
   description_ta?: string;
+  description_te?: string;
+  description_regional?: string;
   category: string;
   suggestedPrice: string;
   finalPrice: string;
@@ -70,8 +74,9 @@ export function ReviewStep({
   );
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
+  const [savedOffline, setSavedOffline] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [langView, setLangView] = useState<'en' | 'hi' | 'ta'>('en');
+  const [langView, setLangView] = useState<'regional' | 'hi' | 'en'>('regional');
 
   const { user } = useAuth();
   const { t, language } = useLanguage();
@@ -81,12 +86,15 @@ export function ReviewStep({
   const displayDescEn = productData.description_en || productData.description || '';
   const displayDescHi = productData.description_hi || '';
   const displayDescTa = productData.description_ta || '';
+  const displayDescTe = productData.description_te || '';
+  const displayDescRegional = productData.description_regional || (language === 'te' ? displayDescTe : displayDescTa) || displayDescTa || displayDescTe || '';
   const displayCat = productData.category || 'Handicraft';
+
   const displayDesc =
     langView === 'hi' && displayDescHi
       ? displayDescHi
-      : langView === 'ta' && displayDescTa
-        ? displayDescTa
+      : langView === 'regional' && displayDescRegional
+        ? displayDescRegional
         : displayDescEn;
 
   const toggleMarket = (i: number) => {
@@ -179,9 +187,35 @@ export function ReviewStep({
         onPublish(data.product_id);
       }, 2200);
     } catch (err: any) {
-      console.error('[ReviewStep] Publish error:', err.message);
-      setPublishing(false);
-      setErrorMsg(err.message || 'Failed to publish product. Please try again.');
+      console.warn('[ReviewStep] Online publish failed or device is offline. Storing in local queue...', err.message);
+      try {
+        const localRecord = await saveProductOffline({
+          title: displayTitle,
+          price: displayPrice,
+          category: displayCat,
+          craft_type: displayCat,
+          units: productData.units || 1,
+          localImageUri: productData.imageUri || '',
+          description_en: displayDescEn,
+          description_hi: displayDescHi,
+          description_ta: displayDescTa,
+          description: displayDescEn,
+          material_cost: productData.materialCost || 0,
+          marketplaces: selectedMarketNames,
+        });
+
+        setPublishing(false);
+        setSavedOffline(true);
+
+        setTimeout(() => {
+          setSavedOffline(false);
+          onPublish(localRecord.localId);
+        }, 2500);
+      } catch (saveErr: any) {
+        console.error('[ReviewStep] Failed to save offline:', saveErr);
+        setPublishing(false);
+        setErrorMsg('Failed to save offline. Please check device storage.');
+      }
     }
   };
 
@@ -212,15 +246,20 @@ export function ReviewStep({
         {/* White review sheet */}
         <View style={styles.sheet}>
           {/* Language toggle for description preview */}
-          {(displayDescHi || displayDescTa) ? (
+          {(displayDescHi || displayDescRegional) ? (
             <View style={styles.langToggle}>
-              <TouchableOpacity
-                style={[styles.langBtn, langView === 'en' && styles.langBtnActive]}
-                onPress={() => setLangView('en')}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.langBtnText, langView === 'en' && styles.langBtnTextActive]}>🇬🇧 EN</Text>
-              </TouchableOpacity>
+              {displayDescRegional ? (
+                <TouchableOpacity
+                  style={[styles.langBtn, langView === 'regional' && styles.langBtnActive]}
+                  onPress={() => setLangView('regional')}
+                  activeOpacity={0.8}
+                >
+                  <Globe size={12} color={langView === 'regional' ? '#FFFFFF' : Colors.textSecondary} />
+                  <Text style={[styles.langBtnText, langView === 'regional' && styles.langBtnTextActive]}>
+                    {language === 'te' ? 'తెలుగు' : 'தமிழ்'}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
               {displayDescHi ? (
                 <TouchableOpacity
                   style={[styles.langBtn, langView === 'hi' && styles.langBtnActive]}
@@ -231,16 +270,13 @@ export function ReviewStep({
                   <Text style={[styles.langBtnText, langView === 'hi' && styles.langBtnTextActive]}>हिंदी</Text>
                 </TouchableOpacity>
               ) : null}
-              {displayDescTa ? (
-                <TouchableOpacity
-                  style={[styles.langBtn, langView === 'ta' && styles.langBtnActive]}
-                  onPress={() => setLangView('ta')}
-                  activeOpacity={0.8}
-                >
-                  <Globe size={12} color={langView === 'ta' ? '#FFFFFF' : Colors.textSecondary} />
-                  <Text style={[styles.langBtnText, langView === 'ta' && styles.langBtnTextActive]}>தமிழ்</Text>
-                </TouchableOpacity>
-              ) : null}
+              <TouchableOpacity
+                style={[styles.langBtn, langView === 'en' && styles.langBtnActive]}
+                onPress={() => setLangView('en')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.langBtnText, langView === 'en' && styles.langBtnTextActive]}>🇬🇧 English</Text>
+              </TouchableOpacity>
               <Text style={styles.langHint}>Preview language</Text>
             </View>
           ) : null}
@@ -360,6 +396,19 @@ export function ReviewStep({
             <Text style={styles.successTitle}>Your product is live! 🎉</Text>
             <Text style={styles.successSub}>
               Buyers can now discover your craft across marketplaces
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Offline Saved Overlay (Game save style) */}
+      <Modal visible={savedOffline} transparent animationType="fade">
+        <View style={styles.successOverlay}>
+          <View style={styles.successCard}>
+            <CloudOff size={56} color="#D97706" />
+            <Text style={styles.successTitle}>Saved to Phone Storage! 💾</Text>
+            <Text style={styles.successSub}>
+              You are offline. Your product is safely saved on your device and will be published automatically when internet connects!
             </Text>
           </View>
         </View>

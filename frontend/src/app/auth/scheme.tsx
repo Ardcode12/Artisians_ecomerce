@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,23 +12,91 @@ import {
   Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Fonts } from '@/constants/artisan-theme';
 import { AuthHeader } from '@/components/auth/AuthHeader';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { isSpeechSupported, speakText, stopSpeech } from '@/utils/speech';
+import { VoiceInputButton } from '@/components/common/VoiceInputButton';
+
+const INACTIVITY_DELAY = 10000;
+
+const SCHEME_INITIAL_TEXT: Record<string, string> = {
+  en: 'If you have a Government Scheme ID, please enter it here. You can also skip this step and add it later from your profile.',
+  ta: 'உங்களிடம் அரசு திட்ட ID இருந்தால், இங்கே உள்ளிடவும். இந்தப் படிநிலையை தவிர்க்கலாம்; பின்னர் உங்கள் சுயவிவரத்தில் சேர்க்கலாம்.',
+  hi: 'यदि आपके पास सरकारी योजना आईडी है, तो इसे यहाँ दर्ज करें। आप इस चरण को छोड़ सकते हैं और बाद में अपनी प्रोफाइल से जोड़ सकते हैं।',
+  te: 'మీకు ప్రభుత్వ పథకం IDని ఉంటే, ఇక్కడ నమోదు చేయండి. మీరు ఈ దశను దాటవేయవచ్చు మరియు మీ ప్రొఫైల్ నుండి తర్వాత జోడించవచ్చు.',
+  bn: 'আপনার কাছে সরকারি স্কিম আইডি থাকলে এখানে লিখুন। এই ধাপটি এড়িয়ে যেতে পারেন এবং পরে প্রোফাইল থেকে যোগ করতে পারেন।',
+  mr: 'तुमच्याकडे सरकारी योजना आयडी असल्यास येथे टाका. तुम्ही हे टप्पे वगळू शकता आणि नंतर प्रोफाइलमधून जोडू शकता.',
+};
+
+const BCP47_MAP: Record<string, string> = {
+  en: 'en-IN', ta: 'ta-IN', hi: 'hi-IN', te: 'te-IN', bn: 'bn-IN', mr: 'mr-IN',
+};
 
 export default function SchemeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { onboardingData, updateOnboardingData, saveProfile } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [schemeId, setSchemeId] = useState(onboardingData.schemeId || '');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const inactivityTimerRef = useRef<any>(null);
+  const fallbackTimerRef = useRef<any>(null);
+
+  const stopAllSpeechAndTimers = useCallback(() => {
+    if (inactivityTimerRef.current) { clearTimeout(inactivityTimerRef.current); inactivityTimerRef.current = null; }
+    if (fallbackTimerRef.current) { clearTimeout(fallbackTimerRef.current); fallbackTimerRef.current = null; }
+    stopSpeech();
+  }, []);
+
+  const speakAndScheduleInactivity = useCallback(
+    (text: string, langCode: string, reminderText: string, reminderLangCode: string) => {
+      stopAllSpeechAndTimers();
+      if (!isSpeechSupported()) return;
+
+      let timerStarted = false;
+      const startTimer = () => {
+        if (timerStarted) return;
+        timerStarted = true;
+        inactivityTimerRef.current = setTimeout(() => {
+          speakAndScheduleInactivity(reminderText, reminderLangCode, reminderText, reminderLangCode);
+        }, INACTIVITY_DELAY);
+      };
+
+      speakText(text, {
+        language: langCode, rate: 0.95, pitch: 1.0,
+        onDone: startTimer, onError: startTimer, onStopped: () => {},
+      });
+
+      fallbackTimerRef.current = setTimeout(() => { if (!timerStarted) startTimer(); }, 5000);
+    },
+    [stopAllSpeechAndTimers]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      stopAllSpeechAndTimers();
+      const langCode = BCP47_MAP[language] || 'en-IN';
+      const initialText = SCHEME_INITIAL_TEXT[language] || SCHEME_INITIAL_TEXT.en;
+
+      const initTimer = setTimeout(() => {
+        speakAndScheduleInactivity(initialText, langCode, initialText, langCode);
+      }, 300);
+
+      return () => {
+        clearTimeout(initTimer);
+        stopAllSpeechAndTimers();
+      };
+    }, [language, speakAndScheduleInactivity, stopAllSpeechAndTimers])
+  );
+
   const handleProceed = async (skip: boolean = false) => {
+    stopAllSpeechAndTimers();
     setLoading(true);
     setErrorMsg('');
 
@@ -78,6 +146,11 @@ export default function SchemeScreen() {
                   autoCapitalize="characters"
                   editable={!loading}
                 />
+                <VoiceInputButton
+                  onSpeechResult={setSchemeId}
+                  currentValue={schemeId}
+                  fieldLabel={t('auth_scheme_placeholder') || 'Scheme ID'}
+                />
               </View>
 
               {/* Error Message */}
@@ -120,87 +193,33 @@ export default function SchemeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  inner: {
-    flex: 1,
-    paddingHorizontal: 24,
-  },
-  textContainer: {
-    marginTop: 24,
-    marginBottom: 32,
-  },
+  container: { flex: 1, backgroundColor: '#F5F0E8' },
+  keyboardView: { flex: 1 },
+  inner: { flex: 1, paddingHorizontal: 20 },
+  textContainer: { marginTop: 16, marginBottom: 24 },
   headline: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#0D0D0D',
-    fontFamily: Fonts.headingBold,
-    marginBottom: 8,
-    letterSpacing: -0.5,
+    fontSize: 26, fontWeight: '700', color: '#2D5016',
+    fontFamily: Fonts.headingBold, marginBottom: 6, letterSpacing: -0.3,
   },
-  subtext: {
-    fontSize: 16,
-    color: '#8E8E93',
-    fontFamily: Fonts.body,
-    lineHeight: 22,
-  },
-  inputWrapper: {
-    width: '100%',
-  },
+  subtext: { fontSize: 15, color: '#6B7280', fontFamily: Fonts.body, lineHeight: 22 },
+  inputWrapper: { width: '100%' },
   pillInputContainer: {
-    backgroundColor: '#F5F5F7',
-    borderRadius: 30,
-    height: 60,
-    paddingHorizontal: 24,
-    justifyContent: 'center',
+    backgroundColor: '#FFFFFF', borderRadius: 16, height: 56,
+    paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1.5, borderColor: '#E0D9CE',
+    shadowColor: '#2D5016', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
-  pillInput: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#0D0D0D',
-    fontFamily: Fonts.heading,
-  },
-  errorText: {
-    color: '#E53E3E',
-    fontSize: 14,
-    marginTop: 10,
-    marginLeft: 16,
-    fontFamily: Fonts.bodyMedium,
-  },
-  bottomBar: {
-    width: '100%',
-    paddingTop: 12,
-    alignItems: 'center',
-  },
+  pillInput: { flex: 1, fontSize: 16, fontWeight: '500', color: '#1A1A1A', fontFamily: Fonts.bodyMedium },
+  errorText: { color: '#DC2626', fontSize: 13, marginTop: 8, marginLeft: 4, fontFamily: Fonts.bodyMedium },
+  bottomBar: { width: '100%', paddingTop: 12, alignItems: 'center' },
   primaryBtn: {
-    height: 56,
-    borderRadius: 30,
-    backgroundColor: '#0D0D0D',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
+    height: 54, borderRadius: 28, backgroundColor: '#2D5016',
+    alignItems: 'center', justifyContent: 'center', width: '100%',
+    shadowColor: '#2D5016', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, shadowRadius: 8, elevation: 3,
   },
-  btnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: Fonts.headingBold,
-    color: '#FFFFFF',
-  },
-  skipBtn: {
-    height: 48,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 6,
-  },
-  skipText: {
-    fontSize: 15,
-    color: '#8E8E93',
-    fontFamily: Fonts.bodyMedium,
-  },
+  btnText: { fontSize: 16, fontWeight: '700', fontFamily: Fonts.headingBold, color: '#FFFFFF' },
+  skipBtn: { height: 44, width: '100%', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  skipText: { fontSize: 15, color: '#6B7280', fontFamily: Fonts.bodyMedium, textDecorationLine: 'underline' },
 });

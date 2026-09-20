@@ -157,11 +157,74 @@ async def generate_description_endpoint(
                 )
                 logger.warning(warning)
 
-        result = generate_descriptions(raw_text=transcription, craft_type=selected_craft)
+        result = generate_descriptions(
+            raw_text=transcription,
+            craft_type=selected_craft,
+            language=lang_hint or "ta"
+        )
         if warning:
             result["warning"] = warning
             result["raw_transcription"] = transcription
         return result
+    finally:
+        if temp_audio_path and temp_audio_path.exists():
+            try:
+                temp_audio_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+
+@router.post("/transcribe")
+async def transcribe_voice_endpoint(
+    request: Request,
+    audio: Optional[UploadFile] = File(None),
+    language: Optional[str] = Form(None)
+):
+    """
+    Universal Speech-to-Text Transcription:
+    - Transcribes audio from multipart upload or base64 JSON payload
+    - Used for voice input across onboarding and catalog fields
+    """
+    temp_audio_path = None
+    lang_hint = language
+
+    # 1. Handle multipart audio file
+    if audio and audio.filename:
+        temp_id = uuid.uuid4().hex[:8]
+        ext = Path(audio.filename).suffix.lower() or ".m4a"
+        temp_audio_path = UPLOADS_DIR / f"stt-{temp_id}{ext}"
+        with open(temp_audio_path, "wb") as buffer:
+            shutil.copyfileobj(audio.file, buffer)
+
+    # 2. Handle JSON body with base64
+    if not temp_audio_path:
+        try:
+            body = await request.json()
+            lang_hint = body.get("language") or lang_hint
+            raw_audio_b64 = body.get("audio_base64") or body.get("base64")
+            if raw_audio_b64:
+                clean_b64 = raw_audio_b64.split(",")[-1].strip()
+                if len(clean_b64) > 50:
+                    temp_id = uuid.uuid4().hex[:8]
+                    temp_audio_path = UPLOADS_DIR / f"stt-{temp_id}.m4a"
+                    with open(temp_audio_path, "wb") as buffer:
+                        buffer.write(base64.b64decode(clean_b64))
+        except Exception:
+            pass
+
+    if not temp_audio_path or not temp_audio_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No audio file or audio_base64 provided."
+        )
+
+    try:
+        text = transcribe_audio_file(str(temp_audio_path), language=lang_hint)
+        return {
+            "success": bool(text),
+            "text": text,
+            "language": lang_hint or "auto"
+        }
     finally:
         if temp_audio_path and temp_audio_path.exists():
             try:

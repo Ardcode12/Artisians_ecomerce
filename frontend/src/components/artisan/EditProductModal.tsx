@@ -13,7 +13,7 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
-import { X, Check, Sparkles, Tag, Layers, Globe, PackageCheck, AlertCircle } from 'lucide-react-native';
+import { X, Check, Sparkles, Tag, Layers, Globe, PackageCheck, AlertCircle, Building2, RefreshCw, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react-native';
 import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
 import { BACKEND_URL } from '@/config/api';
 
@@ -30,6 +30,15 @@ const CATEGORIES = [
   'Embroidery',
   'Other',
 ];
+
+const CERT_OPTIONS = [
+  'Pehchan Card',
+  'Handloom Mark',
+  'Silk Mark',
+  'GI User',
+  'MSME Udyam',
+];
+
 
 const STATUS_OPTIONS: { key: string; label: string; color: string }[] = [
   { key: 'published', label: 'Published', color: '#10B981' },
@@ -50,6 +59,19 @@ export interface EditableProduct {
   description_hi?: string;
   description_ta?: string;
   image_url?: string;
+  hsn_code?: string;
+  gstin?: string;
+  pehchan_id?: string;
+  artisan_cert_type?: string;
+  gi_tag_num?: string;
+  brand_oem?: string;
+  gem_category?: string;
+  dimensions?: string;
+  weight_kg?: number;
+  package_contents?: string;
+  local_content_pct?: number;
+  country_of_origin?: string;
+  gem_compliance?: any;
 }
 
 interface EditProductModalProps {
@@ -75,6 +97,18 @@ export function EditProductModal({
   const [descTa, setDescTa] = useState('');
   const [activeLangTab, setActiveLangTab] = useState<'EN' | 'HI' | 'TA'>('EN');
 
+  // GeM Portal Standardized Fields
+  const [hsnCode, setHsnCode] = useState('6912');
+  const [pehchanId, setPehchanId] = useState('');
+  const [gstin, setGstin] = useState('');
+  const [certType, setCertType] = useState('Pehchan Card');
+  const [giTag, setGiTag] = useState('');
+  const [dimensions, setDimensions] = useState('20x15x15 cm');
+  const [weightKg, setWeightKg] = useState('0.8');
+  const [packageContents, setPackageContents] = useState('');
+  const [gemSectionOpen, setGemSectionOpen] = useState(true);
+  const [suggestingGem, setSuggestingGem] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -89,12 +123,41 @@ export function EditProductModal({
       setDescEn(product.description_en || '');
       setDescHi(product.description_hi || '');
       setDescTa(product.description_ta || '');
+      setHsnCode(product.hsn_code || '6912');
+      setPehchanId(product.pehchan_id || '');
+      setGstin(product.gstin || '');
+      setCertType(product.artisan_cert_type || 'Pehchan Card');
+      setGiTag(product.gi_tag_num || '');
+      setDimensions(product.dimensions || '20x15x15 cm');
+      setWeightKg(String(product.weight_kg !== undefined ? product.weight_kg : '0.8'));
+      setPackageContents(product.package_contents || '');
       setErrorMsg('');
       setActiveLangTab('EN');
     }
   }, [product, visible]);
 
   if (!product) return null;
+
+  // Auto-suggest HSN & GeM specs from backend
+  const handleAutoSuggestGeM = async () => {
+    setSuggestingGem(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/gem/suggest?craft_type=${encodeURIComponent(category)}&title=${encodeURIComponent(title)}`);
+      const data = await res.json();
+      if (data.success && data.suggestion) {
+        const s = data.suggestion;
+        if (s.hsn_code) setHsnCode(s.hsn_code);
+        if (s.artisan_cert_type) setCertType(s.artisan_cert_type);
+        if (s.dimensions) setDimensions(s.dimensions);
+        if (s.weight_kg) setWeightKg(String(s.weight_kg));
+        if (s.package_contents) setPackageContents(s.package_contents);
+      }
+    } catch (e) {
+      console.warn('[EditProductModal] Auto-suggest GeM error:', e);
+    } finally {
+      setSuggestingGem(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -121,6 +184,15 @@ export function EditProductModal({
         description_en: descEn.trim(),
         description_hi: descHi.trim(),
         description_ta: descTa.trim(),
+        // GeM Standardized Fields
+        hsn_code: hsnCode.trim() || '6912',
+        pehchan_id: pehchanId.trim(),
+        gstin: gstin.trim(),
+        artisan_cert_type: certType,
+        gi_tag_num: giTag.trim(),
+        dimensions: dimensions.trim(),
+        weight_kg: parseFloat(weightKg) || 0.5,
+        package_contents: packageContents.trim() || `1 N ${title.trim()}`,
       };
 
       const resp = await fetch(`${BACKEND_URL}/api/products/${product.id}`, {
@@ -138,7 +210,7 @@ export function EditProductModal({
         throw new Error(data.error || `Server error (${resp.status})`);
       }
 
-      Alert.alert('Success', 'Product updated successfully!');
+      Alert.alert('Success', 'Product updated with GeM specifications!');
       onSuccess(data.product);
       onClose();
     } catch (err: any) {
@@ -148,6 +220,7 @@ export function EditProductModal({
       setSaving(false);
     }
   };
+
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -362,7 +435,178 @@ export function EditProductModal({
                 />
               )}
             </View>
+
+            {/* 6. GeM (Government e-Marketplace) Standardized Specifications */}
+            <View style={styles.gemSectionCard}>
+              <TouchableOpacity
+                style={styles.gemHeaderRow}
+                onPress={() => setGemSectionOpen(!gemSectionOpen)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.gemHeaderLeft}>
+                  <View style={styles.gemIconWrap}>
+                    <Building2 size={18} color="#1E3A8A" strokeWidth={2.2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.gemTitleRow}>
+                      <Text style={styles.gemTitle}>GeM Portal Standardization</Text>
+                      <View style={styles.gemBadgePill}>
+                        <Text style={styles.gemBadgeText}>Govt e-Market</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.gemSubtitle}>HSN code, Pehchan ID & bulk export fields</Text>
+                  </View>
+                </View>
+                {gemSectionOpen ? (
+                  <ChevronUp size={20} color="#4B5563" />
+                ) : (
+                  <ChevronDown size={20} color="#4B5563" />
+                )}
+              </TouchableOpacity>
+
+              {gemSectionOpen && (
+                <View style={styles.gemBody}>
+                  {/* Auto-suggest button */}
+                  <TouchableOpacity
+                    style={styles.autoSuggestBtn}
+                    onPress={handleAutoSuggestGeM}
+                    disabled={suggestingGem}
+                    activeOpacity={0.8}
+                  >
+                    {suggestingGem ? (
+                      <ActivityIndicator size="small" color="#1E3A8A" />
+                    ) : (
+                      <>
+                        <Sparkles size={14} color="#1E3A8A" strokeWidth={2.2} />
+                        <Text style={styles.autoSuggestText}>Auto-Suggest HSN & Specs for {category}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* HSN & Pehchan ID */}
+                  <View style={styles.rowTwo}>
+                    <View style={[styles.fieldGroup, { flex: 1 }]}>
+                      <Text style={styles.gemFieldLabel}>HSN Code * (GST / GeM)</Text>
+                      <TextInput
+                        style={styles.gemInput}
+                        value={hsnCode}
+                        onChangeText={setHsnCode}
+                        placeholder="e.g. 6912"
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    <View style={[styles.fieldGroup, { flex: 1 }]}>
+                      <Text style={styles.gemFieldLabel}>Pehchan ID (Artisan Card)</Text>
+                      <TextInput
+                        style={styles.gemInput}
+                        value={pehchanId}
+                        onChangeText={setPehchanId}
+                        placeholder="e.g. TN-KAN-2023-8891"
+                        placeholderTextColor="#9CA3AF"
+                        autoCapitalize="characters"
+                      />
+                    </View>
+                  </View>
+
+                  {/* Certification Type */}
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.gemFieldLabel}>Artisan / OEM Certification</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={styles.certRow}>
+                        {CERT_OPTIONS.map((c) => {
+                          const active = certType === c;
+                          return (
+                            <TouchableOpacity
+                              key={c}
+                              style={[styles.certChip, active && styles.certChipActive]}
+                              onPress={() => setCertType(c)}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={[styles.certChipText, active && styles.certChipTextActive]}>
+                                {c}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </ScrollView>
+                  </View>
+
+                  {/* Dimensions & Weight */}
+                  <View style={styles.rowTwo}>
+                    <View style={[styles.fieldGroup, { flex: 1.2 }]}>
+                      <Text style={styles.gemFieldLabel}>Dimensions (LxWxH cm)</Text>
+                      <TextInput
+                        style={styles.gemInput}
+                        value={dimensions}
+                        onChangeText={setDimensions}
+                        placeholder="e.g. 25x15x15 cm"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                    <View style={[styles.fieldGroup, { flex: 0.8 }]}>
+                      <Text style={styles.gemFieldLabel}>Weight (kg)</Text>
+                      <TextInput
+                        style={styles.gemInput}
+                        value={weightKg}
+                        onChangeText={setWeightKg}
+                        placeholder="e.g. 0.8"
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+
+                  {/* Package Contents */}
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.gemFieldLabel}>Package Contents (for GeM Delivery)</Text>
+                    <TextInput
+                      style={styles.gemInput}
+                      value={packageContents}
+                      onChangeText={setPackageContents}
+                      placeholder="e.g. 1 N Handcrafted Terracotta Vase"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+
+                  {/* GSTIN & GI Tag */}
+                  <View style={styles.rowTwo}>
+                    <View style={[styles.fieldGroup, { flex: 1 }]}>
+                      <Text style={styles.gemFieldLabel}>GSTIN (Optional / URP)</Text>
+                      <TextInput
+                        style={styles.gemInput}
+                        value={gstin}
+                        onChangeText={setGstin}
+                        placeholder="33AAAAA0000A1Z5"
+                        placeholderTextColor="#9CA3AF"
+                        autoCapitalize="characters"
+                      />
+                    </View>
+                    <View style={[styles.fieldGroup, { flex: 1 }]}>
+                      <Text style={styles.gemFieldLabel}>GI Tag Reg No</Text>
+                      <TextInput
+                        style={styles.gemInput}
+                        value={giTag}
+                        onChangeText={setGiTag}
+                        placeholder="e.g. GI-521"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                  </View>
+
+                  {/* Class 1 Local Content Guarantee */}
+                  <View style={styles.localContentBanner}>
+                    <ShieldCheck size={16} color="#059669" strokeWidth={2.2} />
+                    <Text style={styles.localContentText}>
+                      Make In India: <Text style={{ fontWeight: '700' }}>100% Class-I Local Supplier</Text> (GeM public procurement priority)
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
           </ScrollView>
+
 
           {/* Footer Actions */}
           <View style={styles.sheetFooter}>
@@ -665,4 +909,145 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: Fonts.headingBold,
   },
+  // GeM Portal Card Styles
+  gemSectionCard: {
+    backgroundColor: '#F0F5FF',
+    borderWidth: 1.5,
+    borderColor: '#BFDBFE',
+    borderRadius: 18,
+    padding: 14,
+    marginTop: 4,
+    overflow: 'hidden',
+  },
+  gemHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  gemHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  gemIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#DBEAFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gemTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  gemTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E3A8A',
+    fontFamily: Fonts.headingBold,
+  },
+  gemBadgePill: {
+    backgroundColor: '#1E3A8A',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  gemBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  gemSubtitle: {
+    fontSize: 11,
+    color: '#4B5563',
+    fontFamily: Fonts.body,
+    marginTop: 1,
+  },
+  gemBody: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#DBEAFE',
+    gap: 12,
+  },
+  autoSuggestBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#DBEAFE',
+    borderWidth: 1,
+    borderColor: '#93C5FD',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  autoSuggestText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1E3A8A',
+    fontFamily: Fonts.heading,
+  },
+  gemFieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1E3A8A',
+    fontFamily: Fonts.heading,
+  },
+  gemInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.2,
+    borderColor: '#BFDBFE',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+    fontSize: 13,
+    color: '#1E293B',
+    fontFamily: Fonts.body,
+  },
+  certRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  certChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  certChipActive: {
+    backgroundColor: '#1E3A8A',
+    borderColor: '#1E3A8A',
+  },
+  certChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#3B82F6',
+  },
+  certChipTextActive: {
+    color: '#FFFFFF',
+  },
+  localContentBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    padding: 8,
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  localContentText: {
+    fontSize: 11,
+    color: '#065F46',
+    flex: 1,
+  },
+
 });

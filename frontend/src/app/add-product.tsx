@@ -54,6 +54,8 @@ export default function AddProductScreen() {
     description_en: '',
     description_hi: '',
     description_ta: '',
+    description_te: '',
+    description_regional: '',
     category: '',
     suggestedPrice: '',
     finalPrice: '',
@@ -167,6 +169,8 @@ export default function AddProductScreen() {
             description_en={productData.description_en}
             description_hi={productData.description_hi}
             description_ta={productData.description_ta}
+            description_te={productData.description_te}
+            description_regional={productData.description_regional}
             onUpdate={(fields) => setProductData((d) => ({ ...d, ...fields }))}
             onNext={goNext}
           />

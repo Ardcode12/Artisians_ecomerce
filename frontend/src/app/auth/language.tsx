@@ -24,6 +24,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { LanguageCode } from '@/i18n/translations';
 import { isSpeechSupported, speakText, stopSpeech } from '@/utils/speech';
+import { setSelectedLanguage } from '@/utils/language-utils';
 
 const BG = '#F5F0E8';
 const INACTIVITY_DELAY = 10000;
@@ -185,6 +186,8 @@ export default function LanguageScreen() {
     stopAllSpeechAndTimers();
     setLanguage(selectedCode);
     updateOnboardingData({ language: selectedCode });
+    // Mark language as selected so the index.tsx gate doesn't re-ask
+    setSelectedLanguage(selectedCode as any).catch(() => {});
     router.push('/auth/phone');
   };
 

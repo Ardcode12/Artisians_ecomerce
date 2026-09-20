@@ -17,6 +17,8 @@ export interface ArtisanProfile {
   language?: string;
   scheme_id?: string;
   is_onboarded?: boolean;
+  age?: number | string;
+  experience?: string;
   bank_account_no?: string;
   bank_ifsc?: string;
   bank_holder_name?: string;
@@ -39,6 +41,10 @@ interface Session {
 
 export interface OnboardingData {
   name: string;
+  age?: string;
+  experience?: string;
+  shopName: string;
+  location: string;
   craftType: string;
   craftCustom: string;
   language: string;
@@ -109,6 +115,10 @@ interface AuthContextType {
 
 const defaultOnboarding: OnboardingData = {
   name: '',
+  age: '',
+  experience: '',
+  shopName: '',
+  location: '',
   craftType: '',
   craftCustom: '',
   language: 'English',
@@ -260,6 +270,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setProfile(p);
               setOnboardingData({
                 name: p.name || '',
+                shopName: p.shop_name || '',
+                location: p.location || '',
                 craftType: p.craft_type || '',
                 craftCustom: p.craft_custom || '',
                 language: p.language || 'English',
@@ -308,6 +320,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProfile(p);
           setOnboardingData({
             name: p.name,
+            shopName: p.shop_name || '',
+            location: p.location || '',
             craftType: p.craft_type || '',
             craftCustom: p.craft_custom || '',
             language: p.language || 'English',
@@ -426,6 +440,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const foundArtisanProfile = userRole === 'artisan' ? (backendRes.profile as ArtisanProfile) : null;
       const foundBuyerProfile = userRole === 'buyer' ? (backendRes.profile as BuyerProfile) : null;
 
+      // In login mode, if account does not exist, do NOT commit session to prevent zombie login
+      if (flowMode === 'login' && !isExistingProfile) {
+        return {
+          success: false,
+          isExistingProfile: false,
+          error: userRole === 'buyer'
+            ? 'No buyer account found. Please sign up first.'
+            : 'No account found. Please sign up first.',
+        };
+      }
+
       // Commit auth state
       setUser(authenticatedUser);
       setSession(authSession);
@@ -458,6 +483,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProfile(foundArtisanProfile);
           setOnboardingData({
             name: foundArtisanProfile.name,
+            shopName: foundArtisanProfile.shop_name || '',
+            location: foundArtisanProfile.location || '',
             craftType: foundArtisanProfile.craft_type || '',
             craftCustom: foundArtisanProfile.craft_custom || '',
             language: foundArtisanProfile.language || 'English',
@@ -556,6 +583,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: userId,
       phone: formattedPhone,
       name: onboardingData.name.trim() || 'Artisan',
+      age: onboardingData.age ? Number(onboardingData.age) : undefined,
+      experience: onboardingData.experience?.trim() || undefined,
+      shop_name: onboardingData.shopName.trim() || undefined,
+      location: onboardingData.location.trim() || undefined,
       role: 'artisan',
       craft_type: onboardingData.craftType || 'Handicraft & Art',
       craft_custom: onboardingData.craftCustom || undefined,
@@ -565,10 +596,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updated_at: new Date().toISOString(),
     };
 
+    const userObj: User = user || { id: userId, phone: formattedPhone, role: 'artisan' };
+    const authSession: Session = session || { access_token: `auth_token_${userId}`, user: userObj };
+
     // 1. Optimistic local state
     setProfile(newProfile);
+    setUser(userObj);
+    setSession(authSession);
+    setUserRoleState('artisan');
 
-    // Save to the local backend and PostgreSQL database.
+    // 2. Commit all session and profile keys to persistent storage immediately!
+    try {
+      await AsyncStorage.setItem('@artisanlink_user', JSON.stringify(userObj));
+      await AsyncStorage.setItem('@artisanlink_session', JSON.stringify(authSession));
+      await AsyncStorage.setItem('@artisanlink_auth_user', JSON.stringify(userObj));
+      await AsyncStorage.setItem('@artisanlink_auth_session', JSON.stringify(authSession));
+      await AsyncStorage.setItem('@artisanlink_auth_phone', formattedPhone);
+      await AsyncStorage.setItem('@artisanlink_artisan_profile', JSON.stringify(newProfile));
+      await AsyncStorage.setItem('@artisanlink_user_role', 'artisan');
+    } catch (_) {}
+
+    // 3. Save to backend database
     try {
       const backendRes = await fetchFromBackend('/api/profiles', {
         method: 'POST',
@@ -576,7 +624,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify(newProfile),
       });
       if (backendRes?.profile) {
-        setProfile(backendRes.profile as ArtisanProfile);
+        const saved = backendRes.profile as ArtisanProfile;
+        setProfile(saved);
+        AsyncStorage.setItem('@artisanlink_artisan_profile', JSON.stringify(saved)).catch(() => {});
       }
     } catch (e) {
       console.warn('Backend save note:', e);

@@ -91,6 +91,10 @@ def upsert_artisan_profile(data: Dict[str, Any]) -> Dict[str, Any]:
     bank_holder_name = data.get("bank_holder_name") if data.get("bank_holder_name") is not None else existing.get("bank_holder_name")
     bank_name = data.get("bank_name") if data.get("bank_name") is not None else existing.get("bank_name")
     upi_id = data.get("upi_id") if data.get("upi_id") is not None else existing.get("upi_id")
+    pehchan_id = data.get("pehchan_id") if data.get("pehchan_id") is not None else existing.get("pehchan_id", "")
+    gstin = data.get("gstin") if data.get("gstin") is not None else existing.get("gstin", "")
+    age = data.get("age") if data.get("age") is not None else existing.get("age")
+    experience = data.get("experience") if data.get("experience") is not None else existing.get("experience", "")
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -99,8 +103,9 @@ def upsert_artisan_profile(data: Dict[str, Any]) -> Dict[str, Any]:
             id, phone, name, shop_name, role, craft_type, craft_custom,
             bio, location, avatar_url, language, scheme_id, is_onboarded,
             bank_account_no, bank_ifsc, bank_holder_name, bank_name, upi_id,
+            pehchan_id, gstin, age, experience,
             created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(phone) DO UPDATE SET
             name=excluded.name,
             shop_name=excluded.shop_name,
@@ -117,16 +122,21 @@ def upsert_artisan_profile(data: Dict[str, Any]) -> Dict[str, Any]:
             bank_holder_name=COALESCE(excluded.bank_holder_name, profiles.bank_holder_name),
             bank_name=COALESCE(excluded.bank_name, profiles.bank_name),
             upi_id=COALESCE(excluded.upi_id, profiles.upi_id),
+            pehchan_id=COALESCE(NULLIF(excluded.pehchan_id, ''), profiles.pehchan_id),
+            gstin=COALESCE(NULLIF(excluded.gstin, ''), profiles.gstin),
+            age=COALESCE(excluded.age, profiles.age),
+            experience=COALESCE(NULLIF(excluded.experience, ''), profiles.experience),
             updated_at=excluded.updated_at;
         """, (
             profile_id, clean_phone, name, shop_name, "artisan", craft_type, craft_custom,
             bio, location, avatar_url, language, scheme_id, is_onboarded,
             bank_account_no, bank_ifsc, bank_holder_name, bank_name, upi_id,
+            pehchan_id, gstin, age, experience,
             existing.get("created_at") or now_iso, now_iso
         ))
 
     saved = get_profile_by_id_or_phone(clean_phone)
-    logger.info(f"[PROFILE SAVED] Phone: {clean_phone} | Name: {name} | Shop: {shop_name}")
+    logger.info(f"[PROFILE SAVED] Phone: {clean_phone} | Name: {name} | Shop: {shop_name} | Pehchan: {pehchan_id}")
     return saved or {}
 
 
@@ -158,6 +168,8 @@ def update_artisan_profile(id_or_phone: str, updates: Dict[str, Any]) -> Optiona
             bank_holder_name = ?,
             bank_name = ?,
             upi_id = ?,
+            pehchan_id = ?,
+            gstin = ?,
             updated_at = ?
         WHERE id = ? OR phone = ?
         """, (
@@ -176,12 +188,15 @@ def update_artisan_profile(id_or_phone: str, updates: Dict[str, Any]) -> Optiona
             merged.get("bank_holder_name"),
             merged.get("bank_name"),
             merged.get("upi_id"),
+            merged.get("pehchan_id") or "",
+            merged.get("gstin") or "",
             merged.get("updated_at"),
             existing["id"],
             existing["phone"]
         ))
 
     return get_profile_by_id_or_phone(existing["id"])
+
 
 
 def update_bank_details(id_or_phone: str, bank_data: Dict[str, Any]) -> Dict[str, Any]:

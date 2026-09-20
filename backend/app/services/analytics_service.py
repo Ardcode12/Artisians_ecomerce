@@ -106,10 +106,17 @@ def get_business_insights(artisan_id: Optional[str] = "demo_artisan", period: st
             i_counts = [6, 4, 2]
             s_counts = [3, 2, 1]
             for idx, r in enumerate(rows):
-                p_id, p_title, p_price, p_cat, p_img = r
+                if isinstance(r, dict):
+                    p_id = r.get("id")
+                    p_title = r.get("title")
+                    p_price = r.get("price")
+                    p_cat = r.get("category")
+                    p_img = r.get("image_url")
+                else:
+                    p_id, p_title, p_price, p_cat, p_img = r
                 real_top.append({
-                    "id": p_id,
-                    "title": p_title,
+                    "id": p_id or f"prod_{idx}",
+                    "title": p_title or f"Product {idx+1}",
                     "price": safe_float_price(p_price, 1100.0),
                     "category": p_cat or "Handicraft",
                     "image_url": p_img or "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=500&q=80",
@@ -229,29 +236,43 @@ def get_product_performance(product_id: str) -> Dict[str, Any]:
         """, (product_id,))
         row = cursor.fetchone()
         if row:
-            title = row[0] or title
-            price = safe_float_price(row[1], price)
-            category = row[2] or category
-            image_url = row[3] or image_url
+            if isinstance(row, dict):
+                title = row.get("title") or title
+                price = safe_float_price(row.get("price"), price)
+                category = row.get("category") or category
+                image_url = row.get("image_url") or image_url
+            else:
+                title = row[0] or title
+                price = safe_float_price(row[1], price)
+                category = row[2] or category
+                image_url = row[3] or image_url
 
         # Check price history
         cursor.execute("""
         SELECT price, is_ai_suggested, note, changed_at
         FROM product_price_history
         WHERE product_id = ? OR product_id = 'prod_vase'
-        ORDER BY rowid ASC;
+        ORDER BY changed_at ASC;
         """, (product_id,))
         p_rows = cursor.fetchall()
 
     price_history = []
     if p_rows:
         for r in p_rows:
-            price_history.append({
-                "price": safe_float_price(r[0], 950.0),
-                "is_ai_suggested": bool(r[1]),
-                "note": r[2],
-                "date": r[3],
-            })
+            if isinstance(r, dict):
+                price_history.append({
+                    "price": safe_float_price(r.get("price"), 950.0),
+                    "is_ai_suggested": bool(r.get("is_ai_suggested")),
+                    "note": r.get("note"),
+                    "date": r.get("changed_at"),
+                })
+            else:
+                price_history.append({
+                    "price": safe_float_price(r[0], 950.0),
+                    "is_ai_suggested": bool(r[1]),
+                    "note": r[2],
+                    "date": r[3],
+                })
     else:
         price_history = [
             {"price": 1100.0, "is_ai_suggested": True, "note": "Published at ₹1,100 (AI suggested)", "date": "Aug 28, 2024"},
@@ -313,14 +334,23 @@ def get_activity_history(
             sql += " AND (title LIKE ? OR subtitle LIKE ?)"
             params.extend([f"%{search_q}%", f"%{search_q}%"])
 
-        sql += " ORDER BY rowid ASC;"
+        sql += " ORDER BY created_at ASC;"
         cursor.execute(sql, params)
         rows = cursor.fetchall()
 
     # Group by date_group
     grouped: Dict[str, List[Dict[str, Any]]] = {}
     for r in rows:
-        e_id, e_type, e_title, e_sub, e_det, e_time, e_date, e_created = r
+        if isinstance(r, dict):
+            e_id = r.get("id")
+            e_type = r.get("event_type")
+            e_title = r.get("title")
+            e_sub = r.get("subtitle")
+            e_det = r.get("detail_id")
+            e_time = r.get("time_display")
+            e_date = r.get("date_group")
+        else:
+            e_id, e_type, e_title, e_sub, e_det, e_time, e_date, e_created = r
         item = {
             "id": e_id,
             "type": e_type,
@@ -329,9 +359,10 @@ def get_activity_history(
             "detail_id": e_det,
             "time": e_time,
         }
-        if e_date not in grouped:
-            grouped[e_date] = []
-        grouped[e_date].append(item)
+        group_key = e_date or "Recent"
+        if group_key not in grouped:
+            grouped[group_key] = []
+        grouped[group_key].append(item)
 
     # Format as list of groups
     groups_list = [{"date": k, "events": v} for k, v in grouped.items()]

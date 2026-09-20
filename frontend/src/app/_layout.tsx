@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from '@/context/AuthContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { CartProvider } from '@/context/CartContext';
+import { initAutoSyncWatcher } from '@/services/offlineProductSync';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -13,6 +14,14 @@ export default function RootLayout() {
     const timer = setTimeout(() => {
       SplashScreen.hideAsync();
     }, 100);
+
+    // Start auto-sync watcher for offline products
+    try {
+      initAutoSyncWatcher();
+    } catch (e) {
+      console.warn('[RootLayout] AutoSyncWatcher init error:', e);
+    }
+
     return () => clearTimeout(timer);
   }, []);
 

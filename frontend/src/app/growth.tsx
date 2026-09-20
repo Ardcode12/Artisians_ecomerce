@@ -48,7 +48,7 @@ const CARD_GAP = 12;
 const HORIZONTAL_PADDING = 18;
 
 // ── Multilingual Voice Guides for Growth Hub (EN, HI, TA) ──────────────────
-export const GROWTH_PAGE_OVERVIEW_TEXTS: Record<AppLanguage, string> = {
+export const GROWTH_PAGE_OVERVIEW_TEXTS: Record<string, string> = {
   en:
     "Welcome to Growth Hub! This section gives you tools to expand your handicraft business and earn more. " +
     "First, tap 'Design Ideas' to see modern fusion trends and creative product ideas that urban buyers love. " +
@@ -72,7 +72,7 @@ export const GROWTH_PAGE_OVERVIEW_TEXTS: Record<AppLanguage, string> = {
     "ஒவ்வொரு பகுதியைப் பற்றியும் அறிய அதன் ஸ்பீக்கர் ஐகானைத் தட்டவும்.",
 };
 
-export const GROWTH_SECTION_TEXTS: Record<string, Record<AppLanguage, string>> = {
+export const GROWTH_SECTION_TEXTS: Record<string, Record<string, string>> = {
   design: {
     en: "Design Ideas. Discover modern fusion concepts, trending color palettes, and contemporary styling to make your traditional crafts appeal to urban buyers and gift markets.",
     hi: "डिज़ाइन आइडियाज़। पारंपरिक शिल्पों को आधुनिक खरीदारों और उपहार बाज़ार के अनुकूल बनाने के लिए नए डिज़ाइन और कलर पैलेट देखें।",
