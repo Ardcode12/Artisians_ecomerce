@@ -437,15 +437,15 @@ def get_category_materials_list(category: str) -> List[Dict[str, Any]]:
     
     if "raw" in cat_lower:
         return [
-            {"id": "bamboo", "name": "Bamboo", "icon": "bamboo", "image": "https://images.unsplash.com/photo-1520072959219-c595dc870360?w=200&q=80"},
+            {"id": "bamboo", "name": "Bamboo", "icon": "bamboo", "image": "https://images.unsplash.com/photo-1597362925123-77861d3fbac7?w=200&q=80"},
             {"id": "sabai_grass", "name": "Sabai Grass", "icon": "grass", "image": "https://images.unsplash.com/photo-1544816155-12df9643f363?w=200&q=80"},
             {"id": "clay", "name": "Clay", "icon": "clay", "image": "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=200&q=80"},
-            {"id": "wood", "name": "Wood", "icon": "wood", "image": "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=200&q=80"},
-            {"id": "cotton_yarn", "name": "Cotton Yarn", "icon": "yarn", "image": "https://images.unsplash.com/photo-1607613009820-a29f7bb81c04?w=200&q=80"},
+            {"id": "wood", "name": "Wood", "icon": "wood", "image": "https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=200&q=80"},
+            {"id": "cotton_yarn", "name": "Cotton Yarn", "icon": "yarn", "image": "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=200&q=80"},
             {"id": "natural_dyes", "name": "Natural Dyes", "icon": "dyes", "image": "https://images.unsplash.com/photo-1596541223130-5d31a73fb6c6?w=200&q=80"},
             {"id": "metal", "name": "Metal", "icon": "metal", "image": "https://images.unsplash.com/photo-1535813547-99c456a41d4a?w=200&q=80"},
             {"id": "resin", "name": "Resin", "icon": "resin", "image": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&q=80"},
-            {"id": "jute", "name": "Jute", "icon": "jute", "image": "https://images.unsplash.com/photo-1590402494682-cd3fb53b1f70?w=200&q=80"},
+            {"id": "jute", "name": "Jute", "icon": "jute", "image": "https://images.unsplash.com/photo-1621451537084-482c73073a0f?w=200&q=80"},
             {"id": "others", "name": "Others", "icon": "more", "image": ""},
         ]
     elif "tool" in cat_lower:

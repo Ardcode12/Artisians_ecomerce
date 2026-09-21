@@ -225,6 +225,14 @@ export interface TranslationKeys {
   common_error_retry: string;
   common_no_data: string;
   common_done: string;
+
+  // ── Bottom Navigation Labels ─────────────────────────────────────
+  nav_home: string;
+  nav_products: string;
+  nav_growth: string;
+  nav_analytics: string;
+  nav_profile: string;
+
   [key: string]: any;
 }
 
@@ -429,6 +437,12 @@ export const translations: Translations = {
     common_error_retry: 'Something went wrong. Tap to retry.',
     common_no_data: 'Nothing here yet',
     common_done: 'Done',
+
+    nav_home: 'Home',
+    nav_products: 'Products',
+    nav_growth: 'Growth',
+    nav_analytics: 'Analytics',
+    nav_profile: 'Profile',
 
     // Instagram & Reels
     'ig.title': 'Instagram',
@@ -664,6 +678,12 @@ export const translations: Translations = {
     common_no_data: 'अभी यहाँ कुछ नहीं है',
     common_done: 'हो गया',
 
+    nav_home: 'होम',
+    nav_products: 'उत्पाद',
+    nav_growth: 'विकास',
+    nav_analytics: 'विश्लेषण',
+    nav_profile: 'प्रोफ़ाइल',
+
     // Instagram & Reels
     'ig.title': 'इंस्टाग्राम',
     'ig.subtitle': 'जुड़ा नहीं है',
@@ -898,6 +918,12 @@ export const translations: Translations = {
     common_no_data: 'இன்னும் ஒன்றும் இல்லை',
     common_done: 'முடிந்தது',
 
+    nav_home: 'முகப்பு',
+    nav_products: 'பொருட்கள்',
+    nav_growth: 'வளர்ச்சி',
+    nav_analytics: 'பகுப்பாய்வு',
+    nav_profile: 'சுயவிவரம்',
+
     // Instagram & Reels
     'ig.title': 'இன்ஸ்டாகிராம்',
     'ig.subtitle': 'இணைக்கப்படவில்லை',
@@ -1118,6 +1144,12 @@ export const translations: Translations = {
     common_error_retry: 'లోపం జరిగింది. మళ్ళీ ప్రయత్నించండి.',
     common_no_data: 'ఇంకా ఏమీ లేదు',
     common_done: 'పూర్తయింది',
+
+    nav_home: 'హోమ్',
+    nav_products: 'ఉత్పత్తులు',
+    nav_growth: 'వృద్ధి',
+    nav_analytics: 'విశ్లేషణ',
+    nav_profile: 'ప్రొఫైల్',
   },
 
   // ════════════════════════════════════════════════════════════════════
@@ -1277,6 +1309,12 @@ export const translations: Translations = {
     common_error_retry: 'কিছু ভুল হয়েছে। আবার চেষ্টা করুন।',
     common_no_data: 'এখনো কিছু নেই',
     common_done: 'সম্পন্ন',
+
+    nav_home: 'হোম',
+    nav_products: 'পণ্য',
+    nav_growth: 'প্রবৃদ্ধি',
+    nav_analytics: 'বিশ্লেষণ',
+    nav_profile: 'প্রোফাইল',
   },
 
   // ════════════════════════════════════════════════════════════════════
@@ -1436,6 +1474,12 @@ export const translations: Translations = {
     common_error_retry: 'ਕੁਝ ਗਲਤ ਹੋਇਆ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
     common_no_data: 'ਅਜੇ ਇੱਥੇ ਕੁਝ ਨਹੀਂ',
     common_done: 'ਹੋ ਗਿਆ',
+
+    nav_home: 'ਹੋਮ',
+    nav_products: 'ਉਤਪਾਦ',
+    nav_growth: 'ਵਿਕਾਸ',
+    nav_analytics: 'ਵਿਸ਼ਲੇਸ਼ਣ',
+    nav_profile: 'ਪ੍ਰੋਫਾਈਲ',
   },
 
   // ════════════════════════════════════════════════════════════════════
@@ -1595,6 +1639,12 @@ export const translations: Translations = {
     common_error_retry: 'काहीतरी चुकले. पुन्हा प्रयत्न करा.',
     common_no_data: 'अद्याप इथे काहीही नाही',
     common_done: 'झाले',
+
+    nav_home: 'होम',
+    nav_products: 'उत्पादने',
+    nav_growth: 'वाढ',
+    nav_analytics: 'विश्लेषण',
+    nav_profile: 'प्रोफाइल',
   },
 };
 

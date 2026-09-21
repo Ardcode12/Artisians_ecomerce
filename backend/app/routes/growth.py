@@ -60,21 +60,21 @@ def list_growth_products(
     with get_db() as conn:
         cursor = conn.cursor()
         if artisan_id:
+            # Only return this seller's own products — no demo products mixed in
             cursor.execute("""
             SELECT id, artisan_id, title, category, craft_type, price, image_url, status, description_en
             FROM products
-            WHERE artisan_id = ? OR artisan_id = 'demo_artisan'
-            ORDER BY CASE WHEN artisan_id = ? THEN 0 ELSE 1 END, created_at DESC;
-            """, (artisan_id, artisan_id))
+            WHERE artisan_id = ?
+            ORDER BY created_at DESC;
+            """, (artisan_id,))
             rows = cursor.fetchall()
-            if rows:
-                return {
-                    "success": True,
-                    "products": [dict(r) for r in rows],
-                    "total": len(rows),
-                }
+            return {
+                "success": True,
+                "products": [dict(r) for r in rows],
+                "total": len(rows),
+            }
 
-        # If no artisan_id or no artisan specific products, list all products in product section
+        # No artisan_id provided — list all products
         cursor.execute("""
         SELECT id, artisan_id, title, category, craft_type, price, image_url, status, description_en
         FROM products

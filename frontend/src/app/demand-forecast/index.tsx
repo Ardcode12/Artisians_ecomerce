@@ -71,11 +71,11 @@ export default function DemandForecastHomeScreen() {
     id: 1,
     slug: 'diwali',
     name: 'Diwali',
-    days_left: 18,
-    days_left_text: '18 days left',
-    date_formatted: 'Oct 31, 2024',
+    days_left: 29,
+    days_left_text: '29 days left',
+    date_formatted: 'Oct 20, 2026',
     subtitle: 'Time to prepare your products',
-    tagline: 'Diwali is in 18 days',
+    tagline: 'Diwali is in 29 days',
   });
   const [categories, setCategories] = useState<ForecastCategory[]>([
     {

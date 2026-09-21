@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, Package, TrendingUp, BarChart3, User } from 'lucide-react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
+import { useLanguage } from '@/context/LanguageContext';
 
 // 4-tab nav: Home | Products | Growth | Analytical (Profile accessible via header icon)
 export type ArtisanTab = 'home' | 'listings' | 'growth' | 'analytical' | 'add' | 'inquiries' | 'profile';
@@ -14,6 +15,7 @@ interface ArtisanBottomNavProps {
 
 export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
 
   return (
     <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 8) }]}>
@@ -32,7 +34,7 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
             fill={activeTab === 'home' ? Colors.primary : 'none'}
           />
           <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabLabelActive]}>
-            Home
+            {t('nav_home')}
           </Text>
         </TouchableOpacity>
 
@@ -48,7 +50,7 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
             strokeWidth={activeTab === 'listings' ? 2.2 : 1.6}
           />
           <Text style={[styles.tabLabel, activeTab === 'listings' && styles.tabLabelActive]}>
-            Products
+            {t('nav_products')}
           </Text>
         </TouchableOpacity>
 
@@ -64,11 +66,11 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
             strokeWidth={activeTab === 'growth' ? 2.2 : 1.6}
           />
           <Text style={[styles.tabLabel, activeTab === 'growth' && styles.tabLabelActive]}>
-            Growth
+            {t('nav_growth')}
           </Text>
         </TouchableOpacity>
 
-        {/* Analytical */}
+        {/* Analytics */}
         <TouchableOpacity
           style={styles.tab}
           onPress={() => onTabChange('analytical')}
@@ -80,7 +82,7 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
             strokeWidth={activeTab === 'analytical' ? 2.2 : 1.6}
           />
           <Text style={[styles.tabLabel, activeTab === 'analytical' && styles.tabLabelActive]}>
-            Analytical
+            {t('nav_analytics')}
           </Text>
         </TouchableOpacity>
 
@@ -96,7 +98,7 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
             strokeWidth={activeTab === 'profile' ? 2.2 : 1.6}
           />
           <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]}>
-            Profile
+            {t('nav_profile')}
           </Text>
         </TouchableOpacity>
 

@@ -19,11 +19,27 @@ def _normalize_img(path: Optional[str]) -> str:
     return path
 
 
+# Diwali 2026: October 20, 2026
+_DIWALI_2026 = datetime(2026, 10, 20, tzinfo=timezone.utc)
+
+
+def _days_until(target: datetime) -> int:
+    """Returns the number of whole days from today (UTC) until target date."""
+    now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    delta = (target.replace(hour=0, minute=0, second=0, microsecond=0) - now).days
+    return max(0, delta)
+
+
 def get_featured_festival() -> Dict[str, Any]:
     """
     Returns the nearest upcoming festival from the calendar with countdown days.
-    Defaults to Diwali (18 days left) matching the design specification.
+    Defaults to Diwali 2026 (Oct 20, 2026) with dynamically calculated days_left.
     """
+    days_left = _days_until(_DIWALI_2026)
+    date_formatted = "Oct 20, 2026"
+    tagline = f"Diwali is in {days_left} days"
+    days_left_text = f"{days_left} days left"
+
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM festival_calendar WHERE slug = 'diwali' LIMIT 1;")
@@ -43,11 +59,11 @@ def get_featured_festival() -> Dict[str, Any]:
                 "id": item["id"],
                 "slug": item["slug"],
                 "name": item["name"],
-                "days_left": 18,
-                "days_left_text": "18 days left",
-                "date_formatted": "Oct 31, 2024",
+                "days_left": days_left,
+                "days_left_text": days_left_text,
+                "date_formatted": date_formatted,
                 "subtitle": item.get("subtitle") or "Time to prepare your products",
-                "tagline": "Diwali is in 18 days",
+                "tagline": tagline,
                 "icon_type": item.get("icon_type") or "diya",
                 "region": item.get("region") or "Pan-India",
                 "category_uplift": category_uplift,
@@ -60,11 +76,11 @@ def get_featured_festival() -> Dict[str, Any]:
         "id": 1,
         "slug": "diwali",
         "name": "Diwali",
-        "days_left": 18,
-        "days_left_text": "18 days left",
-        "date_formatted": "Oct 31, 2024",
+        "days_left": days_left,
+        "days_left_text": days_left_text,
+        "date_formatted": date_formatted,
         "subtitle": "Time to prepare your products",
-        "tagline": "Diwali is in 18 days",
+        "tagline": tagline,
         "icon_type": "diya",
         "region": "Pan-India",
         "category_uplift": {"Baskets": 0.40, "Home Decor": 0.35, "Textiles": 0.25},
@@ -81,23 +97,25 @@ def get_all_upcoming_festivals() -> List[Dict[str, Any]]:
         rows = cursor.fetchall()
 
     festivals = []
-    days_map = {
-        "diwali": 18,
-        "wedding-season": 32,
-        "christmas": 68,
-        "pongal": 88
+    # Festival dates for 2026 — days_left calculated dynamically
+    festival_dates = {
+        "diwali": datetime(2026, 10, 20, tzinfo=timezone.utc),
+        "wedding-season": datetime(2026, 11, 15, tzinfo=timezone.utc),
+        "christmas": datetime(2026, 12, 25, tzinfo=timezone.utc),
+        "pongal": datetime(2027, 1, 14, tzinfo=timezone.utc),
     }
     date_map = {
-        "diwali": "Oct 31, 2024",
-        "wedding-season": "Nov 15, 2024",
-        "christmas": "Dec 25, 2024",
-        "pongal": "Jan 14, 2025"
+        "diwali": "Oct 20, 2026",
+        "wedding-season": "Nov 15, 2026",
+        "christmas": "Dec 25, 2026",
+        "pongal": "Jan 14, 2027"
     }
 
     for r in rows:
         item = dict(r)
         slug = item["slug"]
-        days = days_map.get(slug, 30)
+        fest_date = festival_dates.get(slug)
+        days = _days_until(fest_date) if fest_date else 30
         try:
             uplift = json.loads(item.get("category_uplift") or "{}")
         except Exception:
@@ -318,9 +336,9 @@ def get_festival_overview(slug: str = "diwali") -> Dict[str, Any]:
         "success": True,
         "slug": slug,
         "name": name,
-        "date_formatted": "Oct 31, 2024",
-        "days_left": 18,
-        "days_left_badge": "18 days left",
+        "date_formatted": "Oct 20, 2026",
+        "days_left": _days_until(_DIWALI_2026),
+        "days_left_badge": f"{_days_until(_DIWALI_2026)} days left",
         "icon_type": "diya",
         "diya_image_url": "uploads/forecast_diya.jpg",
         "section_heading": "Demand usually increases for:",

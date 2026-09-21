@@ -92,82 +92,9 @@ export default function AnalyticsHomeScreen() {
         throw new Error(json.error || 'Failed to fetch insights');
       }
     } catch (e) {
-      console.warn('Failed to fetch analytics insights, using fallback data', e);
-      // Fallback matching Screenshot 1
-      setData({
-        period: '30 Days',
-        hero_stats: {
-          revenue: { value: '₹8,450', raw_value: 8450, label: 'Revenue', trend: '↑ 18%' },
-          orders: { value: '12', raw_value: 12, label: 'Orders', trend: '↑ 3 more' },
-          listing_views: { value: '340', raw_value: 340, label: 'Listing Views', trend: '↑ 22%' },
-          conversion_rate: { value: '3.5%', label: 'Conversion', subtext: 'views → orders' },
-        },
-        revenue_chart: {
-          headline: 'Your best week was Sept 8 – 14',
-          sub_headline: 'with ₹2,100 in sales',
-          peak_value: '₹2,100',
-          points: [
-            { day: 'Sep 1', val: 320 },
-            { day: 'Sep 3', val: 410 },
-            { day: 'Sep 6', val: 680 },
-            { day: 'Sep 8', val: 1200 },
-            { day: 'Sep 11', val: 2100 },
-            { day: 'Sep 15', val: 1650 },
-            { day: 'Sep 18', val: 780 },
-            { day: 'Sep 22', val: 620 },
-            { day: 'Sep 26', val: 840 },
-            { day: 'Sep 30', val: 1150 },
-          ],
-          x_labels: ['Sep 1', 'Sep 8', 'Sep 15', 'Sep 22', 'Sep 30'],
-        },
-        top_products: [
-          {
-            id: 'prod_vase',
-            title: 'Terracotta Vase',
-            price: 1100,
-            category: 'Hand-thrown clay vase',
-            image_url: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=500&q=80',
-            views: 84,
-            inquiries: 6,
-            sold: 3,
-          },
-          {
-            id: 'prod_basket',
-            title: 'Woven Basket',
-            price: 950,
-            category: 'Sabai grass woven basket',
-            image_url: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&q=80',
-            views: 56,
-            inquiries: 4,
-            sold: 2,
-          },
-        ],
-        price_performance: {
-          show: true,
-          headline: 'Your AI-suggested prices are working',
-          body: 'Listings published at the AI-suggested price sold 40% faster than manually-priced listings',
-        },
-        social_reach: {
-          show: true,
-          headline: 'Your reels are being seen',
-          views: '1,240',
-          likes: '38',
-          comments: '4',
-        },
-        buyer_locations: [
-          { city: 'Chennai', orders: 5 },
-          { city: 'Bengaluru', orders: 3 },
-          { city: 'Coimbatore', orders: 2 },
-        ],
-        speech_summary:
-          'Your business insights: Total revenue is ₹8,450, up 18 percent. You received 12 orders and 340 views. Your best week was September 8 to 14 with ₹2,100 in sales.',
-        speech_summary_en:
-          'Your business insights: Total revenue is ₹8,450, up 18 percent. You received 12 orders and 340 views. Your best week was September 8 to 14 with ₹2,100 in sales. Your top product is Terracotta Vase with 3 units sold.',
-        speech_summary_hi:
-          'आपकी व्यापार रिपोर्ट: आपकी कुल कमाई 8,450 रुपये है, जो 18 प्रतिशत बढ़ी है। आपको 12 ऑर्डर और 340 बार उत्पादों को देखा गया है। सितंबर 8 से 14 में 2,100 रुपये की सबसे अधिक बिक्री हुई। आपका सबसे लोकप्रिय उत्पाद टेराकोटा फूलदान है।',
-        speech_summary_ta:
-          'உங்கள் வணிக அறிக்கை: உங்கள் மொத்த வருமானம் 8,450 ரூபாய், இது 18 சதவீதம் அதிகரித்துள்ளது. உங்களுக்கு 12 ஆர்டர்களும் 340 பார்வைகளும் கிடைத்துள்ளன. செப்டம்பர் 8 முதல் 14 வரை 2,100 ரூபாய் விற்பனை ஆனது. உங்கள் சிறந்த தயாரிப்பு களிமண் பூந்தொட்டி ஆகும்.',
-      });
+      console.warn('Failed to fetch analytics insights, showing empty state', e);
+      // Show empty state instead of fake demo data
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -423,6 +350,27 @@ export default function AnalyticsHomeScreen() {
         {loading && !data ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color="#C04B25" />
+          </View>
+        ) : !data ? (
+          /* Empty state — no real data from API yet */
+          <View style={styles.emptyStateBox}>
+            <View style={styles.emptyStateIconCircle}>
+              <BarChart2 size={36} color="#C04B25" strokeWidth={2} />
+            </View>
+            <Text style={styles.emptyStateTitle}>
+              {currentAppLang === 'ta'
+                ? 'இன்னும் விற்பனை தரவு இல்லை'
+                : currentAppLang === 'hi'
+                ? 'अभी कोई बिक्री डेटा नहीं'
+                : 'No sales data yet'}
+            </Text>
+            <Text style={styles.emptyStateSubtitle}>
+              {currentAppLang === 'ta'
+                ? 'உங்கள் முதல் பொருளை சேர்த்து விற்கத் தொடங்குங்கள். பின்னர் இங்கே உங்கள் வணிக அறிக்கை தோன்றும்.'
+                : currentAppLang === 'hi'
+                ? 'अपना पहला उत्पाद जोड़ें और बेचना शुरू करें। फिर यहाँ आपकी व्यापार रिपोर्ट दिखेगी।'
+                : 'Add your first product and start selling. Your business report will appear here once you have sales activity.'}
+            </Text>
           </View>
         ) : (
           <>
@@ -843,6 +791,41 @@ const styles = StyleSheet.create({
   loadingBox: {
     paddingVertical: 80,
     alignItems: 'center',
+  },
+  emptyStateBox: {
+    margin: 20,
+    marginTop: 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F0EDE6',
+    ...Shadow.card,
+  },
+  emptyStateIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FDF0E6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#0F2438',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    fontFamily: Fonts.body,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 21,
   },
   heroStatsScroll: {
     flexDirection: 'row',

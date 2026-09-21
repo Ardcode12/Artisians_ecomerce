@@ -423,19 +423,20 @@ def trigger_seller_confirmation_call(
         )
 
         call_url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Calls.json"
-        payload = {
-            "To":      seller_phone,
-            "From":    from_num,
-            "Twiml":   twiml,
-            "Timeout": 30,
-        }
+        data_fields = [
+            ("To", seller_phone),
+            ("From", from_num),
+            ("Twiml", twiml),
+            ("Timeout", "30"),
+        ]
 
         if base.startswith(("http://", "https://")) and not ("localhost" in base or "127.0.0.1" in base):
-            payload["StatusCallback"] = f"{base}/api/calls/webhook/status?call_id={call_id}"
-            payload["StatusCallbackMethod"] = "POST"
-            payload["StatusCallbackEvent"] = "initiated ringing answered completed"
+            data_fields.append(("StatusCallback", f"{base}/api/calls/webhook/status?call_id={call_id}"))
+            data_fields.append(("StatusCallbackMethod", "POST"))
+            for _ev in ["initiated", "ringing", "answered", "completed"]:
+                data_fields.append(("StatusCallbackEvent", _ev))
 
-        res = requests.post(call_url, data=payload, auth=(sid, token), timeout=10)
+        res = requests.post(call_url, data=data_fields, auth=(sid, token), timeout=10)
         res_data = res.json()
 
         if res.status_code in (200, 201) and "sid" in res_data:

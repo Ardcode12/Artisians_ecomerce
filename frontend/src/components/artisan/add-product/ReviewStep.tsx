@@ -57,8 +57,7 @@ interface ReviewStepProps {
 
 const MARKETPLACES = [
   { Icon: Building2, name: 'GEM Portal', sub: 'Govt. e-Marketplace', selected: true },
-  { Icon: ShoppingCart, name: 'Amazon', sub: 'Artisan store', selected: true },
-  { Icon: Store, name: 'Flipkart Samarth', sub: 'Handicraft hub', selected: false },
+  { Icon: Globe, name: 'ONDC', sub: 'Open Network for Digital Commerce', selected: true },
   { Icon: Store, name: 'Craftsvilla', sub: 'Indian craft marketplace', selected: false },
 ];
 

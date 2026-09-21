@@ -50,21 +50,21 @@ const HORIZONTAL_PADDING = 18;
 // ── Multilingual Voice Guides for Growth Hub (EN, HI, TA) ──────────────────
 export const GROWTH_PAGE_OVERVIEW_TEXTS: Record<string, string> = {
   en:
-    "Welcome to Growth Hub! This section gives you tools to expand your handicraft business and earn more. " +
+    "Welcome to Craft Bridge Growth Hub! This section gives you tools to expand your handicraft business and earn more. " +
     "First, tap 'Design Ideas' to see modern fusion trends and creative product ideas that urban buyers love. " +
     "Second, tap 'Raw Materials and Tools' to connect directly with trusted bulk suppliers for yarn, clay, brass, and tools at wholesale prices. " +
     "Third, tap 'Government Schemes' to explore financial subsidies, collateral-free loans, and PM Vishwakarma benefits. " +
     "Fourth, tap 'Demand Forecast' to prepare your stock and materials 45 days in advance for upcoming festival seasons like Diwali and Pongal. " +
     "Tap any card's speaker icon to hear more about that specific tool.",
   hi:
-    "ग्रोथ हब में आपका स्वागत है! यह सेक्शन आपके हस्तशिल्प व्यवसाय को बढ़ाने और अधिक कमाई करने के लिए टूल्स प्रदान करता है। " +
+    "क्राफ्ट ब्रिज ग्रोथ हब में आपका स्वागत है! यह सेक्शन आपके हस्तशिल्प व्यवसाय को बढ़ाने और अधिक कमाई करने के लिए टूल्स प्रदान करता है। " +
     "सबसे पहले, 'डिज़ाइन आइडियाज़' पर टैप करके आधुनिक ट्रेंड्स और नए उत्पाद विचार देखें जिन्हें शहरी खरीदार पसंद करते हैं। " +
     "दूसरा, थोक कीमतों पर धागा, मिट्टी, पीतल और औज़ारों के विश्वसनीय आपूर्तिकर्ताओं से सीधे संपर्क के लिए 'कच्चा माल और उपकरण' पर टैप करें। " +
     "तीसरा, वित्तीय सहायता, बिना गारंटी ऋण और पीएम विश्वकर्मा लाभ खोजने के लिए 'सरकारी योजनाएं' पर टैप करें। " +
     "चौथा, दिवाली और पोंगल जैसे आगामी त्यौहारों के लिए 45 दिन पहले से स्टॉक तैयार करने के लिए 'त्यौहार मांग' पर टैप करें। " +
     "किसी भी टूल के बारे में विस्तार से सुनने के लिए उसके स्पीकर आइकन पर टैप करें।",
   ta:
-    "வளர்ச்சி மையத்திற்கு நல்வரவு! இந்த பகுதி உங்கள் கைவினைத் தொழிலை விரிவுபடுத்தி கூடுதல் வருமானம் ஈட்ட உதவுகிறது. " +
+    "கிராஃப்ட் பிரிட்ஜ் வளர்ச்சி மையத்திற்கு நல்வரவு! இந்த பகுதி உங்கள் கைவினைத் தொழிலை விரிவுபடுத்தி கூடுதல் வருமானம் ஈட்ட உதவுகிறது. " +
     "முதலாவதாக, 'வடிவமைப்பு யோசனைகள்' என்பதைத் தட்டி நவீன வடிவமைப்பு மற்றும் நகர்ப்புற வாடிக்கையாளர்கள் விரும்பும் புதிய கைவினை யோசனைகளைப் பார்க்கலாம். " +
     "இரண்டாவதாக, 'மூலப்பொருட்கள் & கருவிகள்' என்பதைத் தட்டி களிமண், நூல், பித்தளை போன்றவற்றை மொத்த விலையில் தரும் சப்ளையர்களுடன் நேரடியாகப் பேசலாம். " +
     "மூன்றாவதாக, 'அரசு நலத்திட்டங்கள்' என்பதைத் தட்டி பி.எம் விஸ்வகர்மா, மானியங்கள் மற்றும் கடன் உதவிகளை அறியலாம். " +
@@ -347,7 +347,7 @@ export default function GrowthHubScreen() {
             <ArrowLeft size={22} color="#1E293B" strokeWidth={2.2} />
           </TouchableOpacity>
 
-          <Text style={styles.title}>Growth Hub</Text>
+          <Text style={styles.title}>Craft Bridge</Text>
           <Text style={styles.subtitle}>
             Tools and support to grow your craft business
           </Text>
