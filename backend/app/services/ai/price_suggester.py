@@ -26,7 +26,7 @@ import joblib
 ML_MODEL_PATH = Path(__file__).resolve().parent.parent.parent.parent / "ml" / "price_model.pkl"
 _ml_artifact = None
 
-_GEMINI_PRICE_MODELS = [
+_GEMINI_PRICE_MODELS = [/media/arnald/Projects/Artisians_ecomerce-main/index.hxtml
     "gemini-3.1-flash-lite-preview",
     "gemini-3-flash-preview",
     "gemini-flash-latest",

@@ -15,6 +15,7 @@ TTS_CACHE_DIR = Path("/tmp/artisans_tts_cache")
 
 
 @router.get("/audio/{filename}")
+@router.head("/audio/{filename}")
 def serve_tts_audio(filename: str):
     """Serve a cached TTS audio file for Twilio <Play>."""
     # Security: only serve files from our cache dir, no path traversal
