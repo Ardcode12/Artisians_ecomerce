@@ -209,31 +209,38 @@ def get_category_demand_detail(category: str, artisan_id: Optional[str] = None) 
             cursor.execute("SELECT * FROM demand_forecasts WHERE category LIKE ? LIMIT 1;", (f"%{category}%",))
             row = cursor.fetchone()
 
+    cat_clean = (category or "").lower()
     if row:
         item = dict(row)
         try:
             reasons = json.loads(item.get("reasons_json") or "[]")
         except Exception:
             reasons = [
-                {"icon": "gift", "text": "Popular for gifting"},
-                {"icon": "home", "text": "High demand for home décor"},
-                {"icon": "trend", "text": "Sold 40% more last Diwali"}
+                {"icon": "gift", "text": "Diwali gift hampers & corporate dry fruit packing"},
+                {"icon": "sparkles", "text": "Festive home décor & puja flower offering trays"},
+                {"icon": "trend", "text": "Buyer pre-orders surge 40% before festive week"}
             ]
 
-        qty_min = item.get("recommended_qty_min", 30)
-        qty_max = item.get("recommended_qty_max", 40)
+        qty_min = item.get("recommended_qty_min", 35)
+        qty_max = item.get("recommended_qty_max", 50)
         demand = item.get("expected_demand", "High")
+
+        instructions = [
+            "Procure certified raw materials early from local suppliers via Materials & Tools to avoid pre-festival shortages.",
+            f"Produce target {qty_min} - {qty_max} units in disciplined weekly batches with attention to festive finish.",
+            f"Inspect, pack with protective natural wrapping, and publish inventory before {item.get('target_date', 'Oct 10')}."
+        ]
 
         return {
             "success": True,
             "category": item["category"],
-            "craft_description": item.get("craft_description") or "Handwoven using natural grass",
+            "craft_description": item.get("craft_description") or "Handwoven using natural Sabai grass & cane",
             "image_url": _normalize_img(item.get("image_url")),
             "demand": {
                 "level": demand,
                 "badge_text": f"↗ {demand}",
                 "headline": item.get("headline") or f"{demand} demand this Diwali",
-                "sub_headline": item.get("sub_headline") or "Basket sales rose 40% last year."
+                "sub_headline": item.get("sub_headline") or "Festive demand rose over 40% last year."
             },
             "recommendation": {
                 "caption": "Recommended for you",
@@ -241,12 +248,13 @@ def get_category_demand_detail(category: str, artisan_id: Optional[str] = None) 
                 "qty_max": qty_max,
                 "range_text": f"{qty_min} - {qty_max}",
                 "main_text": f"Make {qty_min} - {qty_max} more units",
-                "target_date": item.get("target_date") or "Oct 15",
-                "date_text": f"before {item.get('target_date') or 'Oct 15'}."
+                "target_date": item.get("target_date") or "Oct 10",
+                "date_text": f"before {item.get('target_date') or 'Oct 10'}."
             },
             "why_reasons": reasons,
-            "confidence": item.get("confidence") or "Estimated — based on category trends across the platform",
-            "rationale": item.get("rationale") or "Last Diwali, baskets like yours were 40% more popular. This year, we expect similar or higher demand.",
+            "instructions": instructions,
+            "confidence": item.get("confidence") or "Estimated — based on category trends and buyer pre-order signals",
+            "rationale": item.get("rationale") or f"Last Diwali, {item['category']} experienced peak festive demand. Complete production before {item.get('target_date', 'Oct 10')} for full festive sales.",
             "production_goal": item.get("production_goal") or 0,
             "goal_set_at": item.get("goal_set_at"),
             "chart_data": [
@@ -255,42 +263,151 @@ def get_category_demand_detail(category: str, artisan_id: Optional[str] = None) 
                 {"month": "Jul", "sales": 24, "is_festival": False, "label": "Jul"},
                 {"month": "Aug", "sales": 36, "is_festival": True, "label": "Aug (Rakhi)"},
                 {"month": "Sep", "sales": 30, "is_festival": False, "label": "Sep"},
-                {"month": "Oct", "sales": 72, "is_festival": True, "label": "Oct (Diwali)"},
+                {"month": "Oct", "sales": 78, "is_festival": True, "label": "Oct (Diwali)"},
                 {"month": "Nov", "sales": 55, "is_festival": True, "label": "Nov (Weddings)"},
                 {"month": "Dec", "sales": 40, "is_festival": True, "label": "Dec (New Year)"}
             ]
         }
 
-    # Default fallback for Baskets if not matched
+    # Curated contextual defaults by craft
+    if "pott" in cat_clean or "clay" in cat_clean:
+        return {
+            "success": True,
+            "category": "Pottery",
+            "craft_description": "Terracotta & earthenware ceremonial vessels",
+            "image_url": "uploads/forecast_pottery.jpg",
+            "demand": {
+                "level": "High",
+                "badge_text": "↗ High",
+                "headline": "Peak demand this Diwali (+45%)",
+                "sub_headline": "Clay diyas, earthen puja matkis, and terracotta decor surge across markets."
+            },
+            "recommendation": {
+                "caption": "Recommended for you",
+                "qty_min": 50,
+                "qty_max": 80,
+                "range_text": "50 - 80",
+                "main_text": "Make 50 - 80 more units",
+                "target_date": "Oct 12",
+                "date_text": "before Oct 12."
+            },
+            "why_reasons": [
+                {"icon": "flame", "text": "Diwali Lakshmi puja rituals & traditional oil lamps"},
+                {"icon": "gift", "text": "Eco-friendly, chemical-free gifting alternative"},
+                {"icon": "trend", "text": "Early orders for hand-painted clay sets peak 2 weeks ahead"}
+            ],
+            "instructions": [
+                "Prepare fine terracotta clay and wheel setup by Oct 1.",
+                "Shape and kiln-fire 50–80 diyas and festive pots in early batches to allow cooling.",
+                "Apply non-toxic herbal colors or natural terracotta polish before final inspection."
+            ],
+            "confidence": "Estimated — based on category trends and buyer pre-order signals",
+            "rationale": "Handmade terracotta diyas and ceremonial clay pots are essential for Diwali festivities. Prepare clay by Oct 1, kiln-fire 50–80 units by Oct 12, and list with festive bundles.",
+            "production_goal": 0,
+            "goal_set_at": None,
+            "chart_data": [
+                {"month": "May", "sales": 20, "is_festival": False, "label": "May"},
+                {"month": "Jun", "sales": 22, "is_festival": False, "label": "Jun"},
+                {"month": "Jul", "sales": 25, "is_festival": False, "label": "Jul"},
+                {"month": "Aug", "sales": 32, "is_festival": True, "label": "Aug (Rakhi)"},
+                {"month": "Sep", "sales": 34, "is_festival": False, "label": "Sep"},
+                {"month": "Oct", "sales": 85, "is_festival": True, "label": "Oct (Diwali)"},
+                {"month": "Nov", "sales": 42, "is_festival": True, "label": "Nov (Weddings)"},
+                {"month": "Dec", "sales": 30, "is_festival": True, "label": "Dec (New Year)"}
+            ]
+        }
+    elif "text" in cat_clean or "weav" in cat_clean or "handloom" in cat_clean:
+        return {
+            "success": True,
+            "category": "Textiles",
+            "craft_description": "Handwoven silk & cotton festive fabrics",
+            "image_url": "uploads/forecast_textiles.jpg",
+            "demand": {
+                "level": "Medium",
+                "badge_text": "↗ Medium",
+                "headline": "Rising festive demand (+30%)",
+                "sub_headline": "Handloom silk stoles, dupattas, and festive ethnic wear see strong interest."
+            },
+            "recommendation": {
+                "caption": "Recommended for you",
+                "qty_min": 20,
+                "qty_max": 35,
+                "range_text": "20 - 35",
+                "main_text": "Make 20 - 35 more units",
+                "target_date": "Oct 14",
+                "date_text": "before Oct 14."
+            },
+            "why_reasons": [
+                {"icon": "trend", "text": "Festive ethnic attire & puja handloom shawls"},
+                {"icon": "gift", "text": "Diwali gifting to family, elders, and colleagues"},
+                {"icon": "sparkles", "text": "Wedding season begins right after Diwali, extending demand"}
+            ],
+            "instructions": [
+                "Select festive color palettes (maroon, saffron, royal blue) with golden zari borders.",
+                "Weave 20–35 units and perform tension and hem finishing.",
+                "Steam-press, fold into protective paper sleeves, and list with festive tags."
+            ],
+            "confidence": "Estimated — based on category trends and buyer pre-order signals",
+            "rationale": "Artisan handloom textiles enjoy sustained demand throughout October. Weave in festive hues with zari borders by Oct 14 to capture pre-Diwali and wedding shoppers.",
+            "production_goal": 0,
+            "goal_set_at": None,
+            "chart_data": [
+                {"month": "May", "sales": 15, "is_festival": False, "label": "May"},
+                {"month": "Jun", "sales": 18, "is_festival": False, "label": "Jun"},
+                {"month": "Jul", "sales": 20, "is_festival": False, "label": "Jul"},
+                {"month": "Aug", "sales": 28, "is_festival": True, "label": "Aug (Rakhi)"},
+                {"month": "Sep", "sales": 32, "is_festival": False, "label": "Sep"},
+                {"month": "Oct", "sales": 65, "is_festival": True, "label": "Oct (Diwali)"},
+                {"month": "Nov", "sales": 75, "is_festival": True, "label": "Nov (Weddings)"},
+                {"month": "Dec", "sales": 48, "is_festival": True, "label": "Dec (New Year)"}
+            ]
+        }
+
+    # Default fallback for Baskets
     return {
         "success": True,
-        "category": category.capitalize() or "Baskets",
-        "craft_description": "Handwoven using natural grass",
+        "category": "Baskets",
+        "craft_description": "Handwoven using natural Sabai grass & cane",
         "image_url": "uploads/forecast_basket.jpg",
         "demand": {
             "level": "High",
             "badge_text": "↗ High",
-            "headline": "High demand this Diwali",
-            "sub_headline": "Basket sales rose 40% last year."
+            "headline": "High demand this Diwali (+40%)",
+            "sub_headline": "Festive hamper baskets and dry fruit trays saw 40% higher demand last Diwali."
         },
         "recommendation": {
             "caption": "Recommended for you",
-            "qty_min": 30,
-            "qty_max": 40,
-            "range_text": "30 - 40",
-            "main_text": "Make 30 - 40 more units",
-            "target_date": "Oct 15",
-            "date_text": "before Oct 15."
+            "qty_min": 35,
+            "qty_max": 50,
+            "range_text": "35 - 50",
+            "main_text": "Make 35 - 50 more units",
+            "target_date": "Oct 10",
+            "date_text": "before Oct 10."
         },
         "why_reasons": [
-            {"icon": "gift", "text": "Popular for gifting"},
-            {"icon": "home", "text": "High demand for home décor"},
-            {"icon": "trend", "text": "Sold 40% more last Diwali"}
+            {"icon": "gift", "text": "Diwali gift hampers & corporate dry fruit packing"},
+            {"icon": "sparkles", "text": "Festive home décor & puja flower offering trays"},
+            {"icon": "trend", "text": "Buyer pre-orders surge 40% before festive week"}
         ],
-        "confidence": "Estimated — based on category trends across the platform",
-        "rationale": "Last Diwali, baskets like yours were 40% more popular. This year, we expect similar or higher demand.",
+        "instructions": [
+            "Procure raw Sabai grass or treated cane stalks by Oct 1 from Materials & Tools.",
+            "Weave 35–50 units focusing on decorative handles and festive ribbon accents.",
+            "Sun-cure thoroughly to prevent moisture, pack with natural fillers, and publish stock."
+        ],
+        "confidence": "Estimated — based on category trends and buyer pre-order signals",
+        "rationale": "Last Diwali, artisan handwoven baskets experienced a 40% surge in platform orders. Procure Sabai grass by Oct 1 and aim to complete 35–50 units by Oct 10 for express shipping.",
         "production_goal": 0,
-        "goal_set_at": None
+        "goal_set_at": None,
+        "chart_data": [
+            {"month": "May", "sales": 18, "is_festival": False, "label": "May"},
+            {"month": "Jun", "sales": 22, "is_festival": False, "label": "Jun"},
+            {"month": "Jul", "sales": 24, "is_festival": False, "label": "Jul"},
+            {"month": "Aug", "sales": 36, "is_festival": True, "label": "Aug (Rakhi)"},
+            {"month": "Sep", "sales": 30, "is_festival": False, "label": "Sep"},
+            {"month": "Oct", "sales": 78, "is_festival": True, "label": "Oct (Diwali)"},
+            {"month": "Nov", "sales": 55, "is_festival": True, "label": "Nov (Weddings)"},
+            {"month": "Dec", "sales": 40, "is_festival": True, "label": "Dec (New Year)"}
+        ]
     }
 
 
@@ -308,10 +425,16 @@ def get_festival_overview(slug: str = "diwali") -> Dict[str, Any]:
             row = cursor.fetchone()
 
     name = row["name"] if row else "Diwali"
-    quote = row["quote_rationale"] if row else "Last Diwali, baskets like yours were 40% more popular. This year, we expect similar or higher demand."
-    tip = row["tip"] if row else "Start preparing early to make the most of this festive season."
+    quote = row["quote_rationale"] if row else "Festival demand starts 25 days before Diwali. Artisans who set production goals early achieve 3.2x higher sell-through."
+    tip = row["tip"] if row else "Procure raw materials by Oct 1. Complete batch production by Oct 12 to guarantee 100% on-time festive dispatches."
 
     top_categories = [
+        {
+            "category": "Pottery",
+            "uplift": "+45%",
+            "uplift_pct": 45,
+            "image_url": "uploads/forecast_pottery.jpg"
+        },
         {
             "category": "Baskets",
             "uplift": "+40%",
@@ -319,16 +442,16 @@ def get_festival_overview(slug: str = "diwali") -> Dict[str, Any]:
             "image_url": "uploads/forecast_basket.jpg"
         },
         {
+            "category": "Textiles",
+            "uplift": "+30%",
+            "uplift_pct": 30,
+            "image_url": "uploads/forecast_textiles.jpg"
+        },
+        {
             "category": "Home Decor",
             "uplift": "+35%",
             "uplift_pct": 35,
             "image_url": "uploads/forecast_lantern.jpg"
-        },
-        {
-            "category": "Textiles",
-            "uplift": "+25%",
-            "uplift_pct": 25,
-            "image_url": "uploads/forecast_textiles.jpg"
         }
     ]
 

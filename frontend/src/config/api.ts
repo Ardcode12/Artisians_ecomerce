@@ -48,8 +48,8 @@ export function normalizeImageUrl(url?: string | null): string {
   if (!url || typeof url !== 'string') return DEFAULT_CRAFT_FALLBACK_IMAGE;
   const trimmed = url.trim();
   if (!trimmed) return DEFAULT_CRAFT_FALLBACK_IMAGE;
-  if (trimmed.includes('/uploads/')) {
-    const filename = trimmed.split('/uploads/').pop();
+  if (trimmed.includes('/uploads/') || trimmed.startsWith('uploads/')) {
+    const filename = trimmed.split('uploads/').pop()?.replace(/^\//, '');
     return `${BACKEND_URL}/uploads/${filename}`;
   }
   return trimmed;

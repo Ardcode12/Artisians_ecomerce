@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { spawn } = require('child_process');
 const multer = require('multer');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
@@ -11,6 +12,36 @@ const { supabase, supabaseAdmin } = require('./supabase');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+function getLanIp() {
+  if (process.env.PUBLIC_BASE_URL) {
+    try {
+      const parsed = new URL(process.env.PUBLIC_BASE_URL);
+      if (parsed.hostname) return parsed.hostname;
+    } catch (_) {}
+  }
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    if (/wi-fi|wireless|ethernet|en0|eth0/i.test(name) && !/vmware|virtual|loopback/i.test(name)) {
+      for (const net of nets[name] || []) {
+        if ((net.family === 'IPv4' || net.family === 4) && !net.internal) {
+          return net.address;
+        }
+      }
+    }
+  }
+  for (const name of Object.keys(nets)) {
+    if (!/loopback/i.test(name)) {
+      for (const net of nets[name] || []) {
+        if ((net.family === 'IPv4' || net.family === 4) && !net.internal) {
+          return net.address;
+        }
+      }
+    }
+  }
+  return '10.1.72.43';
+}
+const LAN_IP = getLanIp();
 
 // Persistent local database file so profiles are NEVER lost
 const DATA_DIR = path.join(__dirname, '..', 'data');
@@ -163,7 +194,7 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'Artisans E-commerce Backend',
-    ip: '10.241.59.35',
+    ip: LAN_IP,
     port: PORT,
     savedProfilesCount: Object.keys(localDb).length,
   });
@@ -849,7 +880,7 @@ app.post('/api/profiles/:id/avatar', async (req, res) => {
 
         // Build reachable server URL
         const protocol = req.protocol || 'http';
-        const host = req.get('host') || `10.241.59.35:${PORT}`;
+        const host = req.get('host') || `${LAN_IP}:${PORT}`;
         finalAvatarUrl = `${protocol}://${host}/uploads/${filename}`;
 
         // Attempt upload to Supabase Storage bucket 'avatars'
@@ -997,7 +1028,7 @@ app.post('/api/enhance-image', upload.fields([{ name: 'image', maxCount: 1 }, { 
     try {
       const result = await runPython(scriptPath, [inputPath, outputPath], 60000);
       const protocol = req.protocol || 'http';
-      const host = req.get('host') || `10.241.59.35:${PORT}`;
+      const host = req.get('host') || `${LAN_IP}:${PORT}`;
       const enhanced_image_url = `${protocol}://${host}/uploads/${outputFilename}`;
 
       console.log(`[ENHANCE IMAGE] Done: ${outputFilename} | Size: ${result.size || '1000x1000'}`);
@@ -1006,7 +1037,7 @@ app.post('/api/enhance-image', upload.fields([{ name: 'image', maxCount: 1 }, { 
       // Graceful fallback: return original upload URL so user isn't blocked
       console.warn(`[ENHANCE IMAGE] Python failed, returning original: ${pyErr.message}`);
       const protocol = req.protocol || 'http';
-      const host = req.get('host') || `10.241.59.35:${PORT}`;
+      const host = req.get('host') || `${LAN_IP}:${PORT}`;
       const enhanced_image_url = `${protocol}://${host}/uploads/${outputFilename}`;
       const filename = path.basename(inputPath);
       const original_url = `${protocol}://${host}/uploads/${filename}`;
@@ -1846,6 +1877,5 @@ app.get('/api/orders', async (req, res) => {
 
 // ── Start Server ─────────────────────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
-
-  console.log(`Artisans backend running on http://0.0.0.0:${PORT} (LAN: http://10.241.59.35:${PORT})`);
+  console.log(`Artisans backend running on http://0.0.0.0:${PORT} (LAN: http://${LAN_IP}:${PORT})`);
 });

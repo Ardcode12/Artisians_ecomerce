@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
   ActivityIndicator,
   StatusBar,
@@ -12,6 +11,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
@@ -20,6 +20,8 @@ import {
   Users,
   Gift,
   Home,
+  Flame,
+  Sparkles,
   TrendingUp,
   X,
   Minus,
@@ -39,6 +41,8 @@ const LOCAL_ASSETS: Record<string, any> = {
   pottery: require('@/assets/images/forecast/forecast_pottery.jpg'),
   textiles: require('@/assets/images/forecast/forecast_textiles.jpg'),
   'home decor': require('@/assets/images/forecast/forecast_lantern.jpg'),
+  diya: require('@/assets/images/forecast/forecast_diya.jpg'),
+  lantern: require('@/assets/images/forecast/forecast_lantern.jpg'),
 };
 
 interface WhyReason {
@@ -73,6 +77,7 @@ interface CategoryDetail {
     date_text: string;
   };
   why_reasons: WhyReason[];
+  instructions?: string[];
   confidence: string;
   rationale: string;
   production_goal: number;
@@ -87,47 +92,125 @@ export default function ForecastDetailScreen() {
   const { user } = useAuth();
 
   const categoryParam = (params.category || 'Baskets').trim();
+  const catLower = categoryParam.toLowerCase();
+
+  const isPottery = catLower.includes('pot') || catLower.includes('clay');
+  const isTextiles = catLower.includes('text') || catLower.includes('weav') || catLower.includes('silk');
 
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<CategoryDetail>({
-    category: categoryParam,
-    craft_description: 'Handwoven using natural grass',
-    image_url: 'uploads/forecast_basket.jpg',
+    category: isPottery ? 'Pottery' : isTextiles ? 'Textiles' : 'Baskets',
+    craft_description: isPottery
+      ? 'Terracotta & earthenware ceremonial vessels'
+      : isTextiles
+      ? 'Handwoven silk & cotton festive fabrics'
+      : 'Handwoven using natural Sabai grass & cane',
+    image_url: isPottery
+      ? 'uploads/forecast_pottery.jpg'
+      : isTextiles
+      ? 'uploads/forecast_textiles.jpg'
+      : 'uploads/forecast_basket.jpg',
     demand: {
-      level: 'High',
-      badge_text: '↗ High',
-      headline: 'High demand this Diwali',
-      sub_headline: 'Basket sales rose 40% last year.',
+      level: isTextiles ? 'Medium' : 'High',
+      badge_text: isTextiles ? '↗ Medium' : '↗ High',
+      headline: isPottery
+        ? 'Peak demand this Diwali (+45%)'
+        : isTextiles
+        ? 'Rising festive demand (+30%)'
+        : 'High demand this Diwali (+40%)',
+      sub_headline: isPottery
+        ? 'Clay diyas, earthen puja matkis, and terracotta decor surge across markets.'
+        : isTextiles
+        ? 'Handloom silk stoles, dupattas, and festive ethnic wear see strong interest.'
+        : 'Festive hamper baskets and dry fruit trays saw 40% higher demand last Diwali.',
     },
     recommendation: {
       caption: 'Recommended for you',
-      qty_min: 30,
-      qty_max: 40,
-      range_text: '30 - 40',
-      main_text: 'Make 30 - 40 more units',
-      target_date: 'Oct 15',
-      date_text: 'before Oct 15.',
+      qty_min: isPottery ? 50 : isTextiles ? 20 : 35,
+      qty_max: isPottery ? 80 : isTextiles ? 35 : 50,
+      range_text: isPottery ? '50 - 80' : isTextiles ? '20 - 35' : '35 - 50',
+      main_text: isPottery
+        ? 'Make 50 - 80 more units'
+        : isTextiles
+        ? 'Make 20 - 35 more units'
+        : 'Make 35 - 50 more units',
+      target_date: isPottery ? 'Oct 12' : isTextiles ? 'Oct 14' : 'Oct 10',
+      date_text: isPottery ? 'before Oct 12.' : isTextiles ? 'before Oct 14.' : 'before Oct 10.',
     },
-    why_reasons: [
-      { icon: 'gift', text: 'Popular for gifting' },
-      { icon: 'home', text: 'High demand for home décor' },
-      { icon: 'trend', text: 'Sold 40% more last Diwali' },
-    ],
-    confidence: 'Estimated — based on category trends across the platform',
-    rationale:
-      'Last Diwali, baskets like yours were 40% more popular. This year, we expect similar or higher demand.',
+    why_reasons: isPottery
+      ? [
+          { icon: 'flame', text: 'Diwali Lakshmi puja rituals & traditional oil lamps' },
+          { icon: 'gift', text: 'Eco-friendly, chemical-free gifting alternative' },
+          { icon: 'trend', text: 'Early orders for hand-painted clay sets peak 2 weeks ahead' },
+        ]
+      : isTextiles
+      ? [
+          { icon: 'trend', text: 'Festive ethnic attire & puja handloom shawls' },
+          { icon: 'gift', text: 'Diwali gifting to family, elders, and colleagues' },
+          { icon: 'sparkles', text: 'Wedding season begins right after Diwali, extending demand' },
+        ]
+      : [
+          { icon: 'gift', text: 'Diwali gift hampers & corporate dry fruit packing' },
+          { icon: 'sparkles', text: 'Festive home décor & puja flower offering trays' },
+          { icon: 'trend', text: 'Buyer pre-orders surge 40% before festive week' },
+        ],
+    instructions: isPottery
+      ? [
+          'Prepare fine terracotta clay and wheel setup by Oct 1.',
+          'Shape and kiln-fire 50–80 diyas and festive pots in early batches to allow cooling.',
+          'Apply non-toxic herbal colors or natural terracotta polish before final inspection.',
+        ]
+      : isTextiles
+      ? [
+          'Select festive color palettes (maroon, saffron, royal blue) with golden zari borders.',
+          'Weave 20–35 units and perform tension and hem finishing.',
+          'Steam-press, fold into protective paper sleeves, and list with festive tags.',
+        ]
+      : [
+          'Procure raw Sabai grass or treated cane stalks by Oct 1 from Materials & Tools.',
+          'Weave 35–50 units focusing on decorative handles and festive ribbon accents.',
+          'Sun-cure thoroughly to prevent moisture, pack with natural fillers, and publish stock.',
+        ],
+    confidence: 'Estimated — based on category trends and buyer pre-order signals',
+    rationale: isPottery
+      ? 'Handmade terracotta diyas and ceremonial clay pots are essential for Diwali festivities. Prepare clay by Oct 1, kiln-fire 50–80 units by Oct 12, and list with festive bundles.'
+      : isTextiles
+      ? 'Artisan handloom textiles enjoy sustained demand throughout October. Weave in festive hues with zari borders by Oct 14 to capture pre-Diwali and wedding shoppers.'
+      : 'Last Diwali, artisan handwoven baskets experienced a 40% surge in platform orders. Procure Sabai grass by Oct 1 and aim to complete 35–50 units by Oct 10 for express shipping.',
     production_goal: 0,
     goal_set_at: null,
-    chart_data: [
-      { month: 'May', sales: 18, is_festival: false, label: 'May' },
-      { month: 'Jun', sales: 22, is_festival: false, label: 'Jun' },
-      { month: 'Jul', sales: 24, is_festival: false, label: 'Jul' },
-      { month: 'Aug', sales: 36, is_festival: true, label: 'Aug (Rakhi)' },
-      { month: 'Sep', sales: 30, is_festival: false, label: 'Sep' },
-      { month: 'Oct', sales: 72, is_festival: true, label: 'Oct (Diwali)' },
-      { month: 'Nov', sales: 55, is_festival: true, label: 'Nov (Weddings)' },
-      { month: 'Dec', sales: 40, is_festival: true, label: 'Dec (New Year)' },
-    ],
+    chart_data: isPottery
+      ? [
+          { month: 'May', sales: 20, is_festival: false, label: 'May' },
+          { month: 'Jun', sales: 22, is_festival: false, label: 'Jun' },
+          { month: 'Jul', sales: 25, is_festival: false, label: 'Jul' },
+          { month: 'Aug', sales: 32, is_festival: true, label: 'Aug (Rakhi)' },
+          { month: 'Sep', sales: 34, is_festival: false, label: 'Sep' },
+          { month: 'Oct', sales: 85, is_festival: true, label: 'Oct (Diwali)' },
+          { month: 'Nov', sales: 42, is_festival: true, label: 'Nov (Weddings)' },
+          { month: 'Dec', sales: 30, is_festival: true, label: 'Dec (New Year)' },
+        ]
+      : isTextiles
+      ? [
+          { month: 'May', sales: 15, is_festival: false, label: 'May' },
+          { month: 'Jun', sales: 18, is_festival: false, label: 'Jun' },
+          { month: 'Jul', sales: 20, is_festival: false, label: 'Jul' },
+          { month: 'Aug', sales: 28, is_festival: true, label: 'Aug (Rakhi)' },
+          { month: 'Sep', sales: 32, is_festival: false, label: 'Sep' },
+          { month: 'Oct', sales: 65, is_festival: true, label: 'Oct (Diwali)' },
+          { month: 'Nov', sales: 75, is_festival: true, label: 'Nov (Weddings)' },
+          { month: 'Dec', sales: 48, is_festival: true, label: 'Dec (New Year)' },
+        ]
+      : [
+          { month: 'May', sales: 18, is_festival: false, label: 'May' },
+          { month: 'Jun', sales: 22, is_festival: false, label: 'Jun' },
+          { month: 'Jul', sales: 24, is_festival: false, label: 'Jul' },
+          { month: 'Aug', sales: 36, is_festival: true, label: 'Aug (Rakhi)' },
+          { month: 'Sep', sales: 30, is_festival: false, label: 'Sep' },
+          { month: 'Oct', sales: 78, is_festival: true, label: 'Oct (Diwali)' },
+          { month: 'Nov', sales: 55, is_festival: true, label: 'Nov (Weddings)' },
+          { month: 'Dec', sales: 40, is_festival: true, label: 'Dec (New Year)' },
+        ],
   });
 
   // Goal Setting Sheet State
@@ -205,10 +288,13 @@ export default function ForecastDetailScreen() {
   };
 
   const getHeroImage = () => {
-    const key = (detail.category || '').toLowerCase();
-    if (LOCAL_ASSETS[key]) {
-      return LOCAL_ASSETS[key];
-    }
+    const key = (detail.category || '').toLowerCase().trim();
+    if (LOCAL_ASSETS[key]) return LOCAL_ASSETS[key];
+    if (key.includes('basket')) return LOCAL_ASSETS.baskets;
+    if (key.includes('pottery') || key.includes('clay')) return LOCAL_ASSETS.pottery;
+    if (key.includes('textile') || key.includes('saree') || key.includes('cloth') || key.includes('fabric')) return LOCAL_ASSETS.textiles;
+    if (key.includes('diya') || key.includes('lamp')) return LOCAL_ASSETS.diya;
+    if (key.includes('decor') || key.includes('lantern')) return LOCAL_ASSETS['home decor'];
     if (detail.image_url) {
       return { uri: normalizeImageUrl(detail.image_url) };
     }
@@ -219,8 +305,14 @@ export default function ForecastDetailScreen() {
     if (iconName === 'gift') {
       return <Gift size={20} color="#64748B" strokeWidth={2} />;
     }
+    if (iconName === 'flame' || iconName === 'diya' || iconName === 'puja' || iconName === 'fire') {
+      return <Flame size={20} color="#EA580C" strokeWidth={2.2} />;
+    }
+    if (iconName === 'sparkles' || iconName === 'wedding') {
+      return <Sparkles size={20} color="#D97706" strokeWidth={2.2} />;
+    }
     if (iconName === 'home') {
-      return <Home size={20} color="#64748B" strokeWidth={2} />;
+      return <Sparkles size={20} color="#D97706" strokeWidth={2.2} />;
     }
     return <TrendingUp size={20} color="#64748B" strokeWidth={2} />;
   };
@@ -254,7 +346,9 @@ export default function ForecastDetailScreen() {
             <Image
               source={getHeroImage()}
               style={styles.heroImage}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
             />
           </View>
 
@@ -291,11 +385,16 @@ export default function ForecastDetailScreen() {
                 {detail.recommendation?.caption || 'Recommended for you'}
               </Text>
               <Text style={styles.recommendationMain}>
-                {detail.recommendation?.main_text || `Make ${detail.recommendation?.range_text || '30 - 40'} more units`}
+                {detail.recommendation?.main_text || `Make ${detail.recommendation?.range_text || '35 - 50'} more units`}
               </Text>
               <Text style={styles.recommendationDate}>
-                {detail.recommendation?.date_text || `before ${detail.recommendation?.target_date || 'Oct 15'}.`}
+                {detail.recommendation?.date_text || `before ${detail.recommendation?.target_date || 'Oct 10'}.`}
               </Text>
+              {detail.rationale ? (
+                <Text style={styles.recommendationRationale}>
+                  {detail.rationale}
+                </Text>
+              ) : null}
             </View>
           </View>
 
@@ -635,6 +734,13 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.body,
     color: '#64748B',
     marginTop: 2,
+  },
+  recommendationRationale: {
+    fontSize: 12.5,
+    fontFamily: Fonts.body,
+    color: '#15803D',
+    marginTop: 6,
+    lineHeight: 18,
   },
 
   /* ── "Why?" Section ─────────────────────────────────────────────────── */

@@ -1,17 +1,46 @@
 """Database connection manager for local SQLite or PostgreSQL."""
 
+import logging
 import sqlite3
 from contextlib import contextmanager
 from typing import Any, Generator
 from app.config import DATABASE_URL, DB_PATH
 
+logger = logging.getLogger("ArtisansApp")
+
+_POSTGRES_AVAILABLE = None
+
 if DATABASE_URL.startswith(("postgresql://", "postgres://")):
-    import psycopg
-    from psycopg.rows import dict_row
+    try:
+        import psycopg
+        from psycopg.rows import dict_row
+    except ImportError:
+        psycopg = None
+else:
+    psycopg = None
 
 
 def is_postgres() -> bool:
-    return DATABASE_URL.startswith(("postgresql://", "postgres://"))
+    global _POSTGRES_AVAILABLE
+    if _POSTGRES_AVAILABLE is not None:
+        return _POSTGRES_AVAILABLE
+
+    if not psycopg or not DATABASE_URL.startswith(("postgresql://", "postgres://")):
+        _POSTGRES_AVAILABLE = False
+        return False
+
+    try:
+        conn = psycopg.connect(DATABASE_URL, connect_timeout=3)
+        conn.close()
+        _POSTGRES_AVAILABLE = True
+        logger.info("[DATABASE] Connected to PostgreSQL successfully.")
+        return True
+    except Exception as e:
+        logger.warning(
+            f"[DATABASE] PostgreSQL connection failed ({e}). Falling back to local SQLite at {DB_PATH}"
+        )
+        _POSTGRES_AVAILABLE = False
+        return False
 
 
 def get_connection() -> Any:

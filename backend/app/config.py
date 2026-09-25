@@ -49,7 +49,7 @@ OLLAMA_PASSWORD = os.getenv("OLLAMA_PASSWORD", "")   # HTTP Basic Auth password 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY    = os.getenv("OPENAI_API_KEY", "")
 GEMINI_API_KEY    = os.getenv("GEMINI_API_KEY") or os.getenv("AI_key") or os.getenv("AI_KEY") or ""
-GEMINI_MODEL      = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
+GEMINI_MODEL      = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
 SERPAPI_API_KEY   = os.getenv("SERPAPI_API_KEY", "")
 
 # Remote Whisper STT — NVIDIA A100, Whisper Large V3, faster-whisper, CUDA float16

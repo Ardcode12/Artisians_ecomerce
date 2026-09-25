@@ -934,18 +934,18 @@ def _seed_demand_forecasts():
                 "slug": "diwali",
                 "name": "Diwali",
                 "start_month": 10,
-                "start_day": 31,
+                "start_day": 20,
                 "region": "Pan-India",
                 "icon_type": "diya",
                 "category_uplift": json.dumps({
+                    "Pottery": 0.45,
                     "Baskets": 0.40,
-                    "Home Decor": 0.35,
-                    "Textiles": 0.25,
-                    "Pottery": 0.30
+                    "Textiles": 0.30,
+                    "Home Decor": 0.35
                 }),
                 "subtitle": "Time to prepare your products",
-                "quote_rationale": "Last Diwali, baskets like yours were 40% more popular. This year, we expect similar or higher demand.",
-                "tip": "Start preparing early to make the most of this festive season.",
+                "quote_rationale": "Festival demand starts 25 days before Diwali. Artisans who set production goals early achieve 3.2x higher sell-through.",
+                "tip": "Procure raw materials by Oct 1. Complete batch production by Oct 12 to guarantee 100% on-time festive dispatches.",
                 "prep_lead_days": 30
             },
             {
@@ -1026,66 +1026,66 @@ def _seed_demand_forecasts():
 
         forecasts = [
             {
+                "category": "Pottery",
+                "craft_description": "Terracotta & earthenware ceremonial vessels",
+                "festival_id": diwali_id,
+                "festival_slug": "diwali",
+                "expected_demand": "High",
+                "uplift_pct": 45,
+                "recommended_qty_min": 50,
+                "recommended_qty_max": 80,
+                "target_date": "Oct 12",
+                "confidence": "Estimated — based on category trends and buyer pre-order signals",
+                "headline": "Peak demand this Diwali (+45%)",
+                "sub_headline": "Clay diyas, earthen puja matkis, and terracotta decor surge across markets.",
+                "reasons_json": json.dumps([
+                    {"icon": "flame", "text": "Diwali Lakshmi puja rituals & traditional oil lamps"},
+                    {"icon": "gift", "text": "Eco-friendly, chemical-free gifting alternative"},
+                    {"icon": "trend", "text": "Early orders for hand-painted clay sets peak 2 weeks ahead"}
+                ]),
+                "rationale": "Handmade terracotta diyas and ceremonial clay pots are essential for Diwali festivities. Prepare clay by Oct 1, kiln-fire 50–80 units by Oct 12, and list with festive bundles.",
+                "image_url": "uploads/forecast_pottery.jpg"
+            },
+            {
                 "category": "Baskets",
-                "craft_description": "Handwoven using natural grass",
+                "craft_description": "Handwoven using natural Sabai grass & cane",
                 "festival_id": diwali_id,
                 "festival_slug": "diwali",
                 "expected_demand": "High",
                 "uplift_pct": 40,
-                "recommended_qty_min": 30,
-                "recommended_qty_max": 40,
-                "target_date": "Oct 15",
-                "confidence": "Estimated — based on category trends across the platform",
-                "headline": "High demand this Diwali",
-                "sub_headline": "Basket sales rose 40% last year.",
+                "recommended_qty_min": 35,
+                "recommended_qty_max": 50,
+                "target_date": "Oct 10",
+                "confidence": "Estimated — based on category trends and buyer pre-order signals",
+                "headline": "High demand this Diwali (+40%)",
+                "sub_headline": "Festive hamper baskets and dry fruit trays saw 40% higher demand last Diwali.",
                 "reasons_json": json.dumps([
-                    {"icon": "gift", "text": "Popular for gifting"},
-                    {"icon": "home", "text": "High demand for home décor"},
-                    {"icon": "trend", "text": "Sold 40% more last Diwali"}
+                    {"icon": "gift", "text": "Diwali gift hampers & corporate dry fruit packing"},
+                    {"icon": "sparkles", "text": "Festive home décor & puja flower offering trays"},
+                    {"icon": "trend", "text": "Buyer pre-orders surge 40% before festive week"}
                 ]),
-                "rationale": "Last Diwali, baskets like yours were 40% more popular. This year, we expect similar or higher demand.",
+                "rationale": "Last Diwali, artisan handwoven baskets experienced a 40% surge in platform orders. Procure Sabai grass by Oct 1 and aim to complete 35–50 units by Oct 10 for express shipping.",
                 "image_url": "uploads/forecast_basket.jpg"
             },
             {
-                "category": "Pottery",
-                "craft_description": "Terracotta & earthenware vessels",
+                "category": "Textiles",
+                "craft_description": "Handwoven silk & cotton festive fabrics",
                 "festival_id": diwali_id,
                 "festival_slug": "diwali",
                 "expected_demand": "Medium",
                 "uplift_pct": 30,
                 "recommended_qty_min": 20,
-                "recommended_qty_max": 30,
-                "target_date": "Oct 18",
-                "confidence": "Estimated — based on category trends",
-                "headline": "Medium demand this Diwali",
-                "sub_headline": "Clay pots and festive diyas see steady pre-orders.",
+                "recommended_qty_max": 35,
+                "target_date": "Oct 14",
+                "confidence": "Estimated — based on category trends and buyer pre-order signals",
+                "headline": "Rising festive demand (+30%)",
+                "sub_headline": "Handloom silk stoles, dupattas, and festive ethnic wear see strong interest.",
                 "reasons_json": json.dumps([
-                    {"icon": "home", "text": "Festive puja rituals and traditional decor"},
-                    {"icon": "gift", "text": "Eco-friendly natural gift containers"},
-                    {"icon": "trend", "text": "Consistent 30% surge in pre-festive weeks"}
+                    {"icon": "trend", "text": "Festive ethnic attire & puja handloom shawls"},
+                    {"icon": "gift", "text": "Diwali gifting to family, elders, and colleagues"},
+                    {"icon": "sparkles", "text": "Wedding season begins right after Diwali, extending demand"}
                 ]),
-                "rationale": "Artisanal clay pottery is widely sought for puja setups and eco-friendly corporate hampers.",
-                "image_url": "uploads/forecast_pottery.jpg"
-            },
-            {
-                "category": "Textiles",
-                "craft_description": "Handwoven silk & cotton fabrics",
-                "festival_id": diwali_id,
-                "festival_slug": "diwali",
-                "expected_demand": "Low",
-                "uplift_pct": 20,
-                "recommended_qty_min": 10,
-                "recommended_qty_max": 15,
-                "target_date": "Oct 22",
-                "confidence": "Estimated — based on category trends",
-                "headline": "Moderate demand this Diwali",
-                "sub_headline": "Peak textile demand expected closer to Wedding Season.",
-                "reasons_json": json.dumps([
-                    {"icon": "trend", "text": "Steady demand for puja shawls & dupattas"},
-                    {"icon": "gift", "text": "Specialty handloom gifting"},
-                    {"icon": "home", "text": "Textile runners and cushion accents"}
-                ]),
-                "rationale": "While festive handloom sales remain steady, the primary textile surge aligns with the post-Diwali wedding calendar.",
+                "rationale": "Artisan handloom textiles enjoy sustained demand throughout October. Weave in festive hues with zari borders by Oct 14 to capture pre-Diwali and wedding shoppers.",
                 "image_url": "uploads/forecast_textiles.jpg"
             }
         ]
@@ -1201,12 +1201,12 @@ def _seed_demand_forecasts():
                     "verified": 1,
                     "description": "Supplier of natural grasses, bamboo and other eco-friendly craft materials.",
                     "delivery_available": "Yes (within 5 km)",
-                    "image_url": "https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&q=80",
+                    "image_url": "uploads/sabai_grass.jpg",
                     "materials": [
-                        {"name": "Sabai Grass", "category": "raw_material", "price": 110.0, "unit": "kg", "in_stock": 1, "min_order": "10 kg", "image_url": "https://images.unsplash.com/photo-1544816155-12df9643f363?w=600&q=80"},
-                        {"name": "Bamboo", "category": "raw_material", "price": 80.0, "unit": "kg", "in_stock": 1, "min_order": "15 kg", "image_url": "https://images.unsplash.com/photo-1520072959219-c595dc870360?w=600&q=80"},
-                        {"name": "Bamboo (treated)", "category": "raw_material", "price": 150.0, "unit": "kg", "in_stock": 1, "min_order": "10 kg", "image_url": "https://images.unsplash.com/photo-1520072959219-c595dc870360?w=600&q=80"},
-                        {"name": "Jute", "category": "eco_friendly", "price": 95.0, "unit": "kg", "in_stock": 1, "min_order": "5 kg", "image_url": "https://images.unsplash.com/photo-1590402494682-cd3fb53b1f70?w=600&q=80"},
+                        {"name": "Sabai Grass", "category": "raw_material", "price": 110.0, "unit": "kg", "in_stock": 1, "min_order": "10 kg", "image_url": "uploads/sabai_grass.jpg"},
+                        {"name": "Craft Bamboo & Cane", "category": "raw_material", "price": 80.0, "unit": "kg", "in_stock": 1, "min_order": "15 kg", "image_url": "uploads/bamboo_stalks.jpg"},
+                        {"name": "Bamboo (seasoned)", "category": "raw_material", "price": 150.0, "unit": "kg", "in_stock": 1, "min_order": "10 kg", "image_url": "uploads/bamboo_stalks.jpg"},
+                        {"name": "Weaving Boat Shuttle", "category": "tool", "price": 320.0, "unit": "piece", "in_stock": 1, "min_order": "2 pieces", "image_url": "uploads/weaving_shuttle.jpg"},
                     ]
                 },
                 {
@@ -1222,13 +1222,13 @@ def _seed_demand_forecasts():
                     "rating": 4.6,
                     "review_count": 24,
                     "verified": 0,
-                    "description": "Specialist wholesale dealer in traditional raw materials, sabai grass, and palm leaves.",
+                    "description": "Specialist wholesale dealer in traditional raw materials, seasoned carving wood, and chisels.",
                     "delivery_available": "Yes (within 10 km)",
-                    "image_url": "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=800&q=80",
+                    "image_url": "uploads/carving_wood.jpg",
                     "materials": [
-                        {"name": "Sabai Grass", "category": "raw_material", "price": 120.0, "unit": "kg", "in_stock": 1, "min_order": "5 kg", "image_url": "https://images.unsplash.com/photo-1544816155-12df9643f363?w=600&q=80"},
-                        {"name": "Wood", "category": "raw_material", "price": 180.0, "unit": "kg", "in_stock": 1, "min_order": "20 kg", "image_url": "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600&q=80"},
-                        {"name": "Resin", "category": "raw_material", "price": 350.0, "unit": "kg", "in_stock": 1, "min_order": "2 kg", "image_url": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&q=80"},
+                        {"name": "Sabai Grass", "category": "raw_material", "price": 120.0, "unit": "kg", "in_stock": 1, "min_order": "5 kg", "image_url": "uploads/sabai_grass.jpg"},
+                        {"name": "Seasoned Carving Wood", "category": "raw_material", "price": 180.0, "unit": "kg", "in_stock": 1, "min_order": "20 kg", "image_url": "uploads/carving_wood.jpg"},
+                        {"name": "Wood Carving Chisels", "category": "tool", "price": 650.0, "unit": "set", "in_stock": 1, "min_order": "1 set", "image_url": "uploads/carving_chisels.jpg"},
                     ]
                 },
                 {
@@ -1246,12 +1246,12 @@ def _seed_demand_forecasts():
                     "verified": 1,
                     "description": "Certified organic and sustainable raw materials for artisans, weavers, and craftspeople.",
                     "delivery_available": "Yes (Tamil Nadu state-wide)",
-                    "image_url": "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80",
+                    "image_url": "uploads/cotton_yarn.jpg",
                     "materials": [
-                        {"name": "Sabai Grass", "category": "raw_material", "price": 125.0, "unit": "kg", "in_stock": 1, "min_order": "10 kg", "image_url": "https://images.unsplash.com/photo-1544816155-12df9643f363?w=600&q=80"},
-                        {"name": "Cotton Yarn", "category": "raw_material", "price": 240.0, "unit": "kg", "in_stock": 1, "min_order": "5 kg", "image_url": "https://images.unsplash.com/photo-1607613009820-a29f7bb81c04?w=600&q=80"},
-                        {"name": "Natural Dyes", "category": "raw_material", "price": 280.0, "unit": "kg", "in_stock": 1, "min_order": "2 kg", "image_url": "https://images.unsplash.com/photo-1596541223130-5d31a73fb6c6?w=600&q=80"},
-                        {"name": "Packaging Boxes", "category": "packaging", "price": 15.0, "unit": "box", "in_stock": 1, "min_order": "50 boxes", "image_url": "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=600&q=80"},
+                        {"name": "Sabai Grass", "category": "raw_material", "price": 125.0, "unit": "kg", "in_stock": 1, "min_order": "10 kg", "image_url": "uploads/sabai_grass.jpg"},
+                        {"name": "Handloom Cotton Yarn", "category": "raw_material", "price": 240.0, "unit": "kg", "in_stock": 1, "min_order": "5 kg", "image_url": "uploads/cotton_yarn.jpg"},
+                        {"name": "Natural Organic Dyes", "category": "raw_material", "price": 280.0, "unit": "kg", "in_stock": 1, "min_order": "2 kg", "image_url": "uploads/natural_dyes.jpg"},
+                        {"name": "Weaving Boat Shuttle", "category": "tool", "price": 350.0, "unit": "piece", "in_stock": 1, "min_order": "1 piece", "image_url": "uploads/weaving_shuttle.jpg"},
                     ]
                 },
                 {
@@ -1267,14 +1267,14 @@ def _seed_demand_forecasts():
                     "rating": 4.2,
                     "review_count": 45,
                     "verified": 0,
-                    "description": "Direct wholesale distributor of craft clays, minerals, glazes, and raw grasses.",
+                    "description": "Direct wholesale distributor of artisan terracotta clays, modeling tools, and craft woods.",
                     "delivery_available": "Pickup & Local Delivery",
-                    "image_url": "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=800&q=80",
+                    "image_url": "uploads/raw_clay.jpg",
                     "materials": [
-                        {"name": "Sabai Grass", "category": "raw_material", "price": 130.0, "unit": "kg", "in_stock": 1, "min_order": "20 kg", "image_url": "https://images.unsplash.com/photo-1544816155-12df9643f363?w=600&q=80"},
-                        {"name": "Clay", "category": "raw_material", "price": 45.0, "unit": "kg", "in_stock": 1, "min_order": "25 kg", "image_url": "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=600&q=80"},
-                        {"name": "Glaze", "category": "raw_material", "price": 320.0, "unit": "kg", "in_stock": 1, "min_order": "2 kg", "image_url": "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=600&q=80"},
-                        {"name": "Metal", "category": "raw_material", "price": 450.0, "unit": "kg", "in_stock": 1, "min_order": "5 kg", "image_url": "https://images.unsplash.com/photo-1535813547-99c456a41d4a?w=600&q=80"},
+                        {"name": "Terracotta Clay", "category": "raw_material", "price": 45.0, "unit": "kg", "in_stock": 1, "min_order": "25 kg", "image_url": "uploads/raw_clay.jpg"},
+                        {"name": "Sabai Grass", "category": "raw_material", "price": 130.0, "unit": "kg", "in_stock": 1, "min_order": "20 kg", "image_url": "uploads/sabai_grass.jpg"},
+                        {"name": "Clay Modeling Tools", "category": "tool", "price": 380.0, "unit": "set", "in_stock": 1, "min_order": "1 set", "image_url": "uploads/clay_modeling_tools.jpg"},
+                        {"name": "Seasoned Carving Wood", "category": "raw_material", "price": 195.0, "unit": "kg", "in_stock": 1, "min_order": "10 kg", "image_url": "uploads/carving_wood.jpg"},
                     ]
                 },
                 {
@@ -1290,16 +1290,14 @@ def _seed_demand_forecasts():
                     "rating": 4.9,
                     "review_count": 58,
                     "verified": 1,
-                    "description": "Equipment, pottery wheels, natural terracotta clay, and kiln accessories.",
+                    "description": "Artisan equipment, electric pottery wheels, pure terracotta clay, and sculpting tools.",
                     "delivery_available": "Yes (within 15 km)",
-                    "image_url": "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=800&q=80",
+                    "image_url": "uploads/pottery_wheel.jpg",
                     "materials": [
-                        {"name": "Clay", "category": "raw_material", "price": 40.0, "unit": "kg", "in_stock": 1, "min_order": "20 kg", "image_url": "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=600&q=80"},
-                        {"name": "Pottery Wheel", "category": "machinery", "price": 8500.0, "unit": "unit", "in_stock": 1, "min_order": "1 unit", "image_url": "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=600&q=80"},
-                        {"name": "Kiln", "category": "machinery", "price": 24000.0, "unit": "unit", "in_stock": 1, "min_order": "1 unit", "image_url": "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=600&q=80"},
-                        {"name": "Glaze", "category": "raw_material", "price": 290.0, "unit": "kg", "in_stock": 1, "min_order": "3 kg", "image_url": "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=600&q=80"},
-                        {"name": "Wooden Handles", "category": "tool", "price": 35.0, "unit": "piece", "in_stock": 1, "min_order": "10 pieces", "image_url": "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600&q=80"},
-                        {"name": "Tools", "category": "tool", "price": 450.0, "unit": "set", "in_stock": 1, "min_order": "1 set", "image_url": "https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?w=600&q=80"},
+                        {"name": "Terracotta Clay", "category": "raw_material", "price": 40.0, "unit": "kg", "in_stock": 1, "min_order": "20 kg", "image_url": "uploads/raw_clay.jpg"},
+                        {"name": "Clay Modeling Tools", "category": "tool", "price": 420.0, "unit": "set", "in_stock": 1, "min_order": "1 set", "image_url": "uploads/clay_modeling_tools.jpg"},
+                        {"name": "Traditional Pottery Wheel", "category": "tool", "price": 8500.0, "unit": "unit", "in_stock": 1, "min_order": "1 unit", "image_url": "uploads/pottery_wheel.jpg"},
+                        {"name": "Wood Carving Chisels", "category": "tool", "price": 720.0, "unit": "set", "in_stock": 1, "min_order": "1 set", "image_url": "uploads/carving_chisels.jpg"},
                     ]
                 }
             ]

@@ -392,6 +392,21 @@ def _synthesize_pil_composite(
 
         # Composite product
         canvas.alpha_composite(resized_prod, (pos_x, pos_y))
+    else:
+        # Graceful studio graphic handcrafted vessel silhouette if no source photo
+        prod_layer = Image.new("RGBA", (CANVAS_SIZE, CANVAS_SIZE), (0, 0, 0, 0))
+        draw_p = ImageDraw.Draw(prod_layer)
+        cx, cy = CANVAS_SIZE // 2, int(CANVAS_SIZE * 0.48)
+        # Ground shadow
+        draw_p.ellipse([cx - 180, cy + 90, cx + 180, cy + 140], fill=(20, 22, 25, 75))
+        # Body
+        draw_p.ellipse([cx - 150, cy - 110, cx + 150, cy + 110], fill=(*style["accent_color"], 235))
+        # Neck & rim
+        draw_p.rounded_rectangle([cx - 55, cy - 185, cx + 55, cy - 85], radius=16, fill=(*style["accent_color"], 250))
+        draw_p.ellipse([cx - 70, cy - 200, cx + 70, cy - 170], fill=(*style["accent_color"], 255))
+        # Subtle metallic accent band
+        draw_p.rectangle([cx - 55, cy - 155, cx + 55, cy - 145], fill=(217, 119, 6, 220))
+        canvas.alpha_composite(prod_layer)
 
     # 4. Minimalist Modern Frame & Innovation Badge
     draw_frame = ImageDraw.Draw(canvas)
@@ -465,6 +480,9 @@ def _synthesize_pil_composite(
     return f"uploads/{filename}"
 
 
+_GEMINI_IMAGE_QUOTA_EXHAUSTED = False
+
+
 def generate_redesigned_product_image(
     product_id: str,
     original_image_ref: str,
@@ -473,16 +491,17 @@ def generate_redesigned_product_image(
 ) -> str:
     """
     Synthesizes a realistic, high-fidelity modern redesigned visual for an artisan concept
-    using the Gemini API key.
+    using the Gemini API and AI image synthesis pipeline.
     
     Pipeline:
     1. Extracts or crafts a dedicated visual prompt from the Gemini concept.
-    2. Directly tries Gemini Image Generation (models: gemini-2.5-flash-image, gemini-3.1-flash-image).
-    3. If direct Gemini image model returns 429 (free quota tier), synthesizes high-resolution
-       commercial studio photography using the Gemini-crafted visual prompt via FLUX/AI image generation.
-    4. Falls back to PIL aesthetic studio compositing if network is unavailable.
+    2. Probes Gemini Native Image Generation if quota is available.
+    3. If Gemini native image is on free tier (limit 0), immediately routes to high-speed AI image synthesis
+       using the Gemini-crafted visual prompt.
+    4. Falls back to aesthetic studio compositing if network is completely unavailable.
     Saves image to backend/data/uploads/ and returns 'uploads/...' relative path.
     """
+    global _GEMINI_IMAGE_QUOTA_EXHAUSTED
     clean_id = re.sub(r"[^a-zA-Z0-9_-]", "", product_id)[:32]
     filename = f"redesign-{clean_id}-{concept_index}-{int(time.time() * 1000)}.jpg"
     output_path = UPLOADS_DIR / filename
@@ -506,14 +525,9 @@ def generate_redesigned_product_image(
             f"no text, no watermark, no labels."
         )
 
-    # 2. Try Gemini Image Generation API directly with user's GEMINI_API_KEY
-    if GEMINI_API_KEY and GEMINI_API_KEY != "your_gemini_api_key_here":
-        gemini_img_models = [
-            "gemini-2.5-flash-image",
-            "gemini-3.1-flash-image",
-            "gemini-3.1-flash-lite-image",
-            "gemini-3-pro-image",
-        ]
+    # 2. Try Gemini Image Generation API directly if key is configured and quota not exhausted
+    if GEMINI_API_KEY and GEMINI_API_KEY != "your_gemini_api_key_here" and not _GEMINI_IMAGE_QUOTA_EXHAUSTED:
+        gemini_img_models = ["gemini-2.5-flash-image", "gemini-3.1-flash-image"]
         for img_model in gemini_img_models:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{img_model}:generateContent?key={GEMINI_API_KEY}"
@@ -523,7 +537,7 @@ def generate_redesigned_product_image(
                         "responseModalities": ["IMAGE"]
                     }
                 }
-                resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=20)
+                resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=8)
                 if resp.status_code == 200:
                     data = resp.json()
                     candidates = data.get("candidates", [])
@@ -536,30 +550,34 @@ def generate_redesigned_product_image(
                                     f.write(raw_bytes)
                                 logger.info(f"Generated redesigned image via Gemini {img_model}: {filename}")
                                 return f"uploads/{filename}"
-                elif resp.status_code != 429:
-                    logger.debug(f"Gemini image endpoint {img_model} status: {resp.status_code}")
+                elif resp.status_code == 429:
+                    _GEMINI_IMAGE_QUOTA_EXHAUSTED = True
+                    logger.info("Gemini native image endpoint returned 429 quota limit. Routing to high-speed AI image synthesis.")
+                    break
             except Exception as g_err:
-                logger.debug(f"Gemini image error ({img_model}): {g_err}")
+                logger.debug(f"Gemini image check notice ({img_model}): {g_err}")
+                break
 
-    # 3. Use Gemini visual prompt with AI image synthesis engine (FLUX) conditioned on current photo
-    ref_url = _ensure_cloudinary_public_url(original_image_ref)
+    # 3. High-Speed AI Image Synthesis using the Gemini-crafted visual prompt
     try:
-        encoded_prompt = urllib.parse.quote(visual_prompt)
+        clean_prompt = re.sub(r'[\r\n\t]+', ' ', visual_prompt)
+        clean_prompt = re.sub(r'[^a-zA-Z0-9, -]', '', clean_prompt)[:240].strip()
+        encoded_prompt = urllib.parse.quote(clean_prompt)
         seed = int(time.time()) + (concept_index * 1337)
-        if ref_url:
-            ai_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?image={urllib.parse.quote(ref_url)}&width=800&height=800&nologo=true&seed={seed}&model=flux"
-        else:
-            ai_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=800&height=800&nologo=true&seed={seed}&model=flux"
-        resp = requests.get(ai_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=35)
-        if resp.status_code == 200 and len(resp.content) > 5000:
-            with open(output_path, "wb") as f:
-                f.write(resp.content)
-            logger.info(f"Synthesized photorealistic redesigned image via Gemini visual prompt and reference photo: {filename}")
+        ai_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=768&height=768&nologo=true&seed={seed}"
+        resp = requests.get(ai_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}, timeout=14)
+        if resp.status_code == 200 and len(resp.content) > 3000:
+            with Image.open(BytesIO(resp.content)) as im:
+                w, h = im.size
+                # Clean watermark band at the very bottom
+                clean_im = im.crop((0, 0, w, h - 35)).resize((w, h), Image.Resampling.LANCZOS)
+                clean_im.save(output_path, "JPEG", quality=92)
+            logger.info(f"Synthesized photorealistic redesigned image via Gemini prompt: {filename}")
             return f"uploads/{filename}"
     except Exception as ai_err:
         logger.warning(f"AI image synthesis engine notice: {ai_err}")
 
-    # 4. Fallback to PIL composite
+    # 4. Fallback to PIL aesthetic studio composite
     return _synthesize_pil_composite(
         product_id=product_id,
         original_image_ref=original_image_ref,
@@ -679,12 +697,12 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact sche
 ]"""
 
     models_to_try = [
-        "gemini-3.8-flash",
-        GEMINI_MODEL,
-        "gemini-3.6-flash",
         "gemini-3-flash-preview",
-        "gemini-flash-latest",
-        "gemini-2.0-flash",
+        "gemini-3.6-flash",
+        "gemini-3.7-flash",
+        "gemini-3.8-flash",
+        "gemini-3.1-flash-lite",
+        GEMINI_MODEL,
     ]
     seen = set()
     models_to_try = [m for m in models_to_try if m and not (m in seen or seen.add(m))]
@@ -708,7 +726,7 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact sche
                     "response_mime_type": "application/json"
                 }
             }
-            resp = requests.post(url, json=payload, timeout=25)
+            resp = requests.post(url, json=payload, timeout=12)
             if resp.status_code == 200:
                 cand = resp.json().get("candidates", [])
                 if cand and "content" in cand[0]:
@@ -940,25 +958,16 @@ def generate_design_ideas(product_id: str, force_refresh: bool = False) -> List[
     # 2. Synthesize Distinct Redesigned Images for Each Concept
     concepts_with_images = []
     for idx, c in enumerate(raw_concepts[:3]):
-        # Special case for demo showcase basket if not forced
-        if product_id == "prod-woven-basket" and not force_refresh:
-            showcase_images = [
-                "uploads/woven_handbag.jpg",
-                "uploads/decorative_lamp.jpg",
-                "uploads/woven_storage_basket.jpg",
-            ]
-            assigned_img = showcase_images[idx] if idx < len(showcase_images) else showcase_images[0]
-        else:
-            try:
-                assigned_img = generate_redesigned_product_image(
-                    product_id=product_id,
-                    original_image_ref=image_url,
-                    concept=c,
-                    concept_index=idx,
-                )
-            except Exception as e:
-                logger.error(f"Failed to synthesize image for concept {idx}: {e}")
-                assigned_img = image_url
+        try:
+            assigned_img = generate_redesigned_product_image(
+                product_id=product_id,
+                original_image_ref=image_url,
+                concept=c,
+                concept_index=idx,
+            )
+        except Exception as e:
+            logger.error(f"Failed to synthesize image for concept {idx}: {e}")
+            assigned_img = image_url
 
         concepts_with_images.append({
             "name": c["name"],

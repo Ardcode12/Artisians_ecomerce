@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, ChevronRight, MoreHorizontal } from 'lucide-react-native';
 
-import { BACKEND_URL } from '@/config/api';
+import { BACKEND_URL, normalizeImageUrl } from '@/config/api';
 import { Fonts, Shadow } from '@/constants/artisan-theme';
 
 interface MaterialItem {
@@ -68,19 +68,25 @@ export default function CategoryBrowseScreen() {
       }
     } catch (e) {
       console.warn('Failed to fetch category materials, using local fallback', e);
-      // Fallback local list matching Screen 2
-      setMaterials([
-        { id: 'bamboo', name: 'Bamboo', icon: 'bamboo' },
-        { id: 'sabai_grass', name: 'Sabai Grass', icon: 'sabai_grass' },
-        { id: 'clay', name: 'Clay', icon: 'clay' },
-        { id: 'wood', name: 'Wood', icon: 'wood' },
-        { id: 'cotton_yarn', name: 'Cotton Yarn', icon: 'cotton_yarn' },
-        { id: 'natural_dyes', name: 'Natural Dyes', icon: 'natural_dyes' },
-        { id: 'metal', name: 'Metal', icon: 'metal' },
-        { id: 'resin', name: 'Resin', icon: 'resin' },
-        { id: 'jute', name: 'Jute', icon: 'jute' },
-        { id: 'others', name: 'Others', icon: 'others' },
-      ]);
+      if (category.toLowerCase().includes('tool')) {
+        setMaterials([
+          { id: 'carving_tools', name: 'Wood Carving Chisels', icon: 'tool', image: 'uploads/carving_chisels.jpg' },
+          { id: 'pottery_tools', name: 'Clay Modeling Tools', icon: 'tool', image: 'uploads/clay_modeling_tools.jpg' },
+          { id: 'pottery_wheel', name: 'Traditional Pottery Wheel', icon: 'gear', image: 'uploads/pottery_wheel.jpg' },
+          { id: 'weaving_shuttles', name: 'Weaving Boat Shuttle', icon: 'tool', image: 'uploads/weaving_shuttle.jpg' },
+          { id: 'others', name: 'Others', icon: 'others' },
+        ]);
+      } else {
+        setMaterials([
+          { id: 'clay', name: 'Terracotta Clay', icon: 'clay', image: 'uploads/raw_clay.jpg' },
+          { id: 'sabai_grass', name: 'Sabai Grass', icon: 'sabai_grass', image: 'uploads/sabai_grass.jpg' },
+          { id: 'bamboo', name: 'Craft Bamboo & Cane', icon: 'bamboo', image: 'uploads/bamboo_stalks.jpg' },
+          { id: 'cotton_yarn', name: 'Handloom Cotton Yarn', icon: 'cotton_yarn', image: 'uploads/cotton_yarn.jpg' },
+          { id: 'natural_dyes', name: 'Natural Organic Dyes', icon: 'natural_dyes', image: 'uploads/natural_dyes.jpg' },
+          { id: 'wood', name: 'Seasoned Carving Wood', icon: 'wood', image: 'uploads/carving_wood.jpg' },
+          { id: 'others', name: 'Others', icon: 'others' },
+        ]);
+      }
     } finally {
       setLoading(false);
     }
@@ -145,7 +151,7 @@ export default function CategoryBrowseScreen() {
                     <View style={styles.iconContainer}>
                       {item.image ? (
                         <Image
-                          source={{ uri: item.image }}
+                          source={{ uri: normalizeImageUrl(item.image) }}
                           style={styles.materialImg}
                           resizeMode="cover"
                         />
@@ -229,17 +235,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#F3EFEA',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
+    overflow: 'hidden',
   },
   materialImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
   },
   emojiIcon: {
     fontSize: 28,
@@ -253,7 +261,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#F3EFE9',
-    marginLeft: 78,
+    backgroundColor: '#F3EFEA',
+    marginLeft: 82,
   },
 });

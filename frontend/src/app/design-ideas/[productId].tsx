@@ -4,13 +4,13 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
   ActivityIndicator,
   StatusBar,
   Animated,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -286,7 +286,9 @@ export default function ProductDesignIdeasScreen() {
                 <Image
                   source={{ uri: originalImageUrl }}
                   style={styles.heroImage}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
                 />
               </View>
 
@@ -434,7 +436,7 @@ export default function ProductDesignIdeasScreen() {
               contentContainerStyle={styles.resultScroll}
               showsVerticalScrollIndicator={false}
             >
-              {/* Segmented Control Pill Toggle [ Original | Reimagined ] */}
+              {/* Segmented Control Pill Toggle [ Normal Product | Design Idea ] */}
               <View style={styles.segmentedControl}>
                 <TouchableOpacity
                   style={[
@@ -453,7 +455,7 @@ export default function ProductDesignIdeasScreen() {
                       selectedImageTab === 'original' && styles.segmentTextActive,
                     ]}
                   >
-                    Original
+                    Normal Product
                   </Text>
                 </TouchableOpacity>
 
@@ -474,7 +476,7 @@ export default function ProductDesignIdeasScreen() {
                       selectedImageTab === 'reimagined' && styles.segmentTextActive,
                     ]}
                   >
-                    ✨ Reimagined
+                    ✨ Design Idea
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -485,7 +487,9 @@ export default function ProductDesignIdeasScreen() {
                   <Image
                     source={{ uri: displayImageUrl }}
                     style={styles.ideaImage}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="memory-disk"
                     onError={() => setImageLoadError(true)}
                   />
                 ) : (
@@ -500,7 +504,7 @@ export default function ProductDesignIdeasScreen() {
                 {selectedImageTab === 'reimagined' && (
                   <View style={styles.imageOverlayBadge}>
                     <Sparkles size={12} color="#FFFFFF" strokeWidth={2.4} />
-                    <Text style={styles.imageOverlayText}>AI Redesigned Edition</Text>
+                    <Text style={styles.imageOverlayText}>✨ AI Design Idea</Text>
                   </View>
                 )}
               </View>

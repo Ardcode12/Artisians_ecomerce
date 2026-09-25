@@ -4,12 +4,12 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
   ActivityIndicator,
   StatusBar,
   RefreshControl,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
@@ -71,55 +71,55 @@ export default function DemandForecastHomeScreen() {
     id: 1,
     slug: 'diwali',
     name: 'Diwali',
-    days_left: 29,
-    days_left_text: '29 days left',
+    days_left: 26,
+    days_left_text: '26 days left',
     date_formatted: 'Oct 20, 2026',
     subtitle: 'Time to prepare your products',
-    tagline: 'Diwali is in 29 days',
+    tagline: 'Diwali is in 26 days',
   });
   const [categories, setCategories] = useState<ForecastCategory[]>([
     {
       id: 1,
       category: 'Baskets',
-      craft_description: 'Handwoven using natural grass',
+      craft_description: 'Handwoven using natural Sabai grass & cane',
       expected_demand: 'High',
-      demand_label: 'High demand',
+      demand_label: 'High demand (+40%)',
       badge_text: '↗ High',
       badge_type: 'high',
       uplift_pct: 40,
-      recommended_range: '30 - 40',
-      headline: 'High demand this Diwali',
-      sub_headline: 'Basket sales rose 40% last year.',
+      recommended_range: '35 - 50',
+      headline: 'High demand this Diwali (+40%)',
+      sub_headline: 'Festive hamper baskets and dry fruit trays saw 40% higher demand last Diwali.',
       image_url: 'uploads/forecast_basket.jpg',
       production_goal: 0,
     },
     {
       id: 2,
       category: 'Pottery',
-      craft_description: 'Terracotta & earthenware vessels',
-      expected_demand: 'Medium',
-      demand_label: 'Medium demand',
-      badge_text: '↗ Medium',
-      badge_type: 'medium',
-      uplift_pct: 30,
-      recommended_range: '20 - 30',
-      headline: 'Medium demand this Diwali',
-      sub_headline: 'Clay pots and festive diyas see steady pre-orders.',
+      craft_description: 'Terracotta & earthenware ceremonial vessels',
+      expected_demand: 'High',
+      demand_label: 'Peak demand (+45%)',
+      badge_text: '↗ High',
+      badge_type: 'high',
+      uplift_pct: 45,
+      recommended_range: '50 - 80',
+      headline: 'Peak demand this Diwali (+45%)',
+      sub_headline: 'Clay diyas, earthen puja matkis, and terracotta decor surge across markets.',
       image_url: 'uploads/forecast_pottery.jpg',
       production_goal: 0,
     },
     {
       id: 3,
       category: 'Textiles',
-      craft_description: 'Handwoven silk & cotton fabrics',
-      expected_demand: 'Low',
-      demand_label: 'Low demand',
-      badge_text: '↗ Low',
-      badge_type: 'low',
-      uplift_pct: 20,
-      recommended_range: '10 - 15',
-      headline: 'Moderate demand this Diwali',
-      sub_headline: 'Peak textile demand expected closer to Wedding Season.',
+      craft_description: 'Handwoven silk & cotton festive fabrics',
+      expected_demand: 'Medium',
+      demand_label: 'Rising demand (+30%)',
+      badge_text: '↗ Medium',
+      badge_type: 'medium',
+      uplift_pct: 30,
+      recommended_range: '20 - 35',
+      headline: 'Rising festive demand (+30%)',
+      sub_headline: 'Handloom silk stoles, dupattas, and festive ethnic wear see strong interest.',
       image_url: 'uploads/forecast_textiles.jpg',
       production_goal: 0,
     },
@@ -154,10 +154,13 @@ export default function DemandForecastHomeScreen() {
   }, []);
 
   const getCategoryImage = (cat: ForecastCategory) => {
-    const key = cat.category.toLowerCase();
-    if (LOCAL_ASSETS[key]) {
-      return LOCAL_ASSETS[key];
-    }
+    const key = (cat.category || '').toLowerCase().trim();
+    if (LOCAL_ASSETS[key]) return LOCAL_ASSETS[key];
+    if (key.includes('basket')) return LOCAL_ASSETS.baskets;
+    if (key.includes('pottery') || key.includes('clay')) return LOCAL_ASSETS.pottery;
+    if (key.includes('textile') || key.includes('saree') || key.includes('cloth') || key.includes('fabric')) return LOCAL_ASSETS.textiles;
+    if (key.includes('diya') || key.includes('lamp')) return LOCAL_ASSETS.diya;
+    if (key.includes('decor') || key.includes('lantern')) return LOCAL_ASSETS.lantern;
     if (cat.image_url) {
       return { uri: normalizeImageUrl(cat.image_url) };
     }
@@ -231,7 +234,7 @@ export default function DemandForecastHomeScreen() {
             <Text style={styles.mainSubtitle}>Know what to make next</Text>
           </View>
 
-          {/* Upcoming Festival Highlight Banner (Screen A -> Screen C) */}
+          {/* Upcoming Festival Highlight Banner with Calendar Chart */}
           <TouchableOpacity
             style={styles.festivalBanner}
             onPress={() => {
@@ -240,22 +243,79 @@ export default function DemandForecastHomeScreen() {
                 params: { slug: featuredFestival.slug || 'diwali' },
               } as any);
             }}
-            activeOpacity={0.85}
+            activeOpacity={0.88}
           >
-            <View style={styles.festivalBannerLeft}>
-              <View style={styles.calendarIconContainer}>
-                <Calendar size={22} color="#C2410C" strokeWidth={2.2} />
+            <View style={styles.festivalBannerTop}>
+              {/* Calendar Tear-Off Sheet Badge */}
+              <View style={styles.calendarBadge}>
+                <View style={styles.calendarBadgeHeader}>
+                  <Text style={styles.calendarBadgeMonth}>OCT</Text>
+                </View>
+                <View style={styles.calendarBadgeBody}>
+                  <Text style={styles.calendarBadgeDay}>20</Text>
+                </View>
               </View>
+
               <View style={styles.festivalTextGroup}>
-                <Text style={styles.festivalTitle}>
-                  {featuredFestival.tagline || `${featuredFestival.name} is in ${featuredFestival.days_left} days`}
+                <View style={styles.festivalTitleRow}>
+                  <Text style={styles.festivalTitle}>
+                    {featuredFestival.name || 'Diwali'} Festival
+                  </Text>
+                  <View style={styles.daysBadge}>
+                    <Text style={styles.daysBadgeText}>
+                      {featuredFestival.days_left || 26} days left
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.festivalDateRow}>
+                  {featuredFestival.date_formatted || 'Oct 20, 2026'} • Peak Demand (+45%)
                 </Text>
                 <Text style={styles.festivalSubtitle}>
                   {featuredFestival.subtitle || 'Time to prepare your products'}
                 </Text>
               </View>
+
+              <ChevronRight size={20} color="#C2410C" strokeWidth={2.4} />
             </View>
-            <ChevronRight size={20} color="#C2410C" strokeWidth={2.4} />
+
+            {/* Visual Calendar Production Timeline / Chart */}
+            <View style={styles.timelineContainer}>
+              <View style={styles.timelineHeaderRow}>
+                <Text style={styles.timelineTitle}>📅 FESTIVAL PRODUCTION TIMELINE</Text>
+                <Text style={styles.timelineSubtitle}>4-Week Plan</Text>
+              </View>
+              <View style={styles.timelineTrack}>
+                <View style={styles.timelineNode}>
+                  <View style={[styles.timelineDot, styles.timelineDotDone]} />
+                  <Text style={styles.timelineNodeDate}>Sep 24</Text>
+                  <Text style={styles.timelineNodeLabel}>Today</Text>
+                </View>
+
+                <View style={[styles.timelineBar, styles.timelineBarDone]} />
+
+                <View style={styles.timelineNode}>
+                  <View style={styles.timelineDot} />
+                  <Text style={styles.timelineNodeDate}>Oct 01</Text>
+                  <Text style={styles.timelineNodeLabel}>Raw Material</Text>
+                </View>
+
+                <View style={styles.timelineBar} />
+
+                <View style={styles.timelineNode}>
+                  <View style={styles.timelineDot} />
+                  <Text style={styles.timelineNodeDate}>Oct 12</Text>
+                  <Text style={styles.timelineNodeLabel}>Batch Craft</Text>
+                </View>
+
+                <View style={styles.timelineBar} />
+
+                <View style={styles.timelineNode}>
+                  <View style={[styles.timelineDot, styles.timelineDotPeak]} />
+                  <Text style={[styles.timelineNodeDate, styles.timelineDatePeak]}>Oct 20</Text>
+                  <Text style={[styles.timelineNodeLabel, styles.timelineLabelPeak]}>Diwali ★</Text>
+                </View>
+              </View>
+            </View>
           </TouchableOpacity>
 
           {/* Section: Your Products */}
@@ -264,7 +324,6 @@ export default function DemandForecastHomeScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => {
-                // Allows viewing all categories or refreshing
                 fetchForecastSummary();
               }}
             >
@@ -296,7 +355,9 @@ export default function DemandForecastHomeScreen() {
                     <Image
                       source={getCategoryImage(cat)}
                       style={styles.productImage}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      transition={200}
+                      cachePolicy="memory-disk"
                     />
 
                     <View style={styles.productInfo}>
@@ -394,38 +455,63 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  /* ── Upcoming Festival Highlight Card ──────────────────────────────── */
+  /* ── Upcoming Festival Highlight Card with Calendar Chart ─────────── */
   festivalBanner: {
     backgroundColor: '#FDF5ED',
     borderWidth: 1,
     borderColor: '#FCECDD',
     borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    padding: 16,
     marginBottom: 26,
     ...Shadow.card,
   },
-  festivalBannerLeft: {
+  festivalBannerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    flex: 1,
+    gap: 13,
   },
-  calendarIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#FDECE0',
-    borderWidth: 1,
-    borderColor: '#FCD8C1',
-    justifyContent: 'center',
+  calendarBadge: {
+    width: 48,
+    borderRadius: 11,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#C2410C',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
+    ...Shadow.card,
+  },
+  calendarBadgeHeader: {
+    width: '100%',
+    backgroundColor: '#C2410C',
+    paddingVertical: 2,
+    alignItems: 'center',
+  },
+  calendarBadgeMonth: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  calendarBadgeBody: {
+    paddingVertical: 3,
+    alignItems: 'center',
+  },
+  calendarBadgeDay: {
+    color: '#9A3412',
+    fontSize: 18,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '800',
+    lineHeight: 22,
   },
   festivalTextGroup: {
     flex: 1,
+  },
+  festivalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
   },
   festivalTitle: {
     fontSize: 16.5,
@@ -434,11 +520,111 @@ const styles = StyleSheet.create({
     color: '#9A3412',
     letterSpacing: -0.2,
   },
+  daysBadge: {
+    backgroundColor: '#FFEDD5',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  daysBadgeText: {
+    fontSize: 11,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '700',
+    color: '#C2410C',
+  },
+  festivalDateRow: {
+    fontSize: 12.5,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '600',
+    color: '#B45309',
+    marginTop: 2,
+  },
   festivalSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: Fonts.body,
     color: '#64748B',
     marginTop: 2,
+  },
+
+  /* ── Visual Calendar Timeline / Chart ───────────────────────────────── */
+  timelineContainer: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#FDECE0',
+  },
+  timelineHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  timelineTitle: {
+    fontSize: 11,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '800',
+    color: '#9A3412',
+    letterSpacing: 0.5,
+  },
+  timelineSubtitle: {
+    fontSize: 10.5,
+    fontFamily: Fonts.body,
+    color: '#94A3B8',
+  },
+  timelineTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  timelineNode: {
+    alignItems: 'center',
+    minWidth: 48,
+  },
+  timelineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#CBD5E1',
+    marginBottom: 4,
+  },
+  timelineDotDone: {
+    backgroundColor: '#166534',
+  },
+  timelineDotPeak: {
+    backgroundColor: '#EA580C',
+    borderWidth: 2,
+    borderColor: '#FFEDD5',
+    transform: [{ scale: 1.2 }],
+  },
+  timelineBar: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#E2E8F0',
+    marginHorizontal: 3,
+    marginBottom: 16,
+  },
+  timelineBarDone: {
+    backgroundColor: '#86EFAC',
+  },
+  timelineNodeDate: {
+    fontSize: 10.5,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  timelineNodeLabel: {
+    fontSize: 9.5,
+    fontFamily: Fonts.body,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  timelineDatePeak: {
+    color: '#C2410C',
+    fontWeight: '800',
+  },
+  timelineLabelPeak: {
+    color: '#C2410C',
+    fontWeight: '700',
   },
 
   /* ── Section Header ─────────────────────────────────────────────────── */
@@ -486,6 +672,7 @@ const styles = StyleSheet.create({
     height: 62,
     borderRadius: 14,
     backgroundColor: '#F3EFEA',
+    overflow: 'hidden',
   },
   productInfo: {
     flex: 1,

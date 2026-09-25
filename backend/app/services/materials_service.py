@@ -431,50 +431,45 @@ def suggest_supplier(
 def get_category_materials_list(category: str) -> List[Dict[str, Any]]:
     """
     Returns curated materials list for Screen 2 (Category Browse),
-    ensuring items match available supplier seed data.
+    ensuring items match available supplier seed data with real local images.
     """
     cat_lower = (category or "").lower()
     
     if "raw" in cat_lower:
         return [
-            {"id": "bamboo", "name": "Bamboo", "icon": "bamboo", "image": "https://images.unsplash.com/photo-1597362925123-77861d3fbac7?w=200&q=80"},
-            {"id": "sabai_grass", "name": "Sabai Grass", "icon": "grass", "image": "https://images.unsplash.com/photo-1544816155-12df9643f363?w=200&q=80"},
-            {"id": "clay", "name": "Clay", "icon": "clay", "image": "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=200&q=80"},
-            {"id": "wood", "name": "Wood", "icon": "wood", "image": "https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=200&q=80"},
-            {"id": "cotton_yarn", "name": "Cotton Yarn", "icon": "yarn", "image": "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=200&q=80"},
-            {"id": "natural_dyes", "name": "Natural Dyes", "icon": "dyes", "image": "https://images.unsplash.com/photo-1596541223130-5d31a73fb6c6?w=200&q=80"},
-            {"id": "metal", "name": "Metal", "icon": "metal", "image": "https://images.unsplash.com/photo-1535813547-99c456a41d4a?w=200&q=80"},
-            {"id": "resin", "name": "Resin", "icon": "resin", "image": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&q=80"},
-            {"id": "jute", "name": "Jute", "icon": "jute", "image": "https://images.unsplash.com/photo-1621451537084-482c73073a0f?w=200&q=80"},
+            {"id": "clay", "name": "Terracotta Clay", "icon": "clay", "image": "uploads/raw_clay.jpg"},
+            {"id": "sabai_grass", "name": "Sabai Grass", "icon": "grass", "image": "uploads/sabai_grass.jpg"},
+            {"id": "bamboo", "name": "Craft Bamboo & Cane", "icon": "bamboo", "image": "uploads/bamboo_stalks.jpg"},
+            {"id": "cotton_yarn", "name": "Handloom Cotton Yarn", "icon": "yarn", "image": "uploads/cotton_yarn.jpg"},
+            {"id": "natural_dyes", "name": "Natural Organic Dyes", "icon": "dyes", "image": "uploads/natural_dyes.jpg"},
+            {"id": "wood", "name": "Seasoned Carving Wood", "icon": "wood", "image": "uploads/carving_wood.jpg"},
             {"id": "others", "name": "Others", "icon": "more", "image": ""},
         ]
     elif "tool" in cat_lower:
         return [
-            {"id": "carving_tools", "name": "Wood Carving Chisels", "icon": "hammer", "image": "https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?w=200&q=80"},
-            {"id": "pottery_tools", "name": "Clay Modeling Tools", "icon": "tool", "image": "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=200&q=80"},
-            {"id": "handles", "name": "Wooden Handles", "icon": "tool", "image": "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=200&q=80"},
-            {"id": "weaving_shuttles", "name": "Weaving Shuttles", "icon": "tool", "image": "https://images.unsplash.com/photo-1607613009820-a29f7bb81c04?w=200&q=80"},
+            {"id": "carving_tools", "name": "Wood Carving Chisels", "icon": "tool", "image": "uploads/carving_chisels.jpg"},
+            {"id": "pottery_tools", "name": "Clay Modeling Tools", "icon": "tool", "image": "uploads/clay_modeling_tools.jpg"},
+            {"id": "pottery_wheel", "name": "Traditional Pottery Wheel", "icon": "gear", "image": "uploads/pottery_wheel.jpg"},
+            {"id": "weaving_shuttles", "name": "Weaving Boat Shuttle", "icon": "tool", "image": "uploads/weaving_shuttle.jpg"},
             {"id": "others", "name": "Others", "icon": "more", "image": ""},
         ]
     elif "machin" in cat_lower or "equip" in cat_lower:
         return [
-            {"id": "pottery_wheel", "name": "Pottery Wheel", "icon": "gear", "image": "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=200&q=80"},
-            {"id": "kiln", "name": "Kiln", "icon": "gear", "image": "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=200&q=80"},
-            {"id": "handloom", "name": "Handloom Frame", "icon": "gear", "image": "https://images.unsplash.com/photo-1607613009820-a29f7bb81c04?w=200&q=80"},
+            {"id": "pottery_wheel", "name": "Traditional Pottery Wheel", "icon": "gear", "image": "uploads/pottery_wheel.jpg"},
+            {"id": "weaving_shuttles", "name": "Weaving Boat Shuttle", "icon": "tool", "image": "uploads/weaving_shuttle.jpg"},
             {"id": "others", "name": "Others", "icon": "more", "image": ""},
         ]
     elif "pack" in cat_lower:
         return [
-            {"id": "boxes", "name": "Packaging Boxes", "icon": "box", "image": "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=200&q=80"},
-            {"id": "kraft_paper", "name": "Kraft Paper Rolls", "icon": "box", "image": "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=200&q=80"},
-            {"id": "hemp_twine", "name": "Hemp Packing Twine", "icon": "box", "image": "https://images.unsplash.com/photo-1590402494682-cd3fb53b1f70?w=200&q=80"},
+            {"id": "cotton_yarn", "name": "Natural Jute & Yarn Bundles", "icon": "yarn", "image": "uploads/cotton_yarn.jpg"},
+            {"id": "sabai_grass", "name": "Woven Grass Wraps", "icon": "grass", "image": "uploads/sabai_grass.jpg"},
             {"id": "others", "name": "Others", "icon": "more", "image": ""},
         ]
     else:  # eco friendly
         return [
-            {"id": "sabai_grass", "name": "Sabai Grass", "icon": "grass", "image": "https://images.unsplash.com/photo-1544816155-12df9643f363?w=200&q=80"},
-            {"id": "bamboo", "name": "Bamboo", "icon": "bamboo", "image": "https://images.unsplash.com/photo-1520072959219-c595dc870360?w=200&q=80"},
-            {"id": "jute", "name": "Jute", "icon": "jute", "image": "https://images.unsplash.com/photo-1590402494682-cd3fb53b1f70?w=200&q=80"},
-            {"id": "natural_dyes", "name": "Natural Dyes", "icon": "dyes", "image": "https://images.unsplash.com/photo-1596541223130-5d31a73fb6c6?w=200&q=80"},
+            {"id": "sabai_grass", "name": "Sabai Grass", "icon": "grass", "image": "uploads/sabai_grass.jpg"},
+            {"id": "bamboo", "name": "Craft Bamboo & Cane", "icon": "bamboo", "image": "uploads/bamboo_stalks.jpg"},
+            {"id": "cotton_yarn", "name": "Handloom Cotton Yarn", "icon": "yarn", "image": "uploads/cotton_yarn.jpg"},
+            {"id": "natural_dyes", "name": "Natural Organic Dyes", "icon": "dyes", "image": "uploads/natural_dyes.jpg"},
             {"id": "others", "name": "Others", "icon": "more", "image": ""},
         ]
