@@ -113,7 +113,7 @@ export default function InquiriesScreen() {
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   // Active call timer simulation
   useEffect(() => {
@@ -399,7 +399,9 @@ export default function InquiriesScreen() {
             </View>
             <View style={styles.contactInfo}>
               <Text style={styles.contactName}>{selectedConversation.name}</Text>
-              <Text style={styles.contactStatus}>Online</Text>
+              <Text style={styles.contactStatus}>
+                {language === 'ta' ? 'ஆன்லைன்' : language === 'hi' ? 'ऑनलाइन' : 'Online'}
+              </Text>
             </View>
             <View style={styles.callActions}>
               <TouchableOpacity
@@ -474,14 +476,19 @@ export default function InquiriesScreen() {
               <TouchableOpacity
                 style={styles.inputIconBtn}
                 activeOpacity={0.7}
-                onPress={() => Alert.alert('Camera', 'Take a craft photo or sample')}
+                onPress={() =>
+                  Alert.alert(
+                    language === 'ta' ? 'கேமரா' : language === 'hi' ? 'कैमरा' : 'Camera',
+                    language === 'ta' ? 'கைவினைப் பொருளின் புகைப்படத்தை எடுக்கவும்' : language === 'hi' ? 'शिल्प का फोटो या नमूना लें' : 'Take a craft photo or sample'
+                  )
+                }
               >
                 <Camera size={20} color="#8E8E93" />
               </TouchableOpacity>
 
               <TextInput
                 style={styles.chatTextInput}
-                placeholder="Type message..."
+                placeholder={language === 'ta' ? 'செய்தியை உள்ளிடவும்...' : language === 'hi' ? 'संदेश टाइप करें...' : 'Type message...'}
                 placeholderTextColor="#9CA3AF"
                 value={inputText}
                 onChangeText={setInputText}
@@ -492,7 +499,12 @@ export default function InquiriesScreen() {
               <TouchableOpacity
                 style={styles.inputIconBtn}
                 activeOpacity={0.7}
-                onPress={() => Alert.alert('Voice Note', 'Hold to record voice memo')}
+                onPress={() =>
+                  Alert.alert(
+                    language === 'ta' ? 'குரல் குறிப்பு' : language === 'hi' ? 'वॉयस नोट' : 'Voice Note',
+                    language === 'ta' ? 'குரல் குறிப்பை பதிவு செய்ய அழுத்திப் பிடிக்கவும்' : language === 'hi' ? 'वॉयस मेमो रिकॉर्ड करने के लिए दबाकर रखें' : 'Hold to record voice memo'
+                  )
+                }
               >
                 <Mic size={20} color="#8E8E93" />
               </TouchableOpacity>
@@ -500,7 +512,12 @@ export default function InquiriesScreen() {
               <TouchableOpacity
                 style={styles.inputIconBtn}
                 activeOpacity={0.7}
-                onPress={() => Alert.alert('Attachment', 'Attach price quote or craft catalog')}
+                onPress={() =>
+                  Alert.alert(
+                    language === 'ta' ? 'இணைப்பு' : language === 'hi' ? 'अटैचमेंट' : 'Attachment',
+                    language === 'ta' ? 'விலைப்பட்டியல் அல்லது கைவினைப் பட்டியலை இணைக்கவும்' : language === 'hi' ? 'कोटेशन या शिल्प सूची संलग्न करें' : 'Attach price quote or craft catalog'
+                  )
+                }
               >
                 <Paperclip size={20} color="#8E8E93" />
               </TouchableOpacity>
@@ -634,7 +651,9 @@ export default function InquiriesScreen() {
                   <View style={[styles.audioCircleBtn, isAudioMuted && styles.audioCircleBtnActive]}>
                     {isAudioMuted ? <MicOff size={22} color="#EF4444" /> : <Mic size={22} color="#0D0D0D" />}
                   </View>
-                  <Text style={styles.audioBtnLabel}>Mute</Text>
+                  <Text style={styles.audioBtnLabel}>
+                    {language === 'ta' ? 'ஒலியடக்கு' : language === 'hi' ? 'म्यूट' : 'Mute'}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -646,7 +665,9 @@ export default function InquiriesScreen() {
                   <View style={styles.audioCircleBtn}>
                     <MessageSquare size={22} color="#0D0D0D" />
                   </View>
-                  <Text style={styles.audioBtnLabel}>Chat</Text>
+                  <Text style={styles.audioBtnLabel}>
+                    {language === 'ta' ? 'அரட்டை' : language === 'hi' ? 'चैट' : 'Chat'}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -656,7 +677,9 @@ export default function InquiriesScreen() {
                   <View style={[styles.audioCircleBtn, !isSpeakerOn && styles.audioCircleBtnActive]}>
                     {isSpeakerOn ? <Volume2 size={22} color="#0D0D0D" /> : <VolumeX size={22} color="#EF4444" />}
                   </View>
-                  <Text style={styles.audioBtnLabel}>Speaker</Text>
+                  <Text style={styles.audioBtnLabel}>
+                    {language === 'ta' ? 'ஸ்பீக்கர்' : language === 'hi' ? 'स्पीकर' : 'Speaker'}
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -669,27 +692,45 @@ export default function InquiriesScreen() {
                   <View style={[styles.audioCircleBtn, isRecording && styles.audioCircleBtnActive]}>
                     <Disc size={22} color={isRecording ? '#EF4444' : '#0D0D0D'} />
                   </View>
-                  <Text style={styles.audioBtnLabel}>{isRecording ? 'Recording' : 'Record'}</Text>
+                  <Text style={styles.audioBtnLabel}>
+                    {isRecording
+                      ? (language === 'ta' ? 'பதிவாகிறது...' : language === 'hi' ? 'रिकॉर्डिंग...' : 'Recording')
+                      : (language === 'ta' ? 'பதிவுசெய்' : language === 'hi' ? 'रिकॉर्ड' : 'Record')}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.audioGridItem}
-                  onPress={() => Alert.alert('Add Participant', 'Invite buyer agent or artisan guild member')}
+                  onPress={() =>
+                    Alert.alert(
+                      language === 'ta' ? 'பங்கேற்பாளரைச் சேர்' : language === 'hi' ? 'प्रतिभागी जोड़ें' : 'Add Participant',
+                      language === 'ta' ? 'வாங்குபவர் பிரதிநிதி அல்லது சங்க உறுப்பினரை அழைக்கவும்' : language === 'hi' ? 'खरीदार एजेंट या कारीगर गिल्ड सदस्य को आमंत्रित करें' : 'Invite buyer agent or artisan guild member'
+                    )
+                  }
                 >
                   <View style={styles.audioCircleBtn}>
                     <UserPlus size={22} color="#0D0D0D" />
                   </View>
-                  <Text style={styles.audioBtnLabel}>Add</Text>
+                  <Text style={styles.audioBtnLabel}>
+                    {language === 'ta' ? 'சேர்' : language === 'hi' ? 'जोड़ें' : 'Add'}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.audioGridItem}
-                  onPress={() => Alert.alert('Options', 'Hold Call, Transfer, or View Craft Details')}
+                  onPress={() =>
+                    Alert.alert(
+                      language === 'ta' ? 'விருப்பங்கள்' : language === 'hi' ? 'विकल्प' : 'Options',
+                      language === 'ta' ? 'அழைப்பை நிறுத்திவைக்கவும், மாற்றவும் அல்லது விவரங்களைப் பார்க்கவும்' : language === 'hi' ? 'कॉल होल्ड करें, ट्रांसफर करें या शिल्प विवरण देखें' : 'Hold Call, Transfer, or View Craft Details'
+                    )
+                  }
                 >
                   <View style={styles.audioCircleBtn}>
                     <MoreHorizontal size={22} color="#0D0D0D" />
                   </View>
-                  <Text style={styles.audioBtnLabel}>More</Text>
+                  <Text style={styles.audioBtnLabel}>
+                    {language === 'ta' ? 'மேலும்' : language === 'hi' ? 'अधिक' : 'More'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -741,7 +782,7 @@ export default function InquiriesScreen() {
                 currentTab === 'messages' && styles.segmentTextActive,
               ]}
             >
-              Messages
+              {language === 'ta' ? 'செய்திகள்' : language === 'hi' ? 'संदेश' : 'Messages'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -755,7 +796,7 @@ export default function InquiriesScreen() {
                 currentTab === 'reviews' && styles.segmentTextActive,
               ]}
             >
-              Reviews Client
+              {language === 'ta' ? 'மதிப்புரைகள்' : language === 'hi' ? 'समीक्षाएं' : 'Reviews Client'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -799,7 +840,13 @@ export default function InquiriesScreen() {
                   <Star key={s} size={14} color="#F59E0B" fill="#F59E0B" style={{ marginRight: 2 }} />
                 ))}
               </View>
-              <Text style={styles.ratingCount}>Based on {reviews.length} client reviews</Text>
+              <Text style={styles.ratingCount}>
+                {language === 'ta'
+                  ? `${reviews.length} வாடிக்கையாளர் மதிப்புரைகளின் அடிப்படையில்`
+                  : language === 'hi'
+                  ? `${reviews.length} ग्राहक समीक्षाओं पर आधारित`
+                  : `Based on ${reviews.length} client reviews`}
+              </Text>
             </View>
             <TouchableOpacity
               style={styles.addReviewBtn}
@@ -807,7 +854,9 @@ export default function InquiriesScreen() {
               onPress={() => setNewReviewModalOpen(true)}
             >
               <Plus size={16} color="#FFFFFF" />
-              <Text style={styles.addReviewBtnText}>Add Review</Text>
+              <Text style={styles.addReviewBtnText}>
+                {language === 'ta' ? 'மதிப்புரை சேர்க்க' : language === 'hi' ? 'समीक्षा जोड़ें' : 'Add Review'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -840,7 +889,9 @@ export default function InquiriesScreen() {
                 <View style={styles.artisanReplyBox}>
                   <View style={styles.replyTitleRow}>
                     <CornerDownRight size={13} color="#B5502F" />
-                    <Text style={styles.artisanReplyTitle}>Artisan Response</Text>
+                    <Text style={styles.artisanReplyTitle}>
+                      {language === 'ta' ? 'கைவினைஞரின் பதில்' : language === 'hi' ? 'कारीगर की प्रतिक्रिया' : 'Artisan Response'}
+                    </Text>
                   </View>
                   <Text style={styles.artisanReplyContent}>{rev.reply}</Text>
                 </View>
@@ -850,7 +901,9 @@ export default function InquiriesScreen() {
                   activeOpacity={0.7}
                   onPress={() => setReplyingReviewId(rev.id)}
                 >
-                  <Text style={styles.replyActionText}>Reply as Artisan</Text>
+                  <Text style={styles.replyActionText}>
+                    {language === 'ta' ? 'பதிலளிக்கவும்' : language === 'hi' ? 'उत्तर दें' : 'Reply as Artisan'}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -871,7 +924,7 @@ export default function InquiriesScreen() {
             <Search size={18} color="#9CA3AF" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search..."
+              placeholder={language === 'ta' ? 'தேடுக...' : language === 'hi' ? 'खोजें...' : 'Search...'}
               placeholderTextColor="#9CA3AF"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -887,7 +940,9 @@ export default function InquiriesScreen() {
           {filteredConversations.length > 0 && (
             <>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionHeading}>Recent Customers</Text>
+                <Text style={styles.sectionHeading}>
+                  {language === 'ta' ? 'சமீபத்திய வாடிக்கையாளர்கள்' : language === 'hi' ? 'हाल के ग्राहक' : 'Recent Customers'}
+                </Text>
               </View>
 
               <ScrollView
@@ -916,17 +971,23 @@ export default function InquiriesScreen() {
 
           {/* Messages Vertical Section */}
           <View style={[styles.sectionHeader, { marginTop: filteredConversations.length > 0 ? 24 : 10 }]}>
-            <Text style={styles.sectionHeading}>Messages & Order Chats</Text>
+            <Text style={styles.sectionHeading}>
+              {language === 'ta' ? 'செய்திகள் மற்றும் ஆர்டர் அரட்டைகள்' : language === 'hi' ? 'संदेश और ऑर्डर चैट' : 'Messages & Order Chats'}
+            </Text>
           </View>
 
           {filteredConversations.length === 0 ? (
             <View style={{ paddingVertical: 50, alignItems: 'center', paddingHorizontal: 24 }}>
               <MessageSquare size={40} color="#9CA3AF" />
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#0D0D0D', marginTop: 12 }}>
-                No Inquiries Yet
+                {language === 'ta' ? 'விசாரணைகள் எதுவும் இல்லை' : language === 'hi' ? 'अभी तक कोई पूछताछ नहीं' : 'No Inquiries Yet'}
               </Text>
               <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 6, textAlign: 'center', lineHeight: 18 }}>
-                When a buyer books an order or sends questions about your handmade crafts, the conversation will appear here.
+                {language === 'ta'
+                  ? 'வாங்குபவர் ஒரு ஆர்டரை பதிவு செய்யும் போது அல்லது உங்கள் கைவினைப்பொருட்கள் குறித்து கேள்விகள் அனுப்பும் போது, உரையாடல் இங்கே தோன்றும்.'
+                  : language === 'hi'
+                  ? 'जब कोई खरीदार ऑर्डर बुक करता है या आपके हस्तनिर्मित शिल्प के बारे में प्रश्न भेजता है, तो बातचीत यहाँ दिखाई देगी।'
+                  : 'When a buyer books an order or sends questions about your handmade crafts, the conversation will appear here.'}
               </Text>
             </View>
           ) : (
@@ -973,14 +1034,16 @@ export default function InquiriesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Reply to Client</Text>
+              <Text style={styles.modalTitle}>
+                {language === 'ta' ? 'வாடிக்கையாளருக்குப் பதிலளிக்கவும்' : language === 'hi' ? 'ग्राहक को उत्तर दें' : 'Reply to Client'}
+              </Text>
               <TouchableOpacity onPress={() => setReplyingReviewId(null)}>
                 <X size={20} color="#0D0D0D" />
               </TouchableOpacity>
             </View>
             <TextInput
               style={styles.modalInput}
-              placeholder="Thank the client and share your craft details..."
+              placeholder={language === 'ta' ? 'வாடிக்கையாளருக்கு நன்றி தெரிவித்து விவரங்களைப் பகிரவும்...' : language === 'hi' ? 'ग्राहक को धन्यवाद दें और शिल्प का विवरण साझा करें...' : 'Thank the client and share your craft details...'}
               placeholderTextColor="#9CA3AF"
               multiline
               numberOfLines={4}
@@ -991,7 +1054,9 @@ export default function InquiriesScreen() {
               style={styles.modalPrimaryBtn}
               onPress={() => replyingReviewId && handleSaveReviewReply(replyingReviewId)}
             >
-              <Text style={styles.modalPrimaryBtnText}>Post Response</Text>
+              <Text style={styles.modalPrimaryBtnText}>
+                {language === 'ta' ? 'பதிலை இடுகையிடவும்' : language === 'hi' ? 'प्रतिक्रिया पोस्ट करें' : 'Post Response'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1002,22 +1067,28 @@ export default function InquiriesScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Write Client Review</Text>
+              <Text style={styles.modalTitle}>
+                {language === 'ta' ? 'மதிப்புரை எழுதவும்' : language === 'hi' ? 'ग्राहक समीक्षा लिखें' : 'Write Client Review'}
+              </Text>
               <TouchableOpacity onPress={() => setNewReviewModalOpen(false)}>
                 <X size={20} color="#0D0D0D" />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Client Name</Text>
+            <Text style={styles.inputLabel}>
+              {language === 'ta' ? 'வாடிக்கையாளர் பெயர்' : language === 'hi' ? 'ग्राहक का नाम' : 'Client Name'}
+            </Text>
             <TextInput
               style={styles.modalSingleInput}
-              placeholder="e.g. Malison Aved"
+              placeholder={language === 'ta' ? 'எ.கா. மாலிசன் அவேத்' : language === 'hi' ? 'उदा. मैलिसन एवेड' : 'e.g. Malison Aved'}
               placeholderTextColor="#9CA3AF"
               value={newReviewerName}
               onChangeText={setNewReviewerName}
             />
 
-            <Text style={styles.inputLabel}>Star Rating</Text>
+            <Text style={styles.inputLabel}>
+              {language === 'ta' ? 'நட்சத்திர மதிப்பீடு' : language === 'hi' ? 'स्टार रेटिंग' : 'Star Rating'}
+            </Text>
             <View style={styles.starSelectRow}>
               {[1, 2, 3, 4, 5].map((star) => (
                 <TouchableOpacity key={star} onPress={() => setNewReviewRating(star)}>
@@ -1031,10 +1102,12 @@ export default function InquiriesScreen() {
               ))}
             </View>
 
-            <Text style={styles.inputLabel}>Review Feedback</Text>
+            <Text style={styles.inputLabel}>
+              {language === 'ta' ? 'கருத்து / மதிப்புரை' : language === 'hi' ? 'समीक्षा प्रतिक्रिया' : 'Review Feedback'}
+            </Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Write your feedback on the craft quality..."
+              placeholder={language === 'ta' ? 'கைவினைப் பொருளின் தரம் குறித்த உங்கள் கருத்தை எழுதவும்...' : language === 'hi' ? 'शिल्प की गुणवत्ता पर अपनी प्रतिक्रिया लिखें...' : 'Write your feedback on the craft quality...'}
               placeholderTextColor="#9CA3AF"
               multiline
               numberOfLines={3}
@@ -1043,7 +1116,9 @@ export default function InquiriesScreen() {
             />
 
             <TouchableOpacity style={styles.modalPrimaryBtn} onPress={handleAddNewReview}>
-              <Text style={styles.modalPrimaryBtnText}>Submit Review</Text>
+              <Text style={styles.modalPrimaryBtnText}>
+                {language === 'ta' ? 'சமர்ப்பிக்கவும்' : language === 'hi' ? 'समीक्षा सबमिट करें' : 'Submit Review'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

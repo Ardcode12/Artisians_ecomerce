@@ -226,6 +226,97 @@ export default function AnalyticsHomeScreen() {
     null
   );
 
+  const getPeriodLabel = (id: string, lang: string) => {
+    if (lang === 'ta') {
+      switch (id) {
+        case '7_days': return '7 நாட்கள்';
+        case '30_days': return '30 நாட்கள்';
+        case '90_days': return '90 நாட்கள்';
+        case '1_year': return '1 வருடம்';
+        case 'all_time': return 'எப்போதும்';
+        default: return id;
+      }
+    }
+    if (lang === 'hi') {
+      switch (id) {
+        case '7_days': return '7 दिन';
+        case '30_days': return '30 दिन';
+        case '90_days': return '90 दिन';
+        case '1_year': return '1 वर्ष';
+        case 'all_time': return 'सभी समय';
+        default: return id;
+      }
+    }
+    switch (id) {
+      case '7_days': return '7 Days';
+      case '30_days': return '30 Days';
+      case '90_days': return '90 Days';
+      case '1_year': return '1 Year';
+      case 'all_time': return 'All Time';
+      default: return id;
+    }
+  };
+
+  const pageTitle =
+    currentAppLang === 'ta'
+      ? 'உங்கள் வணிக நுண்ணறிவு'
+      : currentAppLang === 'hi'
+      ? 'आपकी व्यापार इनसाइट्स'
+      : 'Your Business Insights';
+
+  const pageSubtitle =
+    currentAppLang === 'ta'
+      ? 'எது சிறப்பாக செயல்படுகிறது, அடுத்து என்ன செய்ய வேண்டும் என்று பார்க்கவும்'
+      : currentAppLang === 'hi'
+      ? 'देखें कि क्या काम कर रहा है और आगे क्या करना है'
+      : "See what's working and what to do next";
+
+  const statRevenueLabel =
+    currentAppLang === 'ta' ? 'வருமானம்' : currentAppLang === 'hi' ? 'कमाई' : 'Revenue';
+  const statOrdersLabel =
+    currentAppLang === 'ta' ? 'ஆர்டர்கள்' : currentAppLang === 'hi' ? 'ऑर्डर' : 'Orders';
+  const statViewsLabel =
+    currentAppLang === 'ta' ? 'பார்வைகள்' : currentAppLang === 'hi' ? 'व्यूज' : 'Listing Views';
+  const statConversionLabel =
+    currentAppLang === 'ta' ? 'மாற்ற விகிதம்' : currentAppLang === 'hi' ? 'कन्वर्जन' : 'Conversion';
+  const statConversionSub =
+    currentAppLang === 'ta'
+      ? 'பார்வைகள் → ஆர்டர்கள்'
+      : currentAppLang === 'hi'
+      ? 'व्यूज → ऑर्डर'
+      : 'views → orders';
+
+  const topProductsTitle =
+    currentAppLang === 'ta' ? 'சிறந்த தயாரிப்புகள்' : currentAppLang === 'hi' ? 'शीर्ष उत्पाद' : 'Top Products';
+  const seeAllText =
+    currentAppLang === 'ta' ? 'அனைத்தும்' : currentAppLang === 'hi' ? 'सभी देखें' : 'See All';
+
+  const viewsWord =
+    currentAppLang === 'ta' ? 'பார்வைகள்' : currentAppLang === 'hi' ? 'व्यूज' : 'views';
+  const inqWord =
+    currentAppLang === 'ta' ? 'விசாரணைகள்' : currentAppLang === 'hi' ? 'पूछताछ' : 'inquiries';
+  const soldWord =
+    currentAppLang === 'ta' ? 'விற்கப்பட்டது' : currentAppLang === 'hi' ? 'बिका' : 'sold';
+
+  const buyersTitle =
+    currentAppLang === 'ta'
+      ? 'உங்கள் வாங்குபவர்கள் இருக்கும் இடங்கள்'
+      : currentAppLang === 'hi'
+      ? 'आपके खरीदार कहाँ हैं'
+      : 'Where your buyers are';
+
+  const ordersWord =
+    currentAppLang === 'ta' ? 'ஆர்டர்கள்' : currentAppLang === 'hi' ? 'ऑर्डर' : 'orders';
+
+  const historyTitle =
+    currentAppLang === 'ta' ? 'செயல்பாட்டு வரலாறு' : currentAppLang === 'hi' ? 'गतिविधि इतिहास' : 'Activity History';
+  const historySubtitle =
+    currentAppLang === 'ta'
+      ? 'உங்கள் வணிகத்தில் நடந்த அனைத்தையும் பார்க்கவும்'
+      : currentAppLang === 'hi'
+      ? 'अपने व्यापार में हुई सभी गतिविधियाँ देखें'
+      : "See everything that's happened in your business";
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF8F5" />
@@ -268,8 +359,8 @@ export default function AnalyticsHomeScreen() {
       >
         {/* Title and Subtitle */}
         <View style={styles.titleSection}>
-          <Text style={styles.pageTitle}>Your Business Insights</Text>
-          <Text style={styles.pageSubtitle}>See what's working and what to do next</Text>
+          <Text style={styles.pageTitle}>{pageTitle}</Text>
+          <Text style={styles.pageSubtitle}>{pageSubtitle}</Text>
         </View>
 
         {/* ── Primary Audio Guide / Overview Listen Banner ──────────── */}
@@ -340,7 +431,7 @@ export default function AnalyticsHomeScreen() {
                     isSelected ? styles.periodTextActive : styles.periodTextInactive,
                   ]}
                 >
-                  {p.label}
+                  {getPeriodLabel(p.id, currentAppLang)}
                 </Text>
               </TouchableOpacity>
             );
@@ -386,7 +477,7 @@ export default function AnalyticsHomeScreen() {
                   <Text style={styles.rupeeSymbol}>₹</Text>
                 </View>
                 <Text style={styles.statBigNum}>{data?.hero_stats?.revenue?.value || '₹8,450'}</Text>
-                <Text style={styles.statLabel}>Revenue</Text>
+                <Text style={styles.statLabel}>{statRevenueLabel}</Text>
                 <Text style={styles.statTrendGreen}>
                   {data?.hero_stats?.revenue?.trend || '↑ 18%'}
                 </Text>
@@ -398,7 +489,7 @@ export default function AnalyticsHomeScreen() {
                   <ShoppingBag size={18} color="#9C4121" strokeWidth={2.2} />
                 </View>
                 <Text style={styles.statBigNum}>{data?.hero_stats?.orders?.value || '12'}</Text>
-                <Text style={styles.statLabel}>Orders</Text>
+                <Text style={styles.statLabel}>{statOrdersLabel}</Text>
                 <Text style={styles.statTrendGreen}>
                   {data?.hero_stats?.orders?.trend || '↑ 3 more'}
                 </Text>
@@ -410,7 +501,7 @@ export default function AnalyticsHomeScreen() {
                   <Eye size={18} color="#16A34A" strokeWidth={2.2} />
                 </View>
                 <Text style={styles.statBigNum}>{data?.hero_stats?.listing_views?.value || '340'}</Text>
-                <Text style={styles.statLabel}>Listing Views</Text>
+                <Text style={styles.statLabel}>{statViewsLabel}</Text>
                 <Text style={styles.statTrendGreen}>
                   {data?.hero_stats?.listing_views?.trend || '↑ 22%'}
                 </Text>
@@ -424,18 +515,18 @@ export default function AnalyticsHomeScreen() {
                 <Text style={styles.statBigNum}>
                   {data?.hero_stats?.conversion_rate?.value || '3.5%'}
                 </Text>
-                <Text style={styles.statLabel}>Conversion</Text>
-                <Text style={styles.statSubtext}>views → orders</Text>
+                <Text style={styles.statLabel}>{statConversionLabel}</Text>
+                <Text style={styles.statSubtext}>{statConversionSub}</Text>
               </View>
             </ScrollView>
 
-            {/* Revenue Trend Chart Card matching Image 1 */}
+            {/* Revenue Trend Chart Card */}
             <View style={styles.chartCard}>
               <Text style={styles.chartHeadline}>
-                {data?.revenue_chart?.headline || 'Your best week was Sept 8 – 14'}
+                {data?.revenue_chart?.headline || (currentAppLang === 'ta' ? 'உங்கள் சிறந்த வாரம்' : currentAppLang === 'hi' ? 'आपका सबसे अच्छा हफ्ता' : 'Your best week was Sept 8 – 14')}
               </Text>
               <Text style={styles.chartSubHeadline}>
-                {data?.revenue_chart?.sub_headline || 'with ₹2,100 in sales'}
+                {data?.revenue_chart?.sub_headline || (currentAppLang === 'ta' ? 'விற்பனையில் ₹2,100 உடன்' : currentAppLang === 'hi' ? '₹2,100 की बिक्री के साथ' : 'with ₹2,100 in sales')}
               </Text>
 
               {/* SVG Spline Curve */}
@@ -494,16 +585,16 @@ export default function AnalyticsHomeScreen() {
               </View>
             </View>
 
-            {/* Top Products Section matching Image 1 */}
+            {/* Top Products Section */}
             <View style={styles.sectionWrap}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>Top Products</Text>
+                <Text style={styles.sectionTitle}>{topProductsTitle}</Text>
                 <TouchableOpacity
                   onPress={() => router.push('/listings')}
                   style={styles.seeAllBtn}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.seeAllText}>See All</Text>
+                  <Text style={styles.seeAllText}>{seeAllText}</Text>
                   <ChevronRight size={16} color="#6B7280" />
                 </TouchableOpacity>
               </View>
@@ -543,9 +634,9 @@ export default function AnalyticsHomeScreen() {
                           {prodTitle}
                         </Text>
                         <View style={styles.productStatsRow}>
-                          <Text style={styles.statSnippet}>👁 {viewsCount} views</Text>
-                          <Text style={styles.statSnippet}>💬 {inqCount} inquiries</Text>
-                          <Text style={styles.statSnippet}>🛒 {soldCount} sold</Text>
+                          <Text style={styles.statSnippet}>👁 {viewsCount} {viewsWord}</Text>
+                          <Text style={styles.statSnippet}>💬 {inqCount} {inqWord}</Text>
+                          <Text style={styles.statSnippet}>🛒 {soldCount} {soldWord}</Text>
                         </View>
                       </View>
                       <ChevronRight size={18} color="#94A3B8" strokeWidth={2.2} />
@@ -576,7 +667,11 @@ export default function AnalyticsHomeScreen() {
                   <Text style={styles.insightTitle}>{data.social_reach.headline}</Text>
                 </View>
                 <Text style={styles.socialStatsLine}>
-                  {data.social_reach.views} views · {data.social_reach.likes} likes · {data.social_reach.comments} comments
+                  {currentAppLang === 'ta'
+                    ? `${data.social_reach.views} பார்வைகள் · ${data.social_reach.likes} விருப்பங்கள் · ${data.social_reach.comments} கருத்துகள்`
+                    : currentAppLang === 'hi'
+                    ? `${data.social_reach.views} व्यूज · ${data.social_reach.likes} लाइक्स · ${data.social_reach.comments} टिप्पणियाँ`
+                    : `${data.social_reach.views} views · ${data.social_reach.likes} likes · ${data.social_reach.comments} comments`}
                 </Text>
               </View>
             )}
@@ -585,13 +680,13 @@ export default function AnalyticsHomeScreen() {
             <View style={styles.buyersCard}>
               <View style={styles.cardHeaderFlex}>
                 <MapPin size={18} color="#0F2438" style={{ marginRight: 8 }} />
-                <Text style={styles.insightTitle}>Where your buyers are</Text>
+                <Text style={styles.insightTitle}>{buyersTitle}</Text>
               </View>
               <View style={styles.buyerCitiesList}>
                 {(data?.buyer_locations || []).map((loc: any, idx: number) => (
                   <View key={idx} style={styles.cityRow}>
                     <Text style={styles.cityName}>{loc.city}</Text>
-                    <Text style={styles.cityOrders}>{loc.orders} orders</Text>
+                    <Text style={styles.cityOrders}>{loc.orders} {ordersWord}</Text>
                   </View>
                 ))}
               </View>
@@ -607,8 +702,8 @@ export default function AnalyticsHomeScreen() {
                 <Clock size={20} color="#C04B25" />
               </View>
               <View style={styles.historyTextWrap}>
-                <Text style={styles.historyTitle}>Activity History</Text>
-                <Text style={styles.historySubtitle}>See everything that's happened in your business</Text>
+                <Text style={styles.historyTitle}>{historyTitle}</Text>
+                <Text style={styles.historySubtitle}>{historySubtitle}</Text>
               </View>
               <ChevronRight size={20} color="#C04B25" strokeWidth={2.4} />
             </TouchableOpacity>

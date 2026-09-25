@@ -45,167 +45,184 @@ def _has_chinese_leak(text: str) -> bool:
     return bool(_CJK_RE.search(text))
 
 
-def transcribe_audio_file(audio_path: str, language: Optional[str] = None) -> str:
-    """
-    Transcribe an audio file by posting it to the remote NVIDIA A100 Whisper Large V3 server.
+SARVAM_LANG_MAP = {
+    "ta": "ta-IN",
+    "hi": "hi-IN",
+    "te": "te-IN",
+    "bn": "bn-IN",
+    "mr": "mr-IN",
+    "pa": "pa-IN",
+    "kn": "kn-IN",
+    "ml": "ml-IN",
+    "gu": "gu-IN",
+    "en": "en-IN",
+}
 
-    Non-WAV files (m4a, mp4, aac, webm, etc.) are automatically converted to
-    16kHz mono WAV using ffmpeg before upload — the remote server returns HTTP 500
-    on container formats but processes WAV correctly.
+_local_whisper = None
 
-    Returns the transcribed text string, or "" on any error.
-    The password is NEVER included in log output.
-    """
-    if not WHISPER_BASE_URL:
-        logger.info(
-            "WHISPER_BASE_URL is not configured — voice transcription skipped. "
-            "Set WHISPER_BASE_URL, WHISPER_USERNAME, and WHISPER_PASSWORD in .env."
+
+def _get_ffmpeg_exe() -> Optional[str]:
+    """Find a usable ffmpeg executable, checking system PATH then imageio-ffmpeg."""
+    try:
+        res = subprocess.run(["ffmpeg", "-version"], capture_output=True, timeout=5)
+        if res.returncode == 0:
+            return "ffmpeg"
+    except Exception:
+        pass
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return None
+
+
+def _convert_audio_to_wav(audio_path: str) -> Optional[str]:
+    """Convert any audio file to 16kHz mono WAV using ffmpeg if available."""
+    ffmpeg_exe = _get_ffmpeg_exe()
+    if not ffmpeg_exe:
+        return None
+    try:
+        wav_fd, wav_path = tempfile.mkstemp(suffix=".wav")
+        os.close(wav_fd)
+        result = subprocess.run(
+            [
+                ffmpeg_exe, "-y", "-i", audio_path,
+                "-ar", "16000", "-ac", "1", "-f", "wav", wav_path,
+                "-loglevel", "error"
+            ],
+            capture_output=True, timeout=60
         )
+        if result.returncode == 0 and os.path.exists(wav_path) and os.path.getsize(wav_path) > 100:
+            return wav_path
+        try:
+            os.unlink(wav_path)
+        except Exception:
+            pass
+    except Exception as e:
+        logger.warning(f"Audio conversion error: {e}")
+    return None
+
+
+def _transcribe_sarvam(audio_path: str, language: Optional[str] = None) -> str:
+    """Primary STT: Sarvam AI STT (saaras:v3) specializing in Indian vernacular languages."""
+    sarvam_key = os.getenv("SARVAM_API_KEY", "").strip()
+    if not sarvam_key:
         return ""
+    try:
+        lang_norm = (language or "").strip().lower()
+        sarvam_lang = SARVAM_LANG_MAP.get(lang_norm)
+        data_payload = {"model": "saaras:v3"}
+        if sarvam_lang:
+            data_payload["language_code"] = sarvam_lang
 
+        ext = os.path.splitext(audio_path)[1].lower()
+        mime = "audio/wav" if ext == ".wav" else ("audio/mp4" if ext in (".m4a", ".mp4") else "audio/mpeg")
+        with open(audio_path, "rb") as f:
+            files = {"file": (os.path.basename(audio_path), f, mime)}
+            headers = {"api-subscription-key": sarvam_key}
+            resp = requests.post(
+                "https://api.sarvam.ai/speech-to-text",
+                headers=headers,
+                files=files,
+                data=data_payload,
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                transcript = (resp.json().get("transcript") or "").strip()
+                if transcript:
+                    logger.info(f"[STT:Sarvam] Transcribed ({sarvam_lang or 'auto'}): {transcript[:80]!r}")
+                    return transcript
+            else:
+                logger.warning(f"[STT:Sarvam] HTTP {resp.status_code}: {resp.text[:200]}")
+    except Exception as e:
+        logger.warning(f"[STT:Sarvam] Exception: {e}")
+    return ""
+
+
+def _transcribe_local_whisper(audio_path: str, language: Optional[str] = None) -> str:
+    """Local fallback STT: faster-whisper running on CPU."""
+    global _local_whisper
+    try:
+        if _local_whisper is None:
+            from faster_whisper import WhisperModel
+            logger.info("[STT:FasterWhisper] Loading local faster-whisper tiny...")
+            _local_whisper = WhisperModel("tiny", device="cpu", compute_type="int8")
+
+        lang_code = language.lower() if language and language.lower() not in ("auto", "unknown") else None
+        segments, info = _local_whisper.transcribe(str(audio_path), language=lang_code)
+        text = " ".join([seg.text.strip() for seg in segments]).strip()
+        if text:
+            logger.info(f"[STT:FasterWhisper] Transcribed: {text[:80]!r}")
+            return text
+    except Exception as e:
+        logger.warning(f"[STT:FasterWhisper] Exception: {e}")
+    return ""
+
+
+def _transcribe_remote_whisper(audio_path: str, language: Optional[str] = None) -> str:
+    """Remote Whisper server fallback."""
+    if not WHISPER_BASE_URL:
+        return ""
     endpoint = f"{WHISPER_BASE_URL}/transcribe"
-    auth_label = f"{WHISPER_USERNAME}:***" if WHISPER_USERNAME else "none"
-    logger.info(
-        f"Remote Whisper request → {endpoint}  "
-        f"model={WHISPER_MODEL}  auth={auth_label}  file={audio_path}"
-    )
-
     _auth = (WHISPER_USERNAME, WHISPER_PASSWORD) if WHISPER_USERNAME and WHISPER_PASSWORD else None
     _headers = {"ngrok-skip-browser-warning": "true"}
-    _timeout = 300
-
-    # --- Convert non-WAV audio to 16kHz mono WAV before sending ---
-    # The remote Whisper server returns HTTP 500 on m4a/mp4/aac containers.
-    # ffmpeg converts any format to standard 16kHz mono PCM WAV that Whisper accepts.
-    wav_path = None
-    send_path = audio_path
     try:
-        ext = os.path.splitext(audio_path)[1].lower()
-        if ext not in (".wav",):
-            wav_fd, wav_path = tempfile.mkstemp(suffix=".wav")
-            os.close(wav_fd)
-            result = subprocess.run(
-                [
-                    "ffmpeg", "-y", "-i", audio_path,
-                    "-ar", "16000", "-ac", "1", "-f", "wav", wav_path,
-                    "-loglevel", "error"
-                ],
-                capture_output=True, timeout=60
-            )
-            if result.returncode == 0:
-                send_path = wav_path
-                logger.info(f"Audio converted {ext} → WAV 16kHz mono for Whisper.")
-            else:
-                stderr_msg = result.stderr.decode(errors="replace")[:200]
-                logger.warning(f"ffmpeg conversion failed ({stderr_msg}), sending original file.")
-                try:
-                    os.unlink(wav_path)
-                except Exception:
-                    pass
-                wav_path = None
-                send_path = audio_path
-    except FileNotFoundError:
-        logger.warning("ffmpeg not found — sending original audio file to Whisper.")
-    except Exception as conv_exc:
-        logger.warning(f"Audio conversion note: {conv_exc} — sending original file.")
+        with open(audio_path, "rb") as f:
+            files = {"file": (os.path.basename(audio_path), f, "audio/wav")}
+            data = {"language": language} if language else {}
+            resp = requests.post(endpoint, files=files, data=data, auth=_auth, headers=_headers, timeout=60)
+            if resp.ok:
+                data = resp.json()
+                text = (data.get("text") or "").strip()
+                if text:
+                    logger.info(f"[STT:RemoteWhisper] Transcribed: {text[:80]!r}")
+                    return text
+    except Exception as e:
+        logger.warning(f"[STT:RemoteWhisper] Exception: {e}")
+    return ""
+
+
+def transcribe_audio_file(audio_path: str, language: Optional[str] = None) -> str:
+    """
+    Robust multi-tiered Speech-to-Text:
+    1. Sarvam AI STT (saaras:v3) — Best in class for Indian languages (ta, hi, te, etc.)
+    2. Remote Whisper Large V3 (if reachable)
+    3. Local faster-whisper (offline fallback)
+    """
+    if not os.path.exists(audio_path) or os.path.getsize(audio_path) < 50:
+        logger.warning(f"[STT] Audio file does not exist or is empty: {audio_path}")
+        return ""
+
+    # Prepare standard WAV if needed
+    converted_wav = None
+    ext = os.path.splitext(audio_path)[1].lower()
+    if ext not in (".wav",):
+        converted_wav = _convert_audio_to_wav(audio_path)
+
+    active_path = converted_wav or audio_path
 
     try:
-        audio_size = os.path.getsize(send_path)
-        logger.info(f"Sending audio to Whisper ({audio_size} bytes, file: {os.path.basename(send_path)})")
-        with open(send_path, "rb") as audio_file:
-            fname = os.path.basename(send_path)
-            files = {"file": (fname, audio_file, "audio/wav")}
-            data_payload = {}
-            if language:
-                data_payload["language"] = language
-            response = requests.post(
-                endpoint,
-                files=files,
-                data=data_payload if data_payload else None,
-                auth=_auth,
-                headers=_headers,
-                timeout=_timeout,
-            )
+        # Tier 1: Remote Whisper Large V3 (from arnald branch)
+        text = _transcribe_remote_whisper(active_path, language=language)
+        if text:
+            return text
 
-        # --- HTTP error handling ---
-        if response.status_code == 401:
-            logger.error(
-                "Remote Whisper authentication failure (HTTP 401). "
-                "Check WHISPER_USERNAME and WHISPER_PASSWORD in .env."
-            )
-            return ""
+        # Tier 2: Local faster-whisper (WhisperModel on-device fallback)
+        text = _transcribe_local_whisper(active_path, language=language)
+        if text:
+            return text
 
-        if response.status_code == 400:
-            logger.warning(
-                f"Remote Whisper rejected the audio (HTTP 400): {response.text[:200]}"
-            )
-            return ""
+        # Tier 3: Sarvam AI STT
+        text = _transcribe_sarvam(active_path, language=language)
+        if text:
+            return text
 
-        if response.status_code >= 500:
-            logger.error(
-                f"Remote Whisper server error (HTTP {response.status_code}): "
-                f"{response.text[:200]}"
-            )
-            return ""
-
-        if not response.ok:
-            logger.warning(
-                f"Remote Whisper unexpected status HTTP {response.status_code}: "
-                f"{response.text[:200]}"
-            )
-            return ""
-
-        # --- Parse JSON response ---
-        try:
-            data = response.json()
-        except Exception:
-            logger.warning(
-                f"Remote Whisper returned non-JSON response: {response.text[:200]}"
-            )
-            return ""
-
-        text = (data.get("text") or "").strip()
-
-        if not text:
-            logger.warning("Remote Whisper returned an empty transcription.")
-            return ""
-
-        detected_lang = data.get("language", "unknown")
-        lang_prob = data.get("language_probability", 0.0)
-        logger.info(
-            f"Remote Whisper transcribed "
-            f"(lang={detected_lang}, p={lang_prob:.2f}): {text[:120]!r}"
-        )
-
-        if len(text) < 3:
-            logger.warning(f"Remote Whisper short transcription: {text!r}")
-
-        return text
-
-    except requests.Timeout:
-        logger.warning(
-            f"Remote Whisper request timed out after {_timeout}s — "
-            "the audio may be too long or the server is busy."
-        )
+        logger.warning("[STT] All transcription engines returned empty text.")
         return ""
-
-    except requests.ConnectionError as exc:
-        logger.warning(f"Remote Whisper connection error: {exc}")
-        return ""
-
-    except OSError as exc:
-        logger.warning(f"Could not open audio file for transcription: {exc}")
-        return ""
-
-    except Exception as exc:
-        logger.warning(f"Remote Whisper unexpected error: {exc}")
-        return ""
-
     finally:
-        # Always clean up the temporary WAV conversion file
-        if wav_path:
+        if converted_wav and os.path.exists(converted_wav):
             try:
-                os.unlink(wav_path)
+                os.unlink(converted_wav)
             except Exception:
                 pass
 

@@ -74,10 +74,32 @@ export function ReelProgressModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [job, setJob] = useState<any>(null);
   const timer = useRef<any>(null);
   const bar = useRef(new Animated.Value(0.05)).current;
+
+  const stageLabels: Record<string, string> = {
+    WRITING_SCRIPT: language === 'ta' ? 'விளம்பர ஸ்கிரிப்ட் எழுதப்படுகிறது' : language === 'hi' ? 'विज्ञापन स्क्रिप्ट लिखी जा रही है' : 'Writing your ad script',
+    GENERATING_VOICE: language === 'ta' ? 'குரல் பதிவு செய்யப்படுகிறது' : language === 'hi' ? 'वॉयसओवर रिकॉर्ड किया जा रहा है' : 'Recording the voiceover',
+    RENDERING_VIDEO: language === 'ta' ? 'உங்கள் 9:16 ரீல் திருத்தப்படுகிறது' : language === 'hi' ? 'आपकी 9:16 रील संपादित हो रही है' : 'Editing your 9:16 reel',
+    UPLOADING: language === 'ta' ? 'கிளவுடில் பதிவேற்றப்படுகிறது' : language === 'hi' ? 'क्लाउड पर अपलोड हो रहा है' : 'Uploading to cloud',
+    PUBLISHING_INSTAGRAM: language === 'ta' ? 'இன்ஸ்டாகிராமில் பகிரப்படுகிறது' : language === 'hi' ? 'इंस्टाग्राम पर पोस्ट किया जा रहा है' : 'Posting to Instagram',
+  };
+
+  const creatingTitle = language === 'ta' ? 'உங்கள் AI விளம்பர ரீல் உருவாக்கப்படுகிறது' : language === 'hi' ? 'आपकी AI विज्ञापन-रील बनाई जा रही है' : 'Creating your AI Ad-Reel';
+  const preparingSub = language === 'ta' ? 'வீடியோ மற்றும் குரல் தயாரிக்கப்படுகிறது...' : language === 'hi' ? 'वीडियो और वॉयसओवर तैयार किया जा रहा है...' : 'Preparing video & voiceover...';
+  const minimizeHint = language === 'ta' ? 'இதை நீங்கள் குறைக்கலாம் — பின்னணியில் உருவாக்கம் தொடரும்.' : language === 'hi' ? 'आप इसे छोटा कर सकते हैं — रील पृष्ठभूमि में बनती रहेगी।' : 'You can minimize this modal — generation will proceed in the background.';
+  const liveTitle = language === 'ta' ? 'உங்கள் ரீல் நேரலையில் உள்ளது!' : language === 'hi' ? 'आपकी रील लाइव है!' : 'Your Reel is Live!';
+  const readyTitle = language === 'ta' ? 'உங்கள் ரீல் தயாராக உள்ளது' : language === 'hi' ? 'आपकी रील तैयार है' : 'Your Reel is Ready';
+  const liveSub = language === 'ta' ? 'இணைக்கப்பட்ட இன்ஸ்டாகிராம் கணக்கில் வெற்றிகரமாக பகிரப்பட்டது' : language === 'hi' ? 'जुड़े इंस्टाग्राम खाते पर सफलतापूर्वक पोस्ट किया गया' : 'Successfully posted to your linked Instagram account';
+  const readySub = language === 'ta' ? 'ரீல் வெற்றிகரமாக உருவாக்கப்பட்டது! நீங்கள் வாட்ஸ்அப்/சமூக ஊடகங்களில் பகிரலாம்.' : language === 'hi' ? 'रील सफलतापूर्वक तैयार हो गई! आप व्हाट्सएप/सोशल मीडिया पर साझा कर सकते हैं।' : 'Reel generated successfully! You can watch or share on WhatsApp/Socials.';
+  const viewIgText = language === 'ta' ? 'இன்ஸ்டாகிராமில் பார்க்கவும்' : language === 'hi' ? 'इंस्टाग्राम पर देखें' : 'View on Instagram';
+  const shareReelText = language === 'ta' ? 'ரீலை பகிரவும்' : language === 'hi' ? 'रील साझा करें' : 'Share Reel';
+  const doneBtnText = language === 'ta' ? 'முடிந்தது' : language === 'hi' ? 'हो गया' : 'Done';
+  const failedTitle = language === 'ta' ? 'ரீலை உருவாக்க முடியவில்லை' : language === 'hi' ? 'रील नहीं बनाई जा सकी' : 'Could not create reel';
+  const retryBtnText = language === 'ta' ? 'மீண்டும் முயற்சி செய்' : language === 'hi' ? 'पुनः प्रयास करें' : 'Try Again';
+  const closeBtnText = language === 'ta' ? 'மூடு' : language === 'hi' ? 'बंद करें' : 'Close';
 
   useEffect(() => {
     if (!jobId || !visible) {
@@ -124,7 +146,7 @@ export function ReelProgressModal({
     if (job?.video_url) {
       try {
         await Share.share({
-          message: `${job.caption || 'Check out our authentic handcrafted product!'}\n\nWatch Reel: ${job.video_url}`,
+          message: `${job.caption || (language === 'ta' ? 'எங்கள் கைவினைத் தயாரிப்பைப் பாருங்கள்!' : language === 'hi' ? 'हमारे हस्तनिर्मित उत्पाद को देखें!' : 'Check out our authentic handcrafted product!')}\n\nWatch Reel: ${job.video_url}`,
           url: job.video_url,
         });
       } catch (_) { }
@@ -135,7 +157,7 @@ export function ReelProgressModal({
     if (jobId) {
       try {
         await api.post(`/api/reels/job/${jobId}/retry`);
-        setJob((prev: any) => ({ ...prev, status: 'QUEUED', stage: 'Retrying reel generation...' }));
+        setJob((prev: any) => ({ ...prev, status: 'QUEUED', stage: language === 'ta' ? 'மீண்டும் முயற்சிக்கிறது...' : language === 'hi' ? 'पुनः प्रयास हो रहा है...' : 'Retrying reel generation...' }));
       } catch (_) { }
     }
   };
@@ -151,8 +173,8 @@ export function ReelProgressModal({
               <View style={s.headerIconWrap}>
                 <Sparkles size={28} color="#C2410C" />
               </View>
-              <Text style={s.title}>{t('reel.creating') || 'Creating your AI Ad-Reel'}</Text>
-              <Text style={s.sub}>{job?.stage ?? 'Preparing video & voiceover...'}</Text>
+              <Text style={s.title}>{creatingTitle}</Text>
+              <Text style={s.sub}>{job?.stage ?? preparingSub}</Text>
 
               {/* Progress track */}
               <View style={s.track}>
@@ -192,7 +214,7 @@ export function ReelProgressModal({
                           (active || passed) && { color: '#1A1A1A', fontWeight: '600' },
                         ]}
                       >
-                        {st.label}
+                        {stageLabels[st.key] || st.label}
                       </Text>
                     </View>
                   );
@@ -200,7 +222,7 @@ export function ReelProgressModal({
               </View>
 
               <Text style={s.hint}>
-                You can minimize this modal — generation will proceed in the background.
+                {minimizeHint}
               </Text>
             </>
           )}
@@ -211,14 +233,10 @@ export function ReelProgressModal({
                 <CheckCircle2 size={46} color={done ? '#15803D' : '#C2410C'} />
               </View>
               <Text style={s.title}>
-                {done
-                  ? (t('reel.done') || 'Your Reel is Live!')
-                  : (t('reel.savedAnyway') || 'Your Reel is Ready')}
+                {done ? liveTitle : readyTitle}
               </Text>
               <Text style={s.sub}>
-                {done
-                  ? 'Successfully posted to your linked Instagram account'
-                  : 'Reel generated successfully! You can watch or share on WhatsApp/Socials.'}
+                {done ? liveSub : readySub}
               </Text>
 
               {/* Video Player */}
@@ -232,18 +250,18 @@ export function ReelProgressModal({
                     onPress={() => Linking.openURL(job.ig_permalink)}
                   >
                     <InstagramIcon size={18} color="#FFFFFF" />
-                    <Text style={s.igBtnText}>{t('reel.viewOnIg') || 'View on Instagram'}</Text>
+                    <Text style={s.igBtnText}>{viewIgText}</Text>
                     <ExternalLink size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
                   </Pressable>
                 )}
 
                 <Pressable style={s.shareBtn} onPress={handleShare}>
                   <Share2 size={16} color="#0D0D0D" />
-                  <Text style={s.shareBtnText}>{t('reel.share') || 'Share Reel'}</Text>
+                  <Text style={s.shareBtnText}>{shareReelText}</Text>
                 </Pressable>
 
                 <Pressable style={s.ghostBtn} onPress={onClose}>
-                  <Text style={s.ghostText}>{t('common_done') || 'Done'}</Text>
+                  <Text style={s.ghostText}>{doneBtnText}</Text>
                 </Pressable>
               </View>
             </>
@@ -252,16 +270,16 @@ export function ReelProgressModal({
           {failed && (
             <>
               <AlertCircle size={46} color="#DC2626" />
-              <Text style={s.title}>{t('reel.failed') || 'Could not create reel'}</Text>
-              <Text style={s.sub}>{job?.error || 'A temporary processing issue occurred.'}</Text>
+              <Text style={s.title}>{failedTitle}</Text>
+              <Text style={s.sub}>{job?.error || (language === 'ta' ? 'ஒரு தற்காலிக சிக்கல் ஏற்பட்டது.' : language === 'hi' ? 'एक अस्थायी समस्या आई।' : 'A temporary processing issue occurred.')}</Text>
 
               <Pressable style={s.retryBtn} onPress={handleRetry}>
                 <RotateCcw size={16} color="#FFFFFF" />
-                <Text style={s.retryBtnText}>Try Again</Text>
+                <Text style={s.retryBtnText}>{retryBtnText}</Text>
               </Pressable>
 
               <Pressable style={s.ghostBtn} onPress={onClose}>
-                <Text style={s.ghostText}>{t('common_cancel') || 'Close'}</Text>
+                <Text style={s.ghostText}>{closeBtnText}</Text>
               </Pressable>
             </>
           )}

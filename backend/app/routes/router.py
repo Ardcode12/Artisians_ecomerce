@@ -24,6 +24,7 @@ from app.routes.materials import router as materials_router
 from app.routes.schemes import router as schemes_router
 from app.routes.tts import router as tts_router
 from app.routes.gem import router as gem_router
+from app.routes.logo import router as logo_router
 
 api_router = APIRouter()
 
@@ -45,6 +46,7 @@ api_router.include_router(materials_router)
 api_router.include_router(schemes_router)
 api_router.include_router(tts_router)
 api_router.include_router(gem_router)
+api_router.include_router(logo_router)
 
 
 # Mount Instagram & Reels under /api and also root aliases for spec compatibility

@@ -91,6 +91,8 @@ export default function MaterialsSearchScreen() {
       if (selectedSort === 'verified') {
         url.searchParams.append('verified', 'true');
       }
+      if (params.lat) url.searchParams.append('lat', params.lat as string);
+      if (params.lon) url.searchParams.append('lon', params.lon as string);
 
       const res = await fetch(url.toString());
       const json = await res.json();
@@ -231,6 +233,8 @@ export default function MaterialsSearchScreen() {
       pathname: `/materials/${supplier.id}` as any,
       params: {
         material: supplier.matched_material?.name || query || '',
+        lat: (params.lat as string) || '',
+        lon: (params.lon as string) || '',
       },
     });
   };

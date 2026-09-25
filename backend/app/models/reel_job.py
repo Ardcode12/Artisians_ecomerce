@@ -14,6 +14,8 @@ class ReelRequest(BaseModel):
     language: str = "ta-IN"
     style: str = "heritage"          # heritage | festive | minimal
     post_to_instagram: bool = True
+    image_url: Optional[str] = None
+    images: Optional[List[str]] = None
 
 
 class ReelJobData(BaseModel):

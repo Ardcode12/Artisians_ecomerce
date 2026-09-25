@@ -4,12 +4,12 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
   ActivityIndicator,
   StatusBar,
   RefreshControl,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronRight, PlusCircle, Sparkles } from 'lucide-react-native';
@@ -154,7 +154,9 @@ export default function DesignIdeasHomeScreen() {
                         <Image
                           source={{ uri: imgUri }}
                           style={styles.productImage}
-                          resizeMode="cover"
+                          contentFit="cover"
+                          transition={200}
+                          cachePolicy="memory-disk"
                         />
                       ) : (
                         <View style={styles.placeholderWrap}>
@@ -212,7 +214,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 4,
-    paddingBottom: 18,
+    paddingBottom: 14,
   },
   title: {
     fontSize: 26,
@@ -225,7 +227,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: Fonts.body,
     color: '#556877',
-    marginTop: 5,
+    marginTop: 4,
     lineHeight: 22,
   },
   scrollContent: {

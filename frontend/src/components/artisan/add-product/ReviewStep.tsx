@@ -102,12 +102,18 @@ export function ReviewStep({
 
   const handlePublish = async () => {
     if (!displayTitle || displayTitle === 'Untitled Product') {
-      Alert.alert('Missing info', 'Please go back and add a product title.');
+      Alert.alert(
+        language === 'ta' ? 'தகவல் தேவை' : language === 'hi' ? 'जानकारी आवश्यक' : 'Missing info',
+        language === 'ta' ? 'தயவுசெய்து பின்சென்று தயாரிப்பு தலைப்பைச் சேர்க்கவும்.' : language === 'hi' ? 'कृपया वापस जाएं और उत्पाद शीर्षक जोड़ें।' : 'Please go back and add a product title.'
+      );
       return;
     }
     const numPrice = parseInt(displayPrice.replace(/[^\d]/g, ''));
     if (!numPrice || numPrice === 0) {
-      Alert.alert('Missing price', 'Please go back and set a selling price.');
+      Alert.alert(
+        language === 'ta' ? 'விலை தேவை' : language === 'hi' ? 'मूल्य आवश्यक' : 'Missing price',
+        language === 'ta' ? 'தயவுசெய்து பின்சென்று விற்பனை விலையை நிர்ணயிக்கவும்.' : language === 'hi' ? 'कृपया वापस जाएं और बिक्री मूल्य निर्धारित करें।' : 'Please go back and set a selling price.'
+      );
       return;
     }
 
@@ -154,7 +160,7 @@ export function ReviewStep({
       console.log('[ReviewStep] Product published:', data.product_id);
       setPublishing(false);
 
-      if (postToIg && onReelTriggered) {
+      if (onReelTriggered) {
         try {
           const reelLang = language === 'ta' ? 'ta-IN' : language === 'hi' ? 'hi-IN' : language === 'te' ? 'te-IN' : 'en-IN';
           const reelResp = await fetch(`${BACKEND_URL}/api/reels/generate`, {
@@ -165,7 +171,8 @@ export function ReviewStep({
               user_id: user?.id || 'artisan_default',
               language: reelLang,
               style: reelStyle,
-              post_to_instagram: true,
+              post_to_instagram: Boolean(postToIg),
+              image_url: productData.imageUri || '',
             }),
           });
           const reelJson = await reelResp.json();
@@ -218,6 +225,23 @@ export function ReviewStep({
     }
   };
 
+  const noImageText = language === 'ta' ? 'படம் இல்லை' : language === 'hi' ? 'कोई चित्र नहीं' : 'No image';
+  const aiEnhancedText = language === 'ta' ? 'AI மேம்படுத்தப்பட்டது' : language === 'hi' ? 'AI संवर्धित' : 'AI Enhanced';
+  const previewLangText = language === 'ta' ? 'முன்னோட்ட மொழி' : language === 'hi' ? 'पूर्वावलोकन भाषा' : 'Preview language';
+  const unitsText = language === 'ta' ? 'அலகுகள்' : language === 'hi' ? 'इकाइयाँ' : 'units';
+  const yourPriceText = language === 'ta' ? 'உங்கள் விலை' : language === 'hi' ? 'आपका मूल्य' : 'Your price';
+  const aiSuggestedText = language === 'ta' ? 'AI பரிந்துரைத்தது' : language === 'hi' ? 'AI अनुशंसित' : 'AI Suggested';
+  const descLabel = language === 'ta' ? 'விளக்கம்' : language === 'hi' ? 'विवरण' : 'Description';
+  const noDescText = language === 'ta' ? 'விளக்கம் இல்லை — சேர்க்க பின்செல்லவும்.' : language === 'hi' ? 'कोई विवरण नहीं — जोड़ने के लिए वापस जाएं।' : 'No description — go back to add one.';
+  const publishMarketsText = language === 'ta' ? 'சந்தைகளில் வெளியிடவும்' : language === 'hi' ? 'मार्केटप्लेस पर प्रकाशित करें' : 'Publish to Marketplaces';
+  const publishingText = language === 'ta' ? 'வெளியிடப்படுகிறது...' : language === 'hi' ? 'प्रकाशित हो रहा है...' : 'Publishing...';
+  const publishReelText = language === 'ta' ? 'வெளியிட்டு ரீல் உருவாக்கவும்' : language === 'hi' ? 'प्रकाशित करें और रील बनाएं' : 'Publish & Create Reel';
+  const publishListingText = language === 'ta' ? 'பட்டியலை வெளியிடவும்' : language === 'hi' ? 'उत्पाद प्रकाशित करें' : 'Publish Listing';
+  const liveTitle = language === 'ta' ? 'உங்கள் தயாரிப்பு நேரலையில் உள்ளது! 🎉' : language === 'hi' ? 'आपका उत्पाद लाइव है! 🎉' : 'Your product is live! 🎉';
+  const liveSub = language === 'ta' ? 'வாங்குபவர்கள் இப்போது சந்தைகளில் உங்கள் கைவினைப் பொருளைக் கண்டறியலாம்' : language === 'hi' ? 'खरीदार अब मार्केटप्लेस पर आपके शिल्प को खोज सकते हैं' : 'Buyers can now discover your craft across marketplaces';
+  const offlineTitle = language === 'ta' ? 'தொலைபேசி சேமிப்பகத்தில் சேமிக்கப்பட்டது! 💾' : language === 'hi' ? 'फ़ोन स्टोरेज में सहेजा गया! 💾' : 'Saved to Phone Storage! 💾';
+  const offlineSub = language === 'ta' ? 'நீங்கள் ஆஃப்லைனில் உள்ளீர்கள். உங்கள் தயாரிப்பு பாதுகாப்பாக சேமிக்கப்பட்டுள்ளது, இணையம் இணைக்கப்பட்டதும் தானாக வெளியிடப்படும்!' : language === 'hi' ? 'आप ऑफ़लाइन हैं। आपका उत्पाद सुरक्षित रूप से सहेजा गया है और इंटरनेट कनेक्ट होने पर स्वचालित रूप से प्रकाशित हो जाएगा!' : 'You are offline. Your product is safely saved on your device and will be published automatically when internet connects!';
+
   return (
     <>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -228,7 +252,7 @@ export function ReviewStep({
           ) : (
             <View style={styles.imagePlaceholder}>
               <ImageIcon size={52} color={Colors.textSecondary} />
-              <Text style={styles.imagePlaceholderText}>No image</Text>
+              <Text style={styles.imagePlaceholderText}>{noImageText}</Text>
             </View>
           )}
           <View style={styles.dotNav}>
@@ -238,7 +262,7 @@ export function ReviewStep({
           </View>
           <View style={styles.imageAiBadge}>
             <Sparkles size={12} color="#FFFFFF" />
-            <Text style={styles.imageAiBadgeText}>AI Enhanced</Text>
+            <Text style={styles.imageAiBadgeText}>{aiEnhancedText}</Text>
           </View>
         </View>
 
@@ -276,7 +300,7 @@ export function ReviewStep({
               >
                 <Text style={[styles.langBtnText, langView === 'en' && styles.langBtnTextActive]}>🇬🇧 English</Text>
               </TouchableOpacity>
-              <Text style={styles.langHint}>Preview language</Text>
+              <Text style={styles.langHint}>{previewLangText}</Text>
             </View>
           ) : null}
 
@@ -290,31 +314,31 @@ export function ReviewStep({
             </View>
             <View style={styles.unitsBlock}>
               <Text style={styles.unitsValue}>{productData.units || 1}</Text>
-              <Text style={styles.unitsLabel}>units</Text>
+              <Text style={styles.unitsLabel}>{unitsText}</Text>
             </View>
           </View>
 
           {/* Price */}
           <View style={styles.priceRow}>
             <View>
-              <Text style={styles.priceLabelSmall}>Your price</Text>
+              <Text style={styles.priceLabelSmall}>{yourPriceText}</Text>
               <Text style={styles.priceValue}>{displayPrice}</Text>
             </View>
             <View style={styles.aiBadge}>
               <Sparkles size={12} color={Colors.gold} />
-              <Text style={styles.aiBadgeText}>AI Suggested</Text>
+              <Text style={styles.aiBadgeText}>{aiSuggestedText}</Text>
             </View>
           </View>
 
           {/* Description block */}
           <View style={styles.descBlock}>
-            <Text style={styles.descLabel}>Description</Text>
+            <Text style={styles.descLabel}>{descLabel}</Text>
             {displayDesc ? (
               <Text style={styles.descText} numberOfLines={5}>
                 {displayDesc}
               </Text>
             ) : (
-              <Text style={styles.descTextEmpty}>No description — go back to add one.</Text>
+              <Text style={styles.descTextEmpty}>{noDescText}</Text>
             )}
           </View>
 
@@ -328,7 +352,7 @@ export function ReviewStep({
 
           {/* Marketplace selector */}
           <View style={styles.marketSection}>
-            <Text style={styles.marketTitle}>Publish to Marketplaces</Text>
+            <Text style={styles.marketTitle}>{publishMarketsText}</Text>
             <View style={styles.marketGrid}>
               {MARKETPLACES.map((m, i) => {
                 const Icon = m.Icon;
@@ -378,10 +402,10 @@ export function ReviewStep({
             )}
             <Text style={styles.publishBtnText}>
               {publishing
-                ? 'Publishing...'
+                ? publishingText
                 : postToIg
-                  ? (t('reel.publishBtn') || 'Publish & Create Reel')
-                  : (t('reel.publishBtnPlain') || 'Publish Listing')}
+                  ? publishReelText
+                  : publishListingText}
             </Text>
           </TouchableOpacity>
         </View>
@@ -392,9 +416,9 @@ export function ReviewStep({
         <View style={styles.successOverlay}>
           <View style={styles.successCard}>
             <CheckCircle2 size={56} color="#10B981" />
-            <Text style={styles.successTitle}>Your product is live! 🎉</Text>
+            <Text style={styles.successTitle}>{liveTitle}</Text>
             <Text style={styles.successSub}>
-              Buyers can now discover your craft across marketplaces
+              {liveSub}
             </Text>
           </View>
         </View>
@@ -405,9 +429,9 @@ export function ReviewStep({
         <View style={styles.successOverlay}>
           <View style={styles.successCard}>
             <CloudOff size={56} color="#D97706" />
-            <Text style={styles.successTitle}>Saved to Phone Storage! 💾</Text>
+            <Text style={styles.successTitle}>{offlineTitle}</Text>
             <Text style={styles.successSub}>
-              You are offline. Your product is safely saved on your device and will be published automatically when internet connects!
+              {offlineSub}
             </Text>
           </View>
         </View>

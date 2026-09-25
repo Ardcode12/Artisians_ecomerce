@@ -31,9 +31,9 @@ const { width } = Dimensions.get('window');
 const BG = '#F5F0E8';
 
 const WELCOME_SPOKEN_TEXTS: Record<string, string> = {
-  en: "Welcome to Kala Udyam! This app helps artisans like you sell your handmade products and find money, loans, and training programs for your craft. Tap the Get Started button below to begin.",
-  hi: "कला उद्यम में आपका स्वागत है! यह ऐप आप जैसे कारीगरों को अपने हस्तनिर्मित उत्पाद बेचने और अपने शिल्प के लिए धन, ऋण और प्रशिक्षण कार्यक्रम खोजने में मदद करता है। शुरू करने के लिए नीचे दिए गए 'आरंभ करें' बटन पर टैप करें।",
-  ta: "கலா உத்யமிற்கு நல்வரவு! இந்த செயலி உங்களைப் போன்ற கைவினைஞர்கள் தங்கள் கைவினைப் பொருட்களை விற்கவும், நிதி, கடன் மற்றும் பயிற்சித் திட்டங்களைப் பெறவும் உதவுகிறது. தொடங்க கீழே உள்ள 'தொடங்குங்கள்' பொத்தானைத் தட்டவும்.",
+  en: "Welcome to Craft Bridge! Empowering Craft, Expanding Markets. This app helps artisans like you sell your handmade products and find money, loans, and training programs for your craft. Tap the Get Started button below to begin.",
+  hi: "क्राफ्ट ब्रिज में आपका स्वागत है! शिल्प को सशक्त बनाना, बाजारों का विस्तार करना। यह ऐप आप जैसे कारीगरों को अपने हस्तनिर्मित उत्पाद बेचने और ऋण व सहायता खोजने में मदद करता है। शुरू करने के लिए नीचे दिए गए बटन पर टैप करें।",
+  ta: "கிராஃப்ட் பிரிட்ஜிற்கு நல்வரவு! கைவினைக்கு அதிகாரம், சந்தைகளை விரிவாக்குதல். இந்த செயலி உங்களைப் போன்ற கைவினைஞர்கள் தங்கள் தயாரிப்புகளை விற்கவும் திட்டங்களைப் பெறவும் உதவுகிறது. தொடங்க கீழே உள்ள பொத்தானைத் தட்டவும்.",
 };
 
 // ── Plant / Leaf Logo (SVG-style shapes) ─────────────────────────────────────
@@ -229,17 +229,17 @@ const illStyles = StyleSheet.create({
 const SLIDES = [
   {
     key: 'slide1',
-    title: 'KALA UDYAM',
-    subtitle: 'Your Craft.\nOur Support.',
+    title: 'CRAFT BRIDGE',
+    subtitle: 'Empowering Craft,\nExpanding Markets.',
   },
   {
     key: 'slide2',
-    title: 'KALA UDYAM',
+    title: 'CRAFT BRIDGE',
     subtitle: 'Sell your craft\nto the world.',
   },
   {
     key: 'slide3',
-    title: 'KALA UDYAM',
+    title: 'CRAFT BRIDGE',
     subtitle: 'AI tools that\nwork for you.',
   },
 ];

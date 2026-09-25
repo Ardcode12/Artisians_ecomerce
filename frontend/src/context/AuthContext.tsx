@@ -8,6 +8,8 @@ export interface ArtisanProfile {
   phone: string;
   name: string;
   shop_name?: string;
+  shop_logo_url?: string;
+  shop_logo_style?: string;
   role: 'artisan' | 'buyer';
   craft_type?: string;
   craft_custom?: string;
@@ -49,6 +51,8 @@ export interface OnboardingData {
   craftCustom: string;
   language: string;
   schemeId: string;
+  shopLogoUrl?: string;
+  shopLogoStyle?: string;
 }
 
 export interface BuyerProfile {
@@ -587,6 +591,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       experience: onboardingData.experience?.trim() || undefined,
       shop_name: onboardingData.shopName.trim() || undefined,
       location: onboardingData.location.trim() || undefined,
+      shop_logo_url: onboardingData.shopLogoUrl || undefined,
+      shop_logo_style: onboardingData.shopLogoStyle || 'badge',
       role: 'artisan',
       craft_type: onboardingData.craftType || 'Handicraft & Art',
       craft_custom: onboardingData.craftCustom || undefined,

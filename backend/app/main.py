@@ -192,8 +192,11 @@ def serve_upload(filename: str):
     file_path = UPLOADS_DIR / filename
     if file_path.exists() and file_path.is_file():
         return FileResponse(str(file_path))
+    fallback_basket = UPLOADS_DIR / "forecast_basket.jpg"
+    if fallback_basket.exists():
+        return FileResponse(str(fallback_basket))
     return RedirectResponse(
-        url="https://images.unsplash.com/photo-1605289355680-75fb41239154?w=600&q=80",
+        url="https://images.unsplash.com/photo-1590402494682-cd3fb53b1f70?w=600&q=80",
         status_code=302
     )
 

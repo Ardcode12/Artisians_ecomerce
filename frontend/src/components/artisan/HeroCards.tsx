@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Camera, BarChart3 } from 'lucide-react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface HeroCardsProps {
   onAddProduct: () => void;
@@ -9,6 +10,11 @@ interface HeroCardsProps {
 }
 
 export function HeroCards({ onAddProduct, onViewEarnings }: HeroCardsProps) {
+  const { language } = useLanguage();
+
+  const addProductLabel = language === 'ta' ? 'தயாரிப்பைச் சேர்க்க' : language === 'hi' ? 'उत्पाद जोड़ें' : 'Add Product';
+  const analyticsLabel = language === 'ta' ? 'பகுப்பாய்வு' : language === 'hi' ? 'एनालिटिक्स' : 'Analytics';
+
   return (
     <View style={styles.row}>
       <TouchableOpacity
@@ -19,7 +25,7 @@ export function HeroCards({ onAddProduct, onViewEarnings }: HeroCardsProps) {
         <View style={styles.iconCircle}>
           <Camera size={22} color="#FFFFFF" strokeWidth={2} />
         </View>
-        <Text style={styles.cardLabel}>Add Product</Text>
+        <Text style={styles.cardLabel}>{addProductLabel}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -30,7 +36,7 @@ export function HeroCards({ onAddProduct, onViewEarnings }: HeroCardsProps) {
         <View style={[styles.iconCircle, { backgroundColor: Colors.primaryLight }]}>
           <BarChart3 size={22} color={Colors.primary} strokeWidth={2} />
         </View>
-        <Text style={[styles.cardLabel, { color: Colors.textPrimary }]}>Analytics</Text>
+        <Text style={[styles.cardLabel, { color: Colors.textPrimary }]}>{analyticsLabel}</Text>
       </TouchableOpacity>
     </View>
   );

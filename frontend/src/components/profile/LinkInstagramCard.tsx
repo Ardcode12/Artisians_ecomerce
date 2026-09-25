@@ -14,7 +14,7 @@ type Status = {
 };
 
 export default function LinkInstagramCard() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [status, setStatus] = useState<Status>({ linked: false });
   const [loading, setLoading] = useState(true);
   const [linking, setLinking] = useState(false);
@@ -45,7 +45,10 @@ export default function LinkInstagramCard() {
         await load();
       }
     } catch (e: any) {
-      Alert.alert(t('error') || 'Error', e?.message || 'Could not open Instagram');
+      Alert.alert(
+        language === 'ta' ? 'பிழை' : language === 'hi' ? 'त्रुटि' : 'Error',
+        e?.message || (language === 'ta' ? 'இன்ஸ்டாகிராமைத் திறக்க முடியவில்லை' : language === 'hi' ? 'इंस्टाग्राम नहीं खोला जा सका' : 'Could not open Instagram')
+      );
     } finally {
       setLinking(false);
     }
@@ -57,10 +60,16 @@ export default function LinkInstagramCard() {
       const { data } = await api.post('/api/instagram/connect-demo');
       if (data) {
         setStatus(data);
-        Alert.alert('Instagram Connected', 'Linked as @artisan_crafts_india with auto-post enabled.');
+        Alert.alert(
+          language === 'ta' ? 'இன்ஸ்டாகிராம் இணைக்கப்பட்டது' : language === 'hi' ? 'इंस्टाग्राम जुड़ा' : 'Instagram Connected',
+          language === 'ta' ? '@artisan_crafts_india உடன் தானியங்கி பதிவிடல் இயக்கப்பட்டது.' : language === 'hi' ? '@artisan_crafts_india के रूप में ऑटो-पोस्ट के साथ जुड़ा।' : 'Linked as @artisan_crafts_india with auto-post enabled.'
+        );
       }
     } catch (e: any) {
-      Alert.alert(t('error') || 'Error', e?.message || 'Could not link demo account');
+      Alert.alert(
+        language === 'ta' ? 'பிழை' : language === 'hi' ? 'त्रुटि' : 'Error',
+        e?.message || (language === 'ta' ? 'டெமோ கணக்கை இணைக்க முடியவில்லை' : language === 'hi' ? 'डेमो खाता नहीं जोड़ा जा सका' : 'Could not link demo account')
+      );
     } finally {
       setLinking(false);
     }
@@ -129,13 +138,15 @@ export default function LinkInstagramCard() {
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={s.title}>{t('ig.title') || 'Marketplace Instagram'}</Text>
           <Text style={s.subtitle}>
-            {status.linked ? `@${status.username || 'arti_sanproducts'} (Official Channel)` : (t('ig.subtitle') || 'Not connected')}
+            {status.linked
+              ? `@${status.username || 'arti_sanproducts'} ${language === 'ta' ? '(அதிகாரப்பூர்வ சேனல்)' : language === 'hi' ? '(आधिकारिक चैनल)' : '(Official Channel)'}`
+              : (t('ig.subtitle') || (language === 'ta' ? 'இணைக்கப்படவில்லை' : language === 'hi' ? 'जुड़ा नहीं है' : 'Not connected'))}
           </Text>
         </View>
         {status.linked && (
           <View style={s.badge}>
             <CheckCircle2 size={13} color="#15803D" />
-            <Text style={s.badgeText}>{t('ig.connected') || 'Active'}</Text>
+            <Text style={s.badgeText}>{t('ig.connected') || (language === 'ta' ? 'இணைக்கப்பட்டது' : language === 'hi' ? 'सफलतापूर्वक जुड़ा' : 'Active')}</Text>
           </View>
         )}
       </View>
@@ -143,7 +154,7 @@ export default function LinkInstagramCard() {
       {!status.linked ? (
         <>
           <Text style={s.blurb}>
-            {t('ig.pitch') || 'Connect your Instagram and we will turn every product you upload into a professional ad reel — with your voice, in your language.'}
+            {t('ig.pitch') || (language === 'ta' ? 'உங்கள் இன்ஸ்டாகிராமை இணைக்கவும், உங்கள் தயாரிப்புகளுக்கு உங்கள் சொந்தக் குரலில் அழகான AI விளம்பர ரீல்களை உருவாக்குங்கள்.' : language === 'hi' ? 'अपना इंस्टाग्राम जोड़ें और हर उत्पाद के लिए अपनी भाषा में आकर्षक AI विज्ञापन रील बनाएं।' : 'Connect your Instagram and we will turn every product you upload into a professional ad reel — with your voice, in your language.')}
           </Text>
           <Pressable style={s.primaryBtn} onPress={handleLink} disabled={linking}>
             {linking ? (
@@ -151,17 +162,19 @@ export default function LinkInstagramCard() {
             ) : (
               <>
                 <Link2 size={18} color="#FFFFFF" />
-                <Text style={s.primaryBtnText}>{t('ig.connectBtn') || 'Connect Instagram'}</Text>
+                <Text style={s.primaryBtnText}>{t('ig.connectBtn') || (language === 'ta' ? 'இன்ஸ்டாகிராம் இணைக்கவும்' : language === 'hi' ? 'इंस्टाग्राम जोड़ें' : 'Connect Instagram')}</Text>
               </>
             )}
           </Pressable>
 
           <Pressable style={s.demoBtn} onPress={handleDemoLink} disabled={linking}>
-            <Text style={s.demoBtnText}>⚡ 1-Tap Quick Link (Demo Account)</Text>
+            <Text style={s.demoBtnText}>
+              {language === 'ta' ? '⚡ 1-தட்டல் விரைவு இணைப்பு (டெமோ கணக்கு)' : language === 'hi' ? '⚡ 1-टैप त्वरित लिंक (डेमो खाता)' : '⚡ 1-Tap Quick Link (Demo Account)'}
+            </Text>
           </Pressable>
 
           <Text style={s.note}>
-            {t('ig.businessNote') || 'Requires a Professional (Business or Creator) Instagram account'}
+            {t('ig.businessNote') || (language === 'ta' ? 'தொழில்முறை (Business/Creator) இன்ஸ்டாகிராம் கணக்கு தேவைப்படுகிறது' : language === 'hi' ? 'प्रोफेशनल (बिजनेस या क्रिएटर) इंस्टाग्राम अकाउंट आवश्यक है' : 'Requires a Professional (Business or Creator) Instagram account')}
           </Text>
         </>
       ) : (

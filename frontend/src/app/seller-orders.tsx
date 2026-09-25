@@ -31,6 +31,7 @@ import {
 import { Colors, Fonts, NAV_HEIGHT, Shadow } from '@/constants/artisan-theme';
 import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { BACKEND_URL } from '@/config/api';
 
 type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
@@ -47,15 +48,36 @@ interface Order {
   buyer_name?: string;
 }
 
-const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
-  pending:    { bg: Colors.statusPendingBg, text: Colors.statusPending, label: 'Pending' },
-  processing: { bg: Colors.statusProcessingBg, text: Colors.statusProcessing, label: 'Processing' },
-  completed:  { bg: Colors.statusCompletedBg, text: Colors.statusCompleted, label: 'Completed' },
-  confirmed:  { bg: Colors.statusActiveBg, text: Colors.statusActive, label: 'Confirmed' },
-  cancelled:  { bg: Colors.errorBg, text: Colors.error, label: 'Cancelled' },
+const getStatusConfig = (status: string, language: string) => {
+  const configs: Record<string, { bg: string; text: string; label: string }> = {
+    pending: {
+      bg: Colors.statusPendingBg,
+      text: Colors.statusPending,
+      label: language === 'ta' ? 'நிலுவையில்' : language === 'hi' ? 'लंबित' : 'Pending',
+    },
+    processing: {
+      bg: Colors.statusProcessingBg,
+      text: Colors.statusProcessing,
+      label: language === 'ta' ? 'செயலாக்கத்தில்' : language === 'hi' ? 'प्रक्रिया में' : 'Processing',
+    },
+    completed: {
+      bg: Colors.statusCompletedBg,
+      text: Colors.statusCompleted,
+      label: language === 'ta' ? 'நிறைவடைந்தது' : language === 'hi' ? 'पूर्ण' : 'Completed',
+    },
+    confirmed: {
+      bg: Colors.statusActiveBg,
+      text: Colors.statusActive,
+      label: language === 'ta' ? 'உறுதி செய்யப்பட்டது' : language === 'hi' ? 'पुष्ट' : 'Confirmed',
+    },
+    cancelled: {
+      bg: Colors.errorBg,
+      text: Colors.error,
+      label: language === 'ta' ? 'ரத்து செய்யப்பட்டது' : language === 'hi' ? 'रद्द' : 'Cancelled',
+    },
+  };
+  return configs[status.toLowerCase()] || configs.pending;
 };
-
-const TABS = ['All', 'Pending', 'Processing', 'Completed'];
 
 export default function SellerOrdersScreen() {
   const [activeTab, setActiveTab] = useState<ArtisanTab>('inquiries');
@@ -66,6 +88,7 @@ export default function SellerOrdersScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const { language } = useLanguage();
 
   const [fontsLoaded] = useFonts({
     Poppins_600SemiBold,
@@ -114,9 +137,12 @@ export default function SellerOrdersScreen() {
     ? orders
     : orders.filter(o => o.status.toLowerCase() === activeFilter.toLowerCase());
 
-  const getStatusConfig = (status: string) => {
-    return STATUS_CONFIG[status.toLowerCase()] || STATUS_CONFIG.pending;
-  };
+  const tabs = [
+    { id: 'All', label: language === 'ta' ? 'அனைத்தும்' : language === 'hi' ? 'सभी' : 'All' },
+    { id: 'Pending', label: language === 'ta' ? 'நிலுவையில்' : language === 'hi' ? 'लंबित' : 'Pending' },
+    { id: 'Processing', label: language === 'ta' ? 'செயலாக்கத்தில்' : language === 'hi' ? 'प्रक्रिया में' : 'Processing' },
+    { id: 'Completed', label: language === 'ta' ? 'நிறைவடைந்தது' : language === 'hi' ? 'पूर्ण' : 'Completed' },
+  ];
 
   const countByStatus = (status: string) => {
     if (status === 'All') return orders.length;
@@ -136,7 +162,9 @@ export default function SellerOrdersScreen() {
         >
           <ArrowLeft size={20} color={Colors.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
-        <Text style={styles.screenTitle}>Orders</Text>
+        <Text style={styles.screenTitle}>
+          {language === 'ta' ? 'ஆர்டர்கள்' : language === 'hi' ? 'ऑर्डर' : 'Orders'}
+        </Text>
         <TouchableOpacity style={styles.searchBtn} activeOpacity={0.8}>
           <Search size={20} color={Colors.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
@@ -144,18 +172,18 @@ export default function SellerOrdersScreen() {
 
       {/* Filter Tabs */}
       <View style={styles.tabRow}>
-        {TABS.map((tab) => {
-          const isActive = activeFilter === tab;
-          const count = countByStatus(tab);
+        {tabs.map((tab) => {
+          const isActive = activeFilter === tab.id;
+          const count = countByStatus(tab.id);
           return (
             <TouchableOpacity
-              key={tab}
+              key={tab.id}
               style={[styles.tab, isActive && styles.tabActive]}
-              onPress={() => setActiveFilter(tab)}
+              onPress={() => setActiveFilter(tab.id)}
               activeOpacity={0.8}
             >
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {tab} ({count})
+                {tab.label} ({count})
               </Text>
             </TouchableOpacity>
           );
@@ -186,12 +214,20 @@ export default function SellerOrdersScreen() {
           {filtered.length === 0 ? (
             <View style={styles.emptyState}>
               <Package size={48} color={Colors.textMuted} strokeWidth={1.5} />
-              <Text style={styles.emptyTitle}>No orders yet</Text>
-              <Text style={styles.emptySub}>Orders will appear here when buyers place them.</Text>
+              <Text style={styles.emptyTitle}>
+                {language === 'ta' ? 'ஆர்டர்கள் எதுவும் இல்லை' : language === 'hi' ? 'अभी तक कोई ऑर्डर नहीं' : 'No orders yet'}
+              </Text>
+              <Text style={styles.emptySub}>
+                {language === 'ta'
+                  ? 'வாங்குபவர்கள் ஆர்டர் செய்யும் போது இங்கே தோன்றும்.'
+                  : language === 'hi'
+                  ? 'जब खरीदार ऑर्डर देंगे तो वे यहाँ दिखाई देंगे।'
+                  : 'Orders will appear here when buyers place them.'}
+              </Text>
             </View>
           ) : (
             filtered.map((order, idx) => {
-              const config = getStatusConfig(order.status);
+              const config = getStatusConfig(order.status, language);
               const orderId = order.order_number || `#ORD${order.id.slice(0, 4).toUpperCase()}`;
               return (
                 <TouchableOpacity
@@ -219,7 +255,11 @@ export default function SellerOrdersScreen() {
                   <View style={styles.orderInfo}>
                     <Text style={styles.orderId}>{orderId}</Text>
                     <Text style={styles.orderMeta}>
-                      {order.quantity} item{order.quantity > 1 ? 's' : ''} · ₹ {order.total_amount}
+                      {language === 'ta'
+                        ? `${order.quantity} பொருட்கள் · ₹ ${order.total_amount}`
+                        : language === 'hi'
+                        ? `${order.quantity} वस्तुएं · ₹ ${order.total_amount}`
+                        : `${order.quantity} item${order.quantity > 1 ? 's' : ''} · ₹ ${order.total_amount}`}
                     </Text>
                   </View>
                   <View style={styles.orderRight}>

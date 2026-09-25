@@ -30,6 +30,7 @@ import {
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
 import { BACKEND_URL } from '@/config/api';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface LowStockProduct {
   id: string;
@@ -44,6 +45,7 @@ export default function InventoryAlertsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const { language } = useLanguage();
 
   const [fontsLoaded] = useFonts({
     Poppins_600SemiBold,
@@ -87,6 +89,47 @@ export default function InventoryAlertsScreen() {
 
   if (!fontsLoaded) return null;
 
+  const screenTitle =
+    language === 'ta'
+      ? 'கையிருப்பு எச்சரிக்கை'
+      : language === 'hi'
+      ? 'इन्वेंट्री अलर्ट'
+      : 'Inventory Alert';
+
+  const alertTitle =
+    language === 'ta'
+      ? `${products.length} தயாரிப்புகளில் இருப்பு குறைவாக உள்ளது`
+      : language === 'hi'
+      ? `${products.length} उत्पाद में स्टॉक कम है`
+      : `${products.length} product${products.length > 1 ? 's are' : ' is'} low in stock`;
+
+  const alertSub =
+    language === 'ta'
+      ? 'ஆர்டர்களை இழப்பதைத் தவிர்க்க விரைவில் கையிருப்பை நிரப்பவும்.'
+      : language === 'hi'
+      ? 'ऑर्डर न चूकने के लिए जल्द स्टॉक भरें।'
+      : 'Restock soon to avoid missing orders.';
+
+  const emptyTitle =
+    language === 'ta'
+      ? 'அனைத்து தயாரிப்புகளும் போதுமான கையிருப்பில் உள்ளன! 🎉'
+      : language === 'hi'
+      ? 'सभी उत्पादों का पर्याप्त स्टॉक है! 🎉'
+      : 'All products well-stocked! 🎉';
+
+  const emptySub =
+    language === 'ta'
+      ? 'தற்போது குறைந்த கையிருப்பு எச்சரிக்கைகள் இல்லை.'
+      : language === 'hi'
+      ? 'इस समय कोई कम स्टॉक अलर्ट नहीं है।'
+      : 'No low inventory alerts at this time.';
+
+  const leftSuffix =
+    language === 'ta' ? 'மீதமுள்ளது' : language === 'hi' ? 'शेष' : 'left';
+
+  const restockBtnLabel =
+    language === 'ta' ? 'கையிருப்பு சேர்க்க' : language === 'hi' ? 'स्टॉक भरें' : 'Restock';
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -100,7 +143,7 @@ export default function InventoryAlertsScreen() {
         >
           <ArrowLeft size={20} color={Colors.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
-        <Text style={styles.screenTitle}>Inventory Alert</Text>
+        <Text style={styles.screenTitle}>{screenTitle}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -114,12 +157,8 @@ export default function InventoryAlertsScreen() {
           <View style={styles.alertBanner}>
             <AlertTriangle size={18} color={Colors.error} strokeWidth={2} />
             <View style={styles.alertTextWrap}>
-              <Text style={styles.alertTitle}>
-                {products.length} product{products.length > 1 ? 's are' : ' is'} low in stock
-              </Text>
-              <Text style={styles.alertSub}>
-                Restock soon to avoid missing orders.
-              </Text>
+              <Text style={styles.alertTitle}>{alertTitle}</Text>
+              <Text style={styles.alertSub}>{alertSub}</Text>
             </View>
           </View>
         )}
@@ -131,8 +170,8 @@ export default function InventoryAlertsScreen() {
           </View>
         ) : products.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>All products well-stocked! 🎉</Text>
-            <Text style={styles.emptySub}>No low inventory alerts at this time.</Text>
+            <Text style={styles.emptyTitle}>{emptyTitle}</Text>
+            <Text style={styles.emptySub}>{emptySub}</Text>
           </View>
         ) : (
           products.map((product) => (
@@ -147,7 +186,7 @@ export default function InventoryAlertsScreen() {
               <View style={styles.productInfo}>
                 <Text style={styles.productTitle} numberOfLines={1}>{product.title}</Text>
                 <Text style={styles.stockCount}>
-                  <Text style={styles.stockCountBold}>{product.units}</Text> left
+                  <Text style={styles.stockCountBold}>{product.units}</Text> {leftSuffix}
                 </Text>
               </View>
               <TouchableOpacity
@@ -160,7 +199,7 @@ export default function InventoryAlertsScreen() {
                 }
                 activeOpacity={0.85}
               >
-                <Text style={styles.restockBtnText}>Restock</Text>
+                <Text style={styles.restockBtnText}>{restockBtnLabel}</Text>
               </TouchableOpacity>
             </View>
           ))

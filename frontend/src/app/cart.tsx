@@ -33,11 +33,13 @@ import {
 import { Fonts, Shadow, Radius } from '@/constants/artisan-theme';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { BACKEND_URL } from '@/config/api';
 
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { language } = useLanguage();
   const { cart, removeFromCart, updateQuantity, clearCart, cartTotal, isCartLoading } = useCart();
   const { profile, user } = useAuth();
 
@@ -59,9 +61,21 @@ export default function CartScreen() {
       const disc = Math.round(cartTotal * 0.1);
       setDiscount(disc);
       setPromoApplied(true);
-      Alert.alert('Promo Applied!', `You saved ₹${disc.toLocaleString('en-IN')} (10% Artisan Craft Discount)`);
+      const title = language === 'ta' ? 'கூப்பன் பயன்படுத்தப்பட்டது!' : language === 'hi' ? 'प्रोमो लागू हुआ!' : 'Promo Applied!';
+      const msg = language === 'ta'
+        ? `நீங்கள் ₹${disc.toLocaleString('en-IN')} சேமித்தீர்கள் (10% கைவினை தள்ளுபடி)`
+        : language === 'hi'
+        ? `आपने ₹${disc.toLocaleString('en-IN')} बचाए (10% कारीगर शिल्प छूट)`
+        : `You saved ₹${disc.toLocaleString('en-IN')} (10% Artisan Craft Discount)`;
+      Alert.alert(title, msg);
     } else if (code) {
-      Alert.alert('Invalid Code', 'Try code "HERITAGE10" for 10% off handcrafted crafts.');
+      const title = language === 'ta' ? 'செல்லாத கூப்பன்' : language === 'hi' ? 'अमान्य कोड' : 'Invalid Code';
+      const msg = language === 'ta'
+        ? '10% கைவினை தள்ளுபடிக்கு "HERITAGE10" குறியீட்டைப் பயன்படுத்தவும்.'
+        : language === 'hi'
+        ? '10% शिल्प छूट के लिए "HERITAGE10" कोड का उपयोग करें।'
+        : 'Try code "HERITAGE10" for 10% off handcrafted crafts.';
+      Alert.alert(title, msg);
     }
   };
 
@@ -70,12 +84,18 @@ export default function CartScreen() {
   // Place Order API
   const handlePlaceOrder = async () => {
     if (cart.length === 0) {
-      Alert.alert('Cart Empty', 'Add handcrafted items before placing an order.');
+      Alert.alert(
+        language === 'ta' ? 'பை காலியாக உள்ளது' : language === 'hi' ? 'बैग खाली है' : 'Cart Empty',
+        language === 'ta' ? 'ஆர்டர் செய்வதற்கு முன் பொருட்களைச் சேர்க்கவும்.' : language === 'hi' ? 'ऑर्डर देने से पहले हस्तनिर्मित वस्तुएं जोड़ें।' : 'Add handcrafted items before placing an order.'
+      );
       return;
     }
 
     if (!shippingAddress.trim()) {
-      Alert.alert('Address Missing', 'Please provide a shipping delivery address.');
+      Alert.alert(
+        language === 'ta' ? 'முகவரி தேவை' : language === 'hi' ? 'पता दर्ज करें' : 'Address Missing',
+        language === 'ta' ? 'தயவுசெய்து டெலிவரி முகவரியை உள்ளிடவும்.' : language === 'hi' ? 'कृपया डिलीवरी का पता प्रदान करें।' : 'Please provide a shipping delivery address.'
+      );
       return;
     }
 
@@ -112,7 +132,10 @@ export default function CartScreen() {
       clearCart();
       setOrderSuccessModal(true);
     } catch (err: any) {
-      Alert.alert('Order Failed', err.message || 'Could not place order. Please check connection.');
+      Alert.alert(
+        language === 'ta' ? 'ஆர்டர் தோல்வியடைந்தது' : language === 'hi' ? 'ऑर्डर विफल' : 'Order Failed',
+        err.message || (language === 'ta' ? 'ஆர்டர் செய்ய முடியவில்லை. இணைப்பைச் சரிபார்க்கவும்.' : language === 'hi' ? 'ऑर्डर नहीं दिया जा सका। कृपया कनेक्शन जांचें।' : 'Could not place order. Please check connection.')
+      );
     } finally {
       setIsPlacingOrder(false);
     }
@@ -132,7 +155,9 @@ export default function CartScreen() {
           <ArrowLeft size={20} color="#FFFFFF" strokeWidth={2.5} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Shopping Bag</Text>
+        <Text style={styles.headerTitle}>
+          {language === 'ta' ? 'ஷாப்பிங் பை' : language === 'hi' ? 'शॉपिंग बैग' : 'Shopping Bag'}
+        </Text>
 
         <View style={styles.circleBtnWhite}>
           <ShoppingBag size={20} color="#0D0D0D" strokeWidth={2} />
@@ -150,16 +175,24 @@ export default function CartScreen() {
           <View style={styles.emptyIconCircle}>
             <ShoppingBag size={48} color="#8E8E93" strokeWidth={1.5} />
           </View>
-          <Text style={styles.emptyTitle}>Your Bag is Empty</Text>
+          <Text style={styles.emptyTitle}>
+            {language === 'ta' ? 'உங்கள் பை காலியாக உள்ளது' : language === 'hi' ? 'आपका बैग खाली है' : 'Your Bag is Empty'}
+          </Text>
           <Text style={styles.emptySubtitle}>
-            Explore authentic handloom textiles, terracotta pottery, and certified GI crafts directly from Indian artisans.
+            {language === 'ta'
+              ? 'நேரடியாக கைவினைஞர்களிடமிருந்து அசல் கைத்தறி ஆடைகள், சுடுமண் மண்பாண்டங்கள் மற்றும் புவிசார் குறியீடு பெற்ற கைவினைப் பொருட்களைக் கண்டறியுங்கள்.'
+              : language === 'hi'
+              ? 'भारतीय कारीगरों से सीधे प्रामाणिक हथकरघा वस्त्र, टेराकोटा मिट्टी के बर्तन और प्रमाणित जीआई शिल्प खोजें।'
+              : 'Explore authentic handloom textiles, terracotta pottery, and certified GI crafts directly from Indian artisans.'}
           </Text>
           <TouchableOpacity
             style={styles.exploreBtn}
             onPress={() => router.replace('/')}
             activeOpacity={0.85}
           >
-            <Text style={styles.exploreBtnText}>Discover Handcrafted Items</Text>
+            <Text style={styles.exploreBtnText}>
+              {language === 'ta' ? 'கைவினைப் பொருட்களைக் காண்க' : language === 'hi' ? 'हस्तनिर्मित शिल्प खोजें' : 'Discover Handcrafted Items'}
+            </Text>
             <ArrowRight size={16} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
@@ -172,12 +205,16 @@ export default function CartScreen() {
           <View style={styles.trustBanner}>
             <View style={styles.trustItem}>
               <Truck size={16} color="#0D0D0D" />
-              <Text style={styles.trustText}>Free Direct Artisan Delivery</Text>
+              <Text style={styles.trustText}>
+                {language === 'ta' ? 'கைவினைஞரிடமிருந்து நேரடி டெலிவரி' : language === 'hi' ? 'कारीगर से मुफ्त सीधी डिलीवरी' : 'Free Direct Artisan Delivery'}
+              </Text>
             </View>
             <View style={styles.trustDivider} />
             <View style={styles.trustItem}>
               <ShieldCheck size={16} color="#10B981" />
-              <Text style={styles.trustText}>100% Genuine Heritage</Text>
+              <Text style={styles.trustText}>
+                {language === 'ta' ? '100% அசல் பாரம்பரியம்' : language === 'hi' ? '100% प्रामाणिक विरासत' : '100% Genuine Heritage'}
+              </Text>
             </View>
           </View>
 
@@ -201,7 +238,7 @@ export default function CartScreen() {
                           {item.product.title}
                         </Text>
                         <Text style={styles.itemSubtitle} numberOfLines={1}>
-                          {item.product.craft_type || item.product.category || 'Handcrafted'}
+                          {item.product.craft_type || item.product.category || (language === 'ta' ? 'பாரம்பரிய கைவினை' : language === 'hi' ? 'हस्तशिल्प' : 'Handcrafted')}
                         </Text>
                       </View>
 
@@ -250,7 +287,7 @@ export default function CartScreen() {
               <Tag size={18} color="#8E8E93" style={{ marginRight: 8 }} />
               <TextInput
                 style={styles.promoInput}
-                placeholder="Promo code (e.g. HERITAGE10)"
+                placeholder={language === 'ta' ? 'தள்ளுபடி கூப்பன் (எ.கா. HERITAGE10)' : language === 'hi' ? 'प्रोमो कोड (उदा. HERITAGE10)' : 'Promo code (e.g. HERITAGE10)'}
                 placeholderTextColor="#A0A0A5"
                 value={promoCode}
                 onChangeText={setPromoCode}
@@ -261,7 +298,11 @@ export default function CartScreen() {
                 onPress={handleApplyPromo}
                 activeOpacity={0.8}
               >
-                <Text style={styles.applyBtnText}>{promoApplied ? 'Applied' : 'Apply'}</Text>
+                <Text style={styles.applyBtnText}>
+                  {promoApplied
+                    ? (language === 'ta' ? 'பயன்படுத்தப்பட்டது' : language === 'hi' ? 'लागू हुआ' : 'Applied')
+                    : (language === 'ta' ? 'பயன்படுத்து' : language === 'hi' ? 'लागू करें' : 'Apply')}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -271,14 +312,16 @@ export default function CartScreen() {
             <View style={styles.sectionCardHeader}>
               <View style={styles.rowAlign}>
                 <MapPin size={17} color="#0D0D0D" />
-                <Text style={styles.sectionCardTitle}>Shipping Address</Text>
+                <Text style={styles.sectionCardTitle}>
+                  {language === 'ta' ? 'டெலிவரி முகவரி' : language === 'hi' ? 'शिपिंग का पता' : 'Shipping Address'}
+                </Text>
               </View>
             </View>
             <TextInput
               style={styles.addressInputField}
               value={shippingAddress}
               onChangeText={setShippingAddress}
-              placeholder="Enter your shipping address..."
+              placeholder={language === 'ta' ? 'உங்கள் டெலிவரி முகவரியை உள்ளிடவும்...' : language === 'hi' ? 'अपना शिपिंग पता दर्ज करें...' : 'Enter your shipping address...'}
               placeholderTextColor="#A0A0A5"
               multiline
               numberOfLines={2}
@@ -287,7 +330,9 @@ export default function CartScreen() {
 
           {/* Payment Method Selector */}
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionCardTitle}>Payment Method</Text>
+            <Text style={styles.sectionCardTitle}>
+              {language === 'ta' ? 'பணம் செலுத்தும் முறை' : language === 'hi' ? 'भुगतान विधि' : 'Payment Method'}
+            </Text>
             <View style={styles.paymentOptionsRow}>
               <TouchableOpacity
                 style={[
@@ -304,7 +349,7 @@ export default function CartScreen() {
                     paymentMethod === 'cod' && styles.paymentOptionTextActive,
                   ]}
                 >
-                  Cash on Delivery
+                  {language === 'ta' ? 'நேரில் பணம்' : language === 'hi' ? 'कैश ऑन डिलीवरी' : 'Cash on Delivery'}
                 </Text>
               </TouchableOpacity>
 
@@ -342,7 +387,7 @@ export default function CartScreen() {
                     paymentMethod === 'card' && styles.paymentOptionTextActive,
                   ]}
                 >
-                  Card / Net
+                  {language === 'ta' ? 'கார்டு / வங்கி' : language === 'hi' ? 'कार्ड / नेट' : 'Card / Net'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -350,16 +395,26 @@ export default function CartScreen() {
 
           {/* Order Summary Receipt */}
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Order Summary</Text>
+            <Text style={styles.summaryTitle}>
+              {language === 'ta' ? 'ஆர்டர் சுருக்கம்' : language === 'hi' ? 'ऑर्डर का सारांश' : 'Order Summary'}
+            </Text>
 
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Subtotal ({cart.length} crafts)</Text>
+              <Text style={styles.summaryLabel}>
+                {language === 'ta'
+                  ? `மொத்த மதிப்பு (${cart.length} பொருட்கள்)`
+                  : language === 'hi'
+                  ? `उप-योग (${cart.length} शिल्प)`
+                  : `Subtotal (${cart.length} crafts)`}
+              </Text>
               <Text style={styles.summaryValue}>₹{cartTotal.toLocaleString('en-IN')}</Text>
             </View>
 
             {discount > 0 && (
               <View style={styles.summaryRow}>
-                <Text style={[styles.summaryLabel, { color: '#10B981' }]}>Artisan Promo Discount</Text>
+                <Text style={[styles.summaryLabel, { color: '#10B981' }]}>
+                  {language === 'ta' ? 'கைவினைஞர் தள்ளுபடி' : language === 'hi' ? 'कारीगर प्रोमो छूट' : 'Artisan Promo Discount'}
+                </Text>
                 <Text style={[styles.summaryValue, { color: '#10B981' }]}>
                   -₹{discount.toLocaleString('en-IN')}
                 </Text>
@@ -367,19 +422,29 @@ export default function CartScreen() {
             )}
 
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Artisan Direct Shipping</Text>
-              <Text style={[styles.summaryValue, { color: '#10B981' }]}>FREE</Text>
+              <Text style={styles.summaryLabel}>
+                {language === 'ta' ? 'கைவினைஞர் நேரடி டெலிவரி' : language === 'hi' ? 'कारीगर सीधी शिपिंग' : 'Artisan Direct Shipping'}
+              </Text>
+              <Text style={[styles.summaryValue, { color: '#10B981' }]}>
+                {language === 'ta' ? 'இலவசம்' : language === 'hi' ? 'निःशुल्क' : 'FREE'}
+              </Text>
             </View>
 
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>GST & Craft Levies</Text>
-              <Text style={styles.summaryValue}>Included</Text>
+              <Text style={styles.summaryLabel}>
+                {language === 'ta' ? 'ஜிஎஸ்டி மற்றும் வரிகள்' : language === 'hi' ? 'जीएसटी और शिल्प शुल्क' : 'GST & Craft Levies'}
+              </Text>
+              <Text style={styles.summaryValue}>
+                {language === 'ta' ? 'சேர்க்கப்பட்டுள்ளது' : language === 'hi' ? 'शामिल है' : 'Included'}
+              </Text>
             </View>
 
             <View style={styles.summaryDivider} />
 
             <View style={styles.summaryRowTotal}>
-              <Text style={styles.totalLabel}>Total Payable</Text>
+              <Text style={styles.totalLabel}>
+                {language === 'ta' ? 'செலுத்த வேண்டிய மொத்தத் தொகை' : language === 'hi' ? 'कुल देय राशि' : 'Total Payable'}
+              </Text>
               <Text style={styles.totalValue}>₹{finalTotal.toLocaleString('en-IN')}</Text>
             </View>
           </View>
@@ -390,7 +455,9 @@ export default function CartScreen() {
       {cart.length > 0 && (
         <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <View style={styles.bottomPriceCol}>
-            <Text style={styles.bottomPriceLabel}>Total</Text>
+            <Text style={styles.bottomPriceLabel}>
+              {language === 'ta' ? 'மொத்தம்' : language === 'hi' ? 'कुल' : 'Total'}
+            </Text>
             <Text style={styles.bottomPriceValue}>₹{finalTotal.toLocaleString('en-IN')}</Text>
           </View>
 
@@ -404,7 +471,9 @@ export default function CartScreen() {
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <>
-                <Text style={styles.checkoutBtnText}>Place Order</Text>
+                <Text style={styles.checkoutBtnText}>
+                  {language === 'ta' ? 'ஆர்டர் செய்யுங்கள்' : language === 'hi' ? 'ऑर्डर दें' : 'Place Order'}
+                </Text>
                 <ArrowRight size={18} color="#FFFFFF" strokeWidth={2.5} />
               </>
             )}
@@ -425,9 +494,15 @@ export default function CartScreen() {
               <CheckCircle2 size={48} color="#10B981" />
             </View>
 
-            <Text style={styles.successTitle}>Order Placed Successfully!</Text>
+            <Text style={styles.successTitle}>
+              {language === 'ta' ? 'ஆர்டர் வெற்றிகரமாக செய்யப்பட்டது!' : language === 'hi' ? 'ऑर्डर सफलतापूर्वक दिया गया!' : 'Order Placed Successfully!'}
+            </Text>
             <Text style={styles.successSub}>
-              Order #{placedOrderId} has been confirmed. The artisans have been notified to begin preparing your authentic handmade pieces.
+              {language === 'ta'
+                ? `ஆர்டர் #${placedOrderId} உறுதி செய்யப்பட்டது. கைவினைஞர்கள் உங்கள் அசல் தயாரிப்பைத் தயாரிக்கத் தொடங்குவார்கள்.`
+                : language === 'hi'
+                ? `ऑर्डर #${placedOrderId} की पुष्टि हो गई है। कारीगरों को आपकी प्रामाणिक हस्तनिर्मित वस्तुएं तैयार करने के लिए सूचित कर दिया गया है।`
+                : `Order #${placedOrderId} has been confirmed. The artisans have been notified to begin preparing your authentic handmade pieces.`}
             </Text>
 
             <View style={styles.modalSuccessBtns}>
@@ -439,7 +514,9 @@ export default function CartScreen() {
                 }}
                 activeOpacity={0.85}
               >
-                <Text style={styles.keepBrowsingText}>Discover More</Text>
+                <Text style={styles.keepBrowsingText}>
+                  {language === 'ta' ? 'மேலும் காண்க' : language === 'hi' ? 'और देखें' : 'Discover More'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -450,7 +527,9 @@ export default function CartScreen() {
                 }}
                 activeOpacity={0.85}
               >
-                <Text style={styles.viewOrdersText}>View in Orders →</Text>
+                <Text style={styles.viewOrdersText}>
+                  {language === 'ta' ? 'ஆர்டர்களைக் காண்க →' : language === 'hi' ? 'ऑर्डर देखें →' : 'View in Orders →'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

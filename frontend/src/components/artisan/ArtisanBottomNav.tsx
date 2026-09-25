@@ -15,7 +15,7 @@ interface ArtisanBottomNavProps {
 
 export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavProps) {
   const insets = useSafeAreaInsets();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   return (
     <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 8) }]}>
@@ -34,7 +34,7 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
             fill={activeTab === 'home' ? Colors.primary : 'none'}
           />
           <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabLabelActive]}>
-            {t('nav_home')}
+            {language === 'ta' ? 'முகப்பு' : language === 'hi' ? 'होम' : 'Home'}
           </Text>
         </TouchableOpacity>
 
@@ -50,7 +50,7 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
             strokeWidth={activeTab === 'listings' ? 2.2 : 1.6}
           />
           <Text style={[styles.tabLabel, activeTab === 'listings' && styles.tabLabelActive]}>
-            {t('nav_products')}
+            {language === 'ta' ? 'பொருட்கள்' : language === 'hi' ? 'उत्पाद' : 'Products'}
           </Text>
         </TouchableOpacity>
 
@@ -66,7 +66,7 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
             strokeWidth={activeTab === 'growth' ? 2.2 : 1.6}
           />
           <Text style={[styles.tabLabel, activeTab === 'growth' && styles.tabLabelActive]}>
-            {t('nav_growth')}
+            {language === 'ta' ? 'வளர்ச்சி' : language === 'hi' ? 'विकास' : 'Growth'}
           </Text>
         </TouchableOpacity>
 
@@ -82,7 +82,7 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
             strokeWidth={activeTab === 'analytical' ? 2.2 : 1.6}
           />
           <Text style={[styles.tabLabel, activeTab === 'analytical' && styles.tabLabelActive]}>
-            {t('nav_analytics')}
+            {language === 'ta' ? 'பகுப்பாய்வு' : language === 'hi' ? 'एनालिटिक्स' : 'Analytics'}
           </Text>
         </TouchableOpacity>
 
@@ -98,7 +98,7 @@ export function ArtisanBottomNav({ activeTab, onTabChange }: ArtisanBottomNavPro
             strokeWidth={activeTab === 'profile' ? 2.2 : 1.6}
           />
           <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]}>
-            {t('nav_profile')}
+            {language === 'ta' ? 'சுயவிவரம்' : language === 'hi' ? 'प्रोफ़ाइल' : 'Profile'}
           </Text>
         </TouchableOpacity>
 

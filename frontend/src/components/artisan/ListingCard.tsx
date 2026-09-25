@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { ChevronRight } from 'lucide-react-native';
+import { useLanguage } from '@/context/LanguageContext';
 
 export type ListingStatus = 'draft' | 'published' | 'inquiries' | 'sold';
 
@@ -22,11 +23,11 @@ interface ListingCardProps {
   horizontal?: boolean;
 }
 
-const STATUS_CONFIG: Record<ListingStatus, { bg: string; text: string; label: string; dot: string }> = {
-  published: { bg: Colors.statusActiveBg, text: Colors.statusActive, label: 'Active', dot: Colors.statusActive },
-  draft:     { bg: Colors.statusDraftBg, text: Colors.statusDraft, label: 'Draft', dot: Colors.statusDraft },
-  inquiries: { bg: Colors.statusPendingBg, text: Colors.statusPending, label: 'Inquiries', dot: Colors.statusPending },
-  sold:      { bg: Colors.statusCompletedBg, text: Colors.statusCompleted, label: 'Sold', dot: Colors.statusCompleted },
+const STATUS_CONFIG: Record<ListingStatus, { bg: string; text: string; dot: string }> = {
+  published: { bg: Colors.statusActiveBg, text: Colors.statusActive, dot: Colors.statusActive },
+  draft:     { bg: Colors.statusDraftBg, text: Colors.statusDraft, dot: Colors.statusDraft },
+  inquiries: { bg: Colors.statusPendingBg, text: Colors.statusPending, dot: Colors.statusPending },
+  sold:      { bg: Colors.statusCompletedBg, text: Colors.statusCompleted, dot: Colors.statusCompleted },
 };
 
 export function ListingCard({
@@ -42,8 +43,29 @@ export function ListingCard({
   onDelete,
   horizontal = false,
 }: ListingCardProps) {
+  const { language } = useLanguage();
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.published;
-  const chipLabel = status === 'inquiries' && inquiryCount > 0 ? `${inquiryCount} Inquiries` : config.label;
+
+  const getStatusLabel = (st: ListingStatus) => {
+    switch (st) {
+      case 'published':
+        return language === 'ta' ? 'செயலில்' : language === 'hi' ? 'सक्रिय' : 'Active';
+      case 'draft':
+        return language === 'ta' ? 'வரைவு' : language === 'hi' ? 'ड्राफ्ट' : 'Draft';
+      case 'inquiries':
+        return language === 'ta' ? 'விசாரணைகள்' : language === 'hi' ? 'पूछताछ' : 'Inquiries';
+      case 'sold':
+        return language === 'ta' ? 'விற்கப்பட்டது' : language === 'hi' ? 'बिक गया' : 'Sold';
+      default:
+        return language === 'ta' ? 'செயலில்' : language === 'hi' ? 'सक्रिय' : 'Active';
+    }
+  };
+
+  const chipLabel = status === 'inquiries' && inquiryCount > 0
+    ? (language === 'ta' ? `${inquiryCount} விசாரணைகள்` : language === 'hi' ? `${inquiryCount} पूछताछ` : `${inquiryCount} Inquiries`)
+    : getStatusLabel(status);
+
+  const inStockLabel = language === 'ta' ? `${stockCount} கையிருப்பில்` : language === 'hi' ? `स्टॉक में ${stockCount}` : `${stockCount} in stock`;
 
   /* ── Horizontal List Layout (My Products screen) ─────────── */
   if (horizontal) {
@@ -64,7 +86,7 @@ export function ListingCard({
           <Text style={styles.hPrice}>₹ {price.replace('₹', '').trim()}</Text>
           {stockCount !== undefined && (
             <Text style={styles.hStock}>
-              <View style={[styles.stockDot, { backgroundColor: config.dot }]} /> {stockCount} in stock
+              <View style={[styles.stockDot, { backgroundColor: config.dot }]} /> {inStockLabel}
             </Text>
           )}
         </View>

@@ -148,12 +148,13 @@ def get_products(
     offset: int = 0
 ) -> Tuple[List[Dict[str, Any]], int]:
     """Get paginated products with optional artisan, status, category, and search filters."""
-    base_where = " WHERE 1=1"
-    params = []
 
-    if artisan_id:
-        base_where += " AND p.artisan_id = ?"
-        params.append(artisan_id)
+    # Safety guard: if no artisan_id is provided, return empty — never leak all products
+    if not artisan_id:
+        return [], 0
+
+    base_where = " WHERE p.artisan_id = ? AND p.artisan_id != 'demo_artisan'"
+    params = [artisan_id]
 
     if status:
         base_where += " AND p.status = ?"
@@ -172,8 +173,13 @@ def get_products(
     SELECT p.*,
            COALESCE(NULLIF(pr.name, ''), 'Master Artisan') AS artisan_name,
            COALESCE(NULLIF(pr.phone, ''), '+91 98765 43210') AS artisan_phone,
+           COALESCE(NULLIF(pr.shop_name, ''), pr.name, 'Artisan Shop') AS shop_name,
+           COALESCE(NULLIF(pr.shop_name, ''), pr.name, 'Artisan Shop') AS artisan_shop_name,
            pr.avatar_url AS artisan_avatar,
            pr.craft_type AS artisan_craft,
+           pr.shop_logo_url AS shop_logo_url,
+           pr.shop_logo_url AS artisan_shop_logo,
+           pr.shop_logo_style AS artisan_shop_logo_style,
            pr.pehchan_id AS profile_pehchan_id,
            pr.gstin AS profile_gstin
     FROM products p
@@ -216,8 +222,13 @@ def get_product_by_id(product_id: str) -> Optional[Dict[str, Any]]:
     SELECT p.*,
            COALESCE(NULLIF(pr.name, ''), 'Master Artisan') AS artisan_name,
            COALESCE(NULLIF(pr.phone, ''), '+91 98765 43210') AS artisan_phone,
+           COALESCE(NULLIF(pr.shop_name, ''), pr.name, 'Artisan Shop') AS shop_name,
+           COALESCE(NULLIF(pr.shop_name, ''), pr.name, 'Artisan Shop') AS artisan_shop_name,
            pr.avatar_url AS artisan_avatar,
            pr.craft_type AS artisan_craft,
+           pr.shop_logo_url AS shop_logo_url,
+           pr.shop_logo_url AS artisan_shop_logo,
+           pr.shop_logo_style AS artisan_shop_logo_style,
            pr.pehchan_id AS profile_pehchan_id,
            pr.gstin AS profile_gstin
     FROM products p

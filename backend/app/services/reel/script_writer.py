@@ -154,7 +154,7 @@ def _build_fallback_script(product: dict, language: str, style: str) -> dict:
 
 def write_script(product: dict, language: str = "ta-IN", style: str = "heritage") -> dict:
     """Generate an Instagram Reel advertising script."""
-    api_key = os.getenv("GEMINI_API_KEY", "")
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("AI_key") or os.getenv("AI_KEY") or ""
     model_name = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 
     if not api_key:

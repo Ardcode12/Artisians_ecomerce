@@ -31,6 +31,7 @@ import {
   Check,
   Globe,
   Share2,
+  Sparkles,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -41,7 +42,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
 import LinkInstagramCard from '@/components/profile/LinkInstagramCard';
-import { BACKEND_URL } from '@/config/api';
+import { BACKEND_URL, normalizeImageUrl } from '@/config/api';
 const BG = '#F5F0E8';
 
 const PRESET_AVATARS = [
@@ -216,7 +217,10 @@ export default function ProfileScreen() {
   // Save Payment Details
   const handleSavePaymentDetails = async () => {
     if (!formBankAcc.trim() || !formIfsc.trim()) {
-      Alert.alert('Required Fields', 'Please enter account number and IFSC code.');
+      Alert.alert(
+        language === 'ta' ? 'தேவையான புலங்கள்' : language === 'hi' ? 'आवश्यक फ़ील्ड' : 'Required Fields',
+        language === 'ta' ? 'கணக்கு எண் மற்றும் IFSC குறியீட்டை உள்ளிடவும்.' : language === 'hi' ? 'कृपया खाता संख्या और आईएफएससी कोड दर्ज करें।' : 'Please enter account number and IFSC code.'
+      );
       return;
     }
     setIsSaving(true);
@@ -229,10 +233,16 @@ export default function ProfileScreen() {
         upi_id: formUpi.trim(),
       });
       if (res.success) {
-        Alert.alert('Success', 'Bank details saved successfully.');
+        Alert.alert(
+          language === 'ta' ? 'வெற்றி' : language === 'hi' ? 'सफल' : 'Success',
+          language === 'ta' ? 'வங்கி விவரங்கள் வெற்றிகரமாக சேமிக்கப்பட்டன.' : language === 'hi' ? 'बैंक विवरण सफलतापूर्वक सहेजे गए।' : 'Bank details saved successfully.'
+        );
         setPaymentDetailsOpen(false);
       } else {
-        Alert.alert('Error', res.error || 'Failed to update bank details.');
+        Alert.alert(
+          language === 'ta' ? 'பிழை' : language === 'hi' ? 'त्रुटि' : 'Error',
+          res.error || (language === 'ta' ? 'வங்கி விவரங்களை புதுப்பிக்க முடியவில்லை.' : language === 'hi' ? 'बैंक विवरण अपडेट करने में विफल।' : 'Failed to update bank details.')
+        );
       }
     } catch (_) {}
     setIsSaving(false);
@@ -243,7 +253,10 @@ export default function ProfileScreen() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Camera permission is required.');
+        Alert.alert(
+          language === 'ta' ? 'அனுமதி தேவை' : language === 'hi' ? 'अनुमति आवश्यक' : 'Permission needed',
+          language === 'ta' ? 'கேமரா அனுமதி தேவை.' : language === 'hi' ? 'कैमरा अनुमति आवश्यक है।' : 'Camera permission is required.'
+        );
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -258,7 +271,10 @@ export default function ProfileScreen() {
         await uploadImageToProfile(result.assets[0]);
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Could not take photo.');
+      Alert.alert(
+        language === 'ta' ? 'பிழை' : language === 'hi' ? 'त्रुटि' : 'Error',
+        e?.message || (language === 'ta' ? 'புகைப்படம் எடுக்க முடியவில்லை.' : language === 'hi' ? 'फ़ोटो नहीं ली जा सकी।' : 'Could not take photo.')
+      );
     }
   };
 
@@ -267,7 +283,10 @@ export default function ProfileScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Gallery permission is required.');
+        Alert.alert(
+          language === 'ta' ? 'அனுமதி தேவை' : language === 'hi' ? 'अनुमति आवश्यक' : 'Permission needed',
+          language === 'ta' ? 'கேலரி அனுமதி தேவை.' : language === 'hi' ? 'गैलरी अनुमति आवश्यक है।' : 'Gallery permission is required.'
+        );
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -282,7 +301,10 @@ export default function ProfileScreen() {
         await uploadImageToProfile(result.assets[0]);
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Could not pick photo.');
+      Alert.alert(
+        language === 'ta' ? 'பிழை' : language === 'hi' ? 'त्रुटि' : 'Error',
+        e?.message || (language === 'ta' ? 'புகைப்படம் தேர்வு செய்ய முடியவில்லை.' : language === 'hi' ? 'फ़ोटो चुनी नहीं जा सकी।' : 'Could not pick photo.')
+      );
     }
   };
 
@@ -296,10 +318,16 @@ export default function ProfileScreen() {
 
       const res = await uploadAvatar(imagePayload);
       if (res.success) {
-        Alert.alert('Profile Updated', 'Your profile picture has been updated!');
+        Alert.alert(
+          language === 'ta' ? 'சுயவிவரம் புதுப்பிக்கப்பட்டது' : language === 'hi' ? 'प्रोफ़ाइल अपडेट की गई' : 'Profile Updated',
+          language === 'ta' ? 'உங்கள் சுயவிவரப் புகைப்படம் புதுப்பிக்கப்பட்டது!' : language === 'hi' ? 'आपकी प्रोफ़ाइल फ़ोटो अपडेट कर दी गई है!' : 'Your profile picture has been updated!'
+        );
       }
     } catch (err: any) {
-      Alert.alert('Notice', 'Photo set on device.');
+      Alert.alert(
+        language === 'ta' ? 'அறிவிப்பு' : language === 'hi' ? 'सूचना' : 'Notice',
+        language === 'ta' ? 'புகைப்படம் சாதனத்தில் அமைக்கப்பட்டது.' : language === 'hi' ? 'फ़ोटो डिवाइस पर सेट की गई।' : 'Photo set on device.'
+      );
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -318,7 +346,7 @@ export default function ProfileScreen() {
 
   // ── Buyer profile ────────────────────────────────────────────────────────
   if (userRole === 'buyer') {
-    const buyerName = buyerProfile?.name || 'Buyer';
+    const buyerName = buyerProfile?.name || (language === 'ta' ? 'வாங்குபவர்' : language === 'hi' ? 'खरीदार' : 'Buyer');
     return (
       <View style={styles.root}>
         <StatusBar barStyle="dark-content" backgroundColor={BG} />
@@ -329,7 +357,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.heroTextContainer}>
               <Text style={styles.profileName}>{buyerName}</Text>
-              <Text style={styles.profileSubtitle}>{buyerProfile?.buyer_type || 'Buyer'}</Text>
+              <Text style={styles.profileSubtitle}>{buyerProfile?.buyer_type || (language === 'ta' ? 'வாங்குபவர்' : language === 'hi' ? 'खरीदार' : 'Buyer')}</Text>
             </View>
           </View>
           <TouchableOpacity
@@ -338,7 +366,7 @@ export default function ProfileScreen() {
             activeOpacity={0.85}
           >
             <LogOut size={20} color="#D32F2F" />
-            <Text style={styles.logoutText}>{t('profile_logout') || 'Logout'}</Text>
+            <Text style={styles.logoutText}>{t('profile_logout') || (language === 'ta' ? 'வெளியேறு' : language === 'hi' ? 'लॉग आउट' : 'Logout')}</Text>
           </TouchableOpacity>
         </ScrollView>
         <BuyerBottomNav
@@ -356,17 +384,17 @@ export default function ProfileScreen() {
   }
 
   // ── Artisan Profile ───────────────────────────────────────────────────────
-  const artisanName = profile?.name || 'Meena Devi';
+  const artisanName = profile?.name || (language === 'ta' ? 'மீனா தேவி' : language === 'hi' ? 'मीना देवी' : 'Meena Devi');
   const locationSubtitle = profile?.location
-    ? `${t('profile_artisan_from') || 'Artisan from'} ${profile.location}`
+    ? `${t('profile_artisan_from') || (language === 'ta' ? 'கைவினைஞர் -' : language === 'hi' ? 'कारीगर -' : 'Artisan from')} ${profile.location}`
     : profile?.craft_type
       ? `${profile.craft_type}`
-      : `${t('profile_artisan_from') || 'Artisan from'} Tamil Nadu`;
+      : `${t('profile_artisan_from') || (language === 'ta' ? 'கைவினைஞர் -' : language === 'hi' ? 'कारीगर -' : 'Artisan from')} ${language === 'ta' ? 'தமிழ்நாடு' : language === 'hi' ? 'तमिलनाडु' : 'Tamil Nadu'}`;
 
   const MENU_OPTIONS = [
     {
       id: 'personal',
-      title: t('profile_personal_info') || 'Personal Information',
+      title: language === 'ta' ? 'தனிப்பட்ட தகவல்' : language === 'hi' ? 'व्यक्तिगत जानकारी' : (t('profile_personal_info') || 'Personal Information'),
       Icon: User,
       iconColor: '#2D6A4F',
       iconBg: '#EDF7F2',
@@ -374,15 +402,23 @@ export default function ProfileScreen() {
     },
     {
       id: 'shop',
-      title: t('profile_shop_details') || 'Shop Details',
+      title: language === 'ta' ? 'கடை விவரங்கள்' : language === 'hi' ? 'दुकान का विवरण' : (t('profile_shop_details') || 'Shop Details'),
       Icon: Store,
       iconColor: '#C26A3E',
       iconBg: '#FDF3EB',
       onPress: openShopDetails,
     },
     {
+      id: 'logo',
+      title: language === 'ta' ? 'கடை லோகோ & பிராண்ட் முத்திரை' : language === 'hi' ? 'दुकान लोगो व ब्रांड मार्क' : 'Shop Logo & Brand Mark',
+      Icon: Sparkles,
+      iconColor: '#B45309',
+      iconBg: '#FEF3C7',
+      onPress: () => router.push('/auth/logo-reveal'),
+    },
+    {
       id: 'payment',
-      title: t('profile_payment_bank') || t('profile_payment_details') || 'Payment Details',
+      title: language === 'ta' ? 'பணம் செலுத்துதல் & வங்கி விவரங்கள்' : language === 'hi' ? 'भुगतान और बैंक विवरण' : (t('profile_payment_bank') || 'Payment Details'),
       Icon: CreditCard,
       iconColor: '#3B82F6',
       iconBg: '#EEF5F9',
@@ -390,7 +426,7 @@ export default function ProfileScreen() {
     },
     {
       id: 'settings',
-      title: t('profile_app_settings') || 'App Settings',
+      title: language === 'ta' ? 'செயலி அமைப்புகள்' : language === 'hi' ? 'ऐप सेटिंग्स' : (t('profile_app_settings') || 'App Settings'),
       Icon: Settings,
       iconColor: '#2D6A4F',
       iconBg: '#EDF7ED',
@@ -398,7 +434,7 @@ export default function ProfileScreen() {
     },
     {
       id: 'support',
-      title: t('profile_help_support') || 'Help & Support',
+      title: language === 'ta' ? 'உதவி & ஆதரவு' : language === 'hi' ? 'सहायता और समर्थन' : (t('profile_help_support') || 'Help & Support'),
       Icon: HelpCircle,
       iconColor: '#64748B',
       iconBg: '#EEF2F6',
@@ -424,8 +460,12 @@ export default function ProfileScreen() {
         {/* ── Top Header ────────────────────────────────────────────── */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.screenTitle}>{t('profile_title') || 'My Profile'}</Text>
-            <Text style={styles.screenSubtitle}>{t('profile_subtitle') || 'Manage your account'}</Text>
+            <Text style={styles.screenTitle}>
+              {language === 'ta' ? 'என் சுயவிவரம்' : language === 'hi' ? 'मेरी प्रोफ़ाइल' : (t('profile_title') || 'My Profile')}
+            </Text>
+            <Text style={styles.screenSubtitle}>
+              {language === 'ta' ? 'உங்கள் கணக்கை நிர்வகிக்கவும்' : language === 'hi' ? 'अपना खाता प्रबंधित करें' : (t('profile_subtitle') || 'Manage your account')}
+            </Text>
           </View>
           <TouchableOpacity
             style={styles.editPillBtn}
@@ -433,7 +473,9 @@ export default function ProfileScreen() {
             activeOpacity={0.8}
           >
             <Pencil size={15} color="#111827" strokeWidth={2.2} />
-            <Text style={styles.editPillText}>{t('profile_edit') || 'Edit'}</Text>
+            <Text style={styles.editPillText}>
+              {language === 'ta' ? 'திருத்து' : language === 'hi' ? 'संपादित करें' : (t('profile_edit') || 'Edit')}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -460,7 +502,70 @@ export default function ProfileScreen() {
             <Text style={styles.profileName}>{artisanName}</Text>
             <Text style={styles.profileSubtitle}>{locationSubtitle}</Text>
           </View>
+
+          {/* Shop Logo Badge in Hero Card */}
+          <TouchableOpacity
+            style={styles.heroShopLogoBtn}
+            onPress={() => router.push('/auth/logo-reveal')}
+            activeOpacity={0.85}
+          >
+            {profile?.shop_logo_url ? (
+              <Image
+                source={{ uri: normalizeImageUrl(profile.shop_logo_url) }}
+                style={styles.heroShopLogoImg}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.heroShopLogoPlaceholder}>
+                <Store size={20} color="#2D5016" />
+              </View>
+            )}
+            <View style={styles.heroLogoEditDot}>
+              <Sparkles size={9} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
         </View>
+
+        {/* ── Shop Brand Identity Card ──────────────────────────────── */}
+        <TouchableOpacity
+          style={styles.brandIdentityCard}
+          onPress={() => router.push('/auth/logo-reveal')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.brandIdentityLeft}>
+            {profile?.shop_logo_url ? (
+              <Image
+                source={{ uri: normalizeImageUrl(profile.shop_logo_url) }}
+                style={styles.brandIdentityThumb}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={styles.brandIdentityThumbEmpty}>
+                <Store size={22} color="#2D5016" />
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <View style={styles.brandIdentityTitleRow}>
+                <Text style={styles.brandIdentityShopName} numberOfLines={1}>
+                  {profile?.shop_name || 'My Artisan Shop'}
+                </Text>
+                <View style={styles.brandVerifiedTag}>
+                  <Check size={11} color="#166534" strokeWidth={3} />
+                  <Text style={styles.brandVerifiedTagText}>Brand Verified</Text>
+                </View>
+              </View>
+              <Text style={styles.brandIdentitySubtext}>
+                {profile?.craft_type ? `${profile.craft_type} • ` : ''}
+                {profile?.shop_logo_style === 'shield'
+                  ? 'Heritage Crest'
+                  : profile?.shop_logo_style === 'wordmark'
+                  ? 'Artisan Wordmark'
+                  : 'Classic Shop Badge'}
+              </Text>
+            </View>
+          </View>
+          <ChevronRight size={18} color="#9CA3AF" />
+        </TouchableOpacity>
 
         {/* ── Menu Options Card ─────────────────────────────────────── */}
         <View style={styles.menuGroupCard}>
@@ -492,7 +597,9 @@ export default function ProfileScreen() {
           activeOpacity={0.85}
         >
           <LogOut size={18} color="#D32F2F" strokeWidth={2.2} />
-          <Text style={styles.logoutText}>{t('profile_logout') || 'Logout'}</Text>
+          <Text style={styles.logoutText}>
+            {language === 'ta' ? 'வெளியேறு' : language === 'hi' ? 'लॉग आउट' : (t('profile_logout') || 'Logout')}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -523,7 +630,7 @@ export default function ProfileScreen() {
                 style={styles.input}
                 value={formLocation}
                 onChangeText={setFormLocation}
-                placeholder="e.g. Tamil Nadu"
+                placeholder={language === 'ta' ? 'எ.கா. தமிழ்நாடு' : language === 'hi' ? 'उदा. तमिलनाडु' : 'e.g. Tamil Nadu'}
                 placeholderTextColor={Colors.textMuted}
               />
               <Text style={styles.inputLabel}>{t('profile_phone') || 'Phone Number'}</Text>
@@ -568,7 +675,7 @@ export default function ProfileScreen() {
                 style={styles.input}
                 value={formShopName}
                 onChangeText={setFormShopName}
-                placeholder="e.g. Meena Handicrafts"
+                placeholder={language === 'ta' ? 'எ.கா. மீனா கைவினைப் பொருட்கள்' : language === 'hi' ? 'उदा. मीना हस्तशिल्प' : 'e.g. Meena Handicrafts'}
                 placeholderTextColor={Colors.textMuted}
               />
               <Text style={styles.inputLabel}>{t('profile_craft_type') || 'Primary Craft Type'}</Text>
@@ -576,9 +683,52 @@ export default function ProfileScreen() {
                 style={styles.input}
                 value={formCraftType}
                 onChangeText={setFormCraftType}
-                placeholder="e.g. Silk Weaving, Pottery"
+                placeholder={language === 'ta' ? 'எ.கா. பட்டு நெசவு, மண்பாண்டம்' : language === 'hi' ? 'उदा. रेशम बुनाई, मिट्टी के बर्तन' : 'e.g. Silk Weaving, Pottery'}
                 placeholderTextColor={Colors.textMuted}
               />
+
+              {/* Shop Logo & Mark Preview in Modal */}
+              <View style={styles.modalLogoSection}>
+                <Text style={styles.inputLabel}>{language === 'ta' ? 'கடை லோகோ முத்திரை' : language === 'hi' ? 'दुकान का लोगो' : 'Shop Brand Logo'}</Text>
+                <View style={styles.modalLogoRow}>
+                  {profile?.shop_logo_url ? (
+                    <Image
+                      source={{ uri: normalizeImageUrl(profile.shop_logo_url) }}
+                      style={styles.modalLogoThumb}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <View style={styles.modalLogoPlaceholder}>
+                      <Store size={24} color="#2D5016" />
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalLogoTitle}>
+                      {profile?.shop_logo_style === 'shield'
+                        ? 'Heritage Crest'
+                        : profile?.shop_logo_style === 'wordmark'
+                        ? 'Artisan Wordmark'
+                        : 'Classic Artisan Badge'}
+                    </Text>
+                    <Text style={styles.modalLogoSub}>
+                      {language === 'ta' ? 'தயாரிப்பு அட்டைகளில் தோன்றும்' : language === 'hi' ? 'उत्पाद कार्ड पर दिखेगा' : 'Displayed on all published products'}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.modalLogoChangeBtn}
+                      onPress={() => {
+                        setShopDetailsOpen(false);
+                        router.push('/auth/logo-reveal');
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Sparkles size={13} color="#2D5016" />
+                      <Text style={styles.modalLogoChangeText}>
+                        {language === 'ta' ? 'லோகோவை மாற்று / உருவாக்கு' : language === 'hi' ? 'लोगो बदलें / नया बनाएं' : 'Regenerate / Change Logo'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
               <TouchableOpacity
                 style={styles.saveBtn}
                 onPress={handleSaveShopDetails}
@@ -615,7 +765,7 @@ export default function ProfileScreen() {
                 style={styles.input}
                 value={formHolder}
                 onChangeText={setFormHolder}
-                placeholder="Name as per bank"
+                placeholder={language === 'ta' ? 'வங்கியில் உள்ள பெயர்' : language === 'hi' ? 'बैंक के अनुसार नाम' : 'Name as per bank'}
                 placeholderTextColor={Colors.textMuted}
               />
               <Text style={styles.inputLabel}>{t('profile_bank_name') || 'Bank Name'}</Text>
@@ -623,7 +773,7 @@ export default function ProfileScreen() {
                 style={styles.input}
                 value={formBankName}
                 onChangeText={setFormBankName}
-                placeholder="e.g. State Bank of India"
+                placeholder={language === 'ta' ? 'எ.கா. பாரத ஸ்டேட் வங்கி' : language === 'hi' ? 'उदा. भारतीय स्टेट बैंक' : 'e.g. State Bank of India'}
                 placeholderTextColor={Colors.textMuted}
               />
               <Text style={styles.inputLabel}>{t('profile_account_no') || 'Account Number *'}</Text>
@@ -631,7 +781,7 @@ export default function ProfileScreen() {
                 style={styles.input}
                 value={formBankAcc}
                 onChangeText={setFormBankAcc}
-                placeholder="Bank account number"
+                placeholder={language === 'ta' ? 'வங்கி கணக்கு எண்' : language === 'hi' ? 'बैंक खाता संख्या' : 'Bank account number'}
                 keyboardType="numeric"
                 placeholderTextColor={Colors.textMuted}
               />
@@ -1065,5 +1215,193 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 16,
+  },
+
+  /* Shop Logo Badge in Hero Card */
+  heroShopLogoBtn: {
+    position: 'relative',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: '#2D5016',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  heroShopLogoImg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  heroShopLogoPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E8F3E4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroLogoEditDot: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#B45309',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+
+  /* Shop Brand Identity Card */
+  brandIdentityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: '#E7E5E4',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  brandIdentityLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  brandIdentityThumb: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#FAF8F5',
+  },
+  brandIdentityThumbEmpty: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E7E5E4',
+  },
+  brandIdentityTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  brandIdentityShopName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1C1917',
+    maxWidth: '65%',
+  },
+  brandVerifiedTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 0.8,
+    borderColor: '#A7F3D0',
+  },
+  brandVerifiedTagText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  brandIdentitySubtext: {
+    fontSize: 12,
+    color: '#78716C',
+    fontWeight: '500',
+  },
+
+  /* Modal Logo Section */
+  modalLogoSection: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    padding: 12,
+    marginVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalLogoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 6,
+  },
+  modalLogoThumb: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalLogoPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    backgroundColor: '#E8F3E4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalLogoTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  modalLogoSub: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 1,
+  },
+  modalLogoChangeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: '#E8F3E4',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  modalLogoChangeText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#2D5016',
   },
 });

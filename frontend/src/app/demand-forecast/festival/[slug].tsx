@@ -4,13 +4,13 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
   ActivityIndicator,
   StatusBar,
   Alert,
   Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
@@ -75,39 +75,45 @@ export default function FestivalOverviewScreen() {
 
   const [festivalData, setFestivalData] = useState<FestivalOverviewData>({
     slug: slugParam,
-    name: 'Diwali',
-    date_formatted: 'Oct 31, 2024',
-    days_left: 18,
-    days_left_badge: '18 days left',
+    name: 'Diwali / Deepavali',
+    date_formatted: 'Sunday, Nov 8, 2026',
+    days_left: 45,
+    days_left_badge: '45 days left (6w + 3d)',
     icon_type: 'diya',
     diya_image_url: 'uploads/forecast_diya.jpg',
     section_heading: 'Demand usually increases for:',
     top_categories: [
       {
+        category: 'Textiles',
+        uplift: '+50%',
+        uplift_pct: 50,
+        image_url: 'uploads/forecast_textiles.jpg',
+      },
+      {
         category: 'Baskets',
-        uplift: '+40%',
-        uplift_pct: 40,
+        uplift: '+30%',
+        uplift_pct: 30,
         image_url: 'uploads/forecast_basket.jpg',
       },
       {
         category: 'Home Decor',
-        uplift: '+35%',
-        uplift_pct: 35,
+        uplift: '+25%',
+        uplift_pct: 25,
         image_url: 'uploads/forecast_lantern.jpg',
       },
       {
-        category: 'Textiles',
-        uplift: '+25%',
-        uplift_pct: 25,
-        image_url: 'uploads/forecast_textiles.jpg',
+        category: 'Pottery',
+        uplift: '+15%',
+        uplift_pct: 15,
+        image_url: 'uploads/forecast_pottery.jpg',
       },
     ],
     tip_card: {
       icon: 'calendar',
-      text: 'Start preparing early to make the most of this festive season.',
+      text: 'Start preparing early (before Oct 10) to stock inventory ahead of peak festive shopping.',
     },
     quote_card: {
-      text: 'Last Diwali, baskets like yours were 40% more popular. This year, we expect similar or higher demand.',
+      text: 'Last Diwali, handcrafted festive crafts saw a 40%+ surge. Artisans who prepared terracotta diyas, cane hampers, and handlooms by early October achieved record sell-outs.',
     },
   });
 
@@ -164,12 +170,16 @@ export default function FestivalOverviewScreen() {
     return LOCAL_ASSETS.diya;
   };
 
-  const getCategoryImage = (catName: string) => {
-    const k = catName.toLowerCase();
+  const getCategoryImage = (cat: TopCategory) => {
+    const k = (cat.category || '').toLowerCase().trim();
     if (LOCAL_ASSETS[k]) return LOCAL_ASSETS[k];
+    if (k.includes('pottery') || k.includes('clay')) return LOCAL_ASSETS.pottery;
     if (k.includes('basket')) return LOCAL_ASSETS.baskets;
-    if (k.includes('decor') || k.includes('lamp')) return LOCAL_ASSETS['home decor'];
+    if (k.includes('decor') || k.includes('lamp') || k.includes('lantern')) return LOCAL_ASSETS['home decor'];
     if (k.includes('textile') || k.includes('saree')) return LOCAL_ASSETS.textiles;
+    if (cat.image_url) {
+      return { uri: normalizeImageUrl(cat.image_url) };
+    }
     return LOCAL_ASSETS.baskets;
   };
 
@@ -203,7 +213,9 @@ export default function FestivalOverviewScreen() {
               <Image
                 source={getDiyaImage()}
                 style={styles.diyaImage}
-                resizeMode="cover"
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
               />
             </View>
 
@@ -238,9 +250,11 @@ export default function FestivalOverviewScreen() {
                 >
                   <View style={styles.catImageWrap}>
                     <Image
-                      source={getCategoryImage(cat.category)}
+                      source={getCategoryImage(cat)}
                       style={styles.catThumbImage}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      transition={200}
+                      cachePolicy="memory-disk"
                     />
                   </View>
                   <Text style={styles.catName} numberOfLines={1}>
@@ -251,6 +265,60 @@ export default function FestivalOverviewScreen() {
                   </View>
                 </TouchableOpacity>
               ))}
+            </View>
+          </View>
+
+          {/* Festival Production Calendar & Milestones Card */}
+          <View style={styles.calendarTimelineCard}>
+            <View style={styles.calendarTimelineHeader}>
+              <Calendar size={18} color="#C2410C" strokeWidth={2.2} />
+              <Text style={styles.calendarTimelineTitle}>Diwali Production Calendar</Text>
+            </View>
+
+            <View style={styles.milestoneList}>
+              <View style={styles.milestoneRow}>
+                <View style={styles.milestoneBadge}>
+                  <Text style={styles.milestoneMonth}>OCT</Text>
+                  <Text style={styles.milestoneDay}>10</Text>
+                </View>
+                <View style={styles.milestoneInfo}>
+                  <Text style={styles.milestoneHeading}>Procure Raw Materials</Text>
+                  <Text style={styles.milestoneDesc}>Order handloom cotton yarn, natural dyes & Sabai grass before supply bottlenecks.</Text>
+                </View>
+              </View>
+
+              <View style={styles.milestoneRow}>
+                <View style={styles.milestoneBadge}>
+                  <Text style={styles.milestoneMonth}>OCT</Text>
+                  <Text style={styles.milestoneDay}>28</Text>
+                </View>
+                <View style={styles.milestoneInfo}>
+                  <Text style={styles.milestoneHeading}>Complete Batch Weaving & Crafting</Text>
+                  <Text style={styles.milestoneDesc}>Finish weaving and craft production for target units (40–65 textiles, 25–40 hampers).</Text>
+                </View>
+              </View>
+
+              <View style={styles.milestoneRow}>
+                <View style={styles.milestoneBadge}>
+                  <Text style={styles.milestoneMonth}>NOV</Text>
+                  <Text style={styles.milestoneDay}>03</Text>
+                </View>
+                <View style={styles.milestoneInfo}>
+                  <Text style={styles.milestoneHeading}>List & Bundle Hampers</Text>
+                  <Text style={styles.milestoneDesc}>Publish multi-pack sets to capture early festive buyers.</Text>
+                </View>
+              </View>
+
+              <View style={[styles.milestoneRow, styles.milestoneRowTarget]}>
+                <View style={[styles.milestoneBadge, styles.milestoneBadgeTarget]}>
+                  <Text style={styles.milestoneMonthTarget}>NOV</Text>
+                  <Text style={styles.milestoneDayTarget}>08</Text>
+                </View>
+                <View style={styles.milestoneInfo}>
+                  <Text style={styles.milestoneHeadingTarget}>Diwali Festival Day ★</Text>
+                  <Text style={styles.milestoneDescTarget}>Peak sales delivery window & festive gift exchanges.</Text>
+                </View>
+              </View>
             </View>
           </View>
 
@@ -519,5 +587,114 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: Fonts.headingBold,
     fontWeight: '700',
+  },
+
+  /* ── Production Calendar Timeline ───────────────────────────────────── */
+  calendarTimelineCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
+    ...Shadow.card,
+  },
+  calendarTimelineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  calendarTimelineTitle: {
+    fontSize: 15,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '700',
+    color: '#0F2537',
+  },
+  milestoneList: {
+    gap: 12,
+  },
+  milestoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  milestoneRowTarget: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 14,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+  },
+  milestoneBadge: {
+    width: 44,
+    borderRadius: 9,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+  },
+  milestoneBadgeTarget: {
+    borderColor: '#EA580C',
+    backgroundColor: '#EA580C',
+  },
+  milestoneMonth: {
+    fontSize: 9,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '800',
+    color: '#64748B',
+    paddingVertical: 1,
+  },
+  milestoneMonthTarget: {
+    fontSize: 9,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    paddingVertical: 1,
+  },
+  milestoneDay: {
+    fontSize: 14,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '800',
+    color: '#0F2537',
+    paddingBottom: 2,
+  },
+  milestoneDayTarget: {
+    fontSize: 14,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    paddingBottom: 2,
+  },
+  milestoneInfo: {
+    flex: 1,
+  },
+  milestoneHeading: {
+    fontSize: 13.5,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '700',
+    color: '#0F2537',
+  },
+  milestoneHeadingTarget: {
+    fontSize: 13.5,
+    fontFamily: Fonts.headingBold,
+    fontWeight: '800',
+    color: '#9A3412',
+  },
+  milestoneDesc: {
+    fontSize: 12,
+    fontFamily: Fonts.body,
+    color: '#64748B',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  milestoneDescTarget: {
+    fontSize: 12,
+    fontFamily: Fonts.body,
+    color: '#C2410C',
+    marginTop: 2,
+    lineHeight: 16,
   },
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Search } from 'lucide-react-native';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/artisan-theme';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface SectionHeaderProps {
   title: string;
@@ -9,13 +10,17 @@ interface SectionHeaderProps {
   onAction?: () => void;
 }
 
-export function SectionHeader({ title, actionLabel = 'View All', onAction }: SectionHeaderProps) {
+export function SectionHeader({ title, actionLabel, onAction }: SectionHeaderProps) {
+  const { language } = useLanguage();
+  const defaultLabel = language === 'ta' ? 'அனைத்தையும் காண்க' : language === 'hi' ? 'सभी देखें' : 'View All';
+  const resolvedLabel = actionLabel === 'View All' || actionLabel === undefined ? defaultLabel : actionLabel;
+
   return (
     <View style={styles.row}>
       <Text style={styles.title}>{title}</Text>
-      {actionLabel && (
+      {resolvedLabel && (
         <TouchableOpacity onPress={onAction} activeOpacity={0.7}>
-          <Text style={styles.action}>{actionLabel}</Text>
+          <Text style={styles.action}>{resolvedLabel}</Text>
         </TouchableOpacity>
       )}
     </View>

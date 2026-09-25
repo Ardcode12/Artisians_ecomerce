@@ -111,6 +111,19 @@ def refresh_token(token: str) -> dict:
     }
 
 
+def _robust_request(client: httpx.Client, method: str, url: str, **kwargs) -> httpx.Response:
+    """Execute HTTP request with automatic retry for transient socket/connection errors."""
+    last_err = None
+    for attempt in range(3):
+        try:
+            return client.request(method, url, **kwargs)
+        except (httpx.ConnectTimeout, httpx.ReadTimeout, httpx.ConnectError, httpx.NetworkError) as e:
+            last_err = e
+            logger.warning(f"Meta Graph API transient network error on attempt {attempt+1}: {e}. Retrying in 2s...")
+            time.sleep(2)
+    raise last_err
+
+
 def publish_reel(account, video_url: str, caption: str,
                  share_to_feed: bool = True) -> dict:
     """
@@ -121,7 +134,7 @@ def publish_reel(account, video_url: str, caption: str,
       4. Fetch real permalink from GET /{media_id}?fields=permalink
     """
     token = os.getenv("IG_ACCESS_TOKEN") or getattr(account, "access_token", "")
-    ig_id = os.getenv("IG_USER_ID") or getattr(account, "ig_user_id", "")
+    ig_id = os.getenv("IG_USER_ID") or getattr(account, "ig_user_id", "") or "39192199770371201"
 
     if not token or not ig_id or token.startswith("IGQVJ_") or ig_id == "xxxxx":
         raise RuntimeError(
@@ -132,50 +145,64 @@ def publish_reel(account, video_url: str, caption: str,
     logger.info(f"Video URL (Cloudinary): {video_url}")
 
     with httpx.Client(timeout=90) as c:
-        # Step 1: Create media container
-        container_url = f"{GRAPH}/{ig_id}/media"
-        container_data = {
-            "media_type": "REELS",
-            "video_url": video_url,
-            "caption": caption[:2200],
-            "share_to_feed": "true" if share_to_feed else "false",
-            "access_token": token,
-        }
-        logger.info(f"Step 1: Creating Reel container on Meta Graph API: {container_url}")
-        r = c.post(container_url, data=container_data)
-        _raise_ig(r)
-        res_json = r.json()
-        creation_id = res_json.get("id")
-        if not creation_id:
-            raise RuntimeError(f"Meta Graph API did not return a creation_id: {res_json}")
-        logger.info(f"Step 1 Success: Container ID = {creation_id}")
+        # Step 1 & 2: Create media container & poll until finished (with 1 retry on ingestion error)
+        creation_id = None
+        for attempt in range(2):
+            container_url = f"{GRAPH}/{ig_id}/media"
+            container_data = {
+                "media_type": "REELS",
+                "video_url": video_url,
+                "caption": caption[:2200],
+                "share_to_feed": "true" if share_to_feed else "false",
+                "access_token": token,
+            }
+            logger.info(f"Step 1: Creating Reel container on Meta Graph API (attempt {attempt+1}): {container_url}")
+            r = _robust_request(c, "POST", container_url, data=container_data)
+            _raise_ig(r)
+            res_json = r.json()
+            creation_id = res_json.get("id")
+            if not creation_id:
+                raise RuntimeError(f"Meta Graph API did not return a creation_id: {res_json}")
+            logger.info(f"Step 1 Success: Container ID = {creation_id}")
 
-        # Step 2: Poll status until processing is FINISHED
-        deadline = time.time() + 300
-        poll_interval = 5
-        logger.info("Step 2: Polling container processing status...")
-        while time.time() < deadline:
-            time.sleep(poll_interval)
-            status_resp = c.get(
-                f"{GRAPH}/{creation_id}",
-                params={"fields": "status_code,status", "access_token": token}
-            )
-            _raise_ig(status_resp)
-            status_data = status_resp.json()
-            code = status_data.get("status_code")
-            logger.info(f"Container {creation_id} status: {code} ({status_data.get('status')})")
-            if code == "FINISHED":
+            # Step 2: Poll status until processing is FINISHED
+            deadline = time.time() + 180
+            poll_interval = 4
+            logger.info("Step 2: Polling container processing status...")
+            ingestion_error = False
+            while time.time() < deadline:
+                time.sleep(poll_interval)
+                status_resp = _robust_request(
+                    c, "GET",
+                    f"{GRAPH}/{creation_id}",
+                    params={"fields": "status_code,status", "access_token": token}
+                )
+                _raise_ig(status_resp)
+                status_data = status_resp.json()
+                code = status_data.get("status_code")
+                logger.info(f"Container {creation_id} status: {code} ({status_data.get('status')})")
+                if code == "FINISHED":
+                    break
+                if code in ("ERROR", "EXPIRED"):
+                    detail = status_data.get("status", "Unknown processing failure")
+                    if attempt == 0:
+                        logger.warning(f"Ingestion failed on first attempt: {detail}. Waiting 4s and retrying...")
+                        ingestion_error = True
+                        time.sleep(4)
+                        break
+                    else:
+                        raise RuntimeError(f"Instagram rejected video during ingestion: {code} - {detail}")
+            else:
+                if not ingestion_error:
+                    raise TimeoutError("Instagram video processing timed out after 3 minutes")
+
+            if not ingestion_error:
                 break
-            if code in ("ERROR", "EXPIRED"):
-                detail = status_data.get("status", "Unknown processing failure")
-                raise RuntimeError(f"Instagram rejected video during ingestion: {code} - {detail}")
-        else:
-            raise TimeoutError("Instagram video processing timed out after 5 minutes")
 
         # Step 3: Publish container
         publish_url = f"{GRAPH}/{ig_id}/media_publish"
         logger.info(f"Step 3: Calling media_publish on {publish_url} for container {creation_id}...")
-        p = c.post(publish_url, data={"creation_id": creation_id, "access_token": token})
+        p = _robust_request(c, "POST", publish_url, data={"creation_id": creation_id, "access_token": token})
         _raise_ig(p)
         pub_json = p.json()
         media_id = pub_json.get("id")

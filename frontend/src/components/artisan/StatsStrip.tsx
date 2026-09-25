@@ -5,9 +5,16 @@ import { useAuth } from '@/context/AuthContext';
 import { useFocusEffect } from 'expo-router';
 import { BACKEND_URL } from '@/config/api';
 
+import { useLanguage } from '@/context/LanguageContext';
+
 export function StatsStrip() {
   const { user } = useAuth();
+  const { language } = useLanguage();
   const [stats, setStats] = useState({ products: 0, orders: 0, earnings: 0 });
+
+  const productsLabel = language === 'ta' ? 'தயாரிப்புகள்' : language === 'hi' ? 'उत्पाद' : 'Products';
+  const ordersLabel = language === 'ta' ? 'ஆர்டர்கள்' : language === 'hi' ? 'ऑर्डर' : 'Orders';
+  const earningsLabel = language === 'ta' ? 'வருமானம்' : language === 'hi' ? 'कमाई' : 'Earnings';
 
   const fetchStats = useCallback(async () => {
     try {
@@ -43,17 +50,17 @@ export function StatsStrip() {
     <View style={styles.strip}>
       <View style={styles.item}>
         <Text style={styles.number}>{stats.products}</Text>
-        <Text style={styles.label}>Products</Text>
+        <Text style={styles.label}>{productsLabel}</Text>
       </View>
       <View style={styles.divider} />
       <View style={styles.item}>
         <Text style={styles.number}>{stats.orders}</Text>
-        <Text style={styles.label}>Orders</Text>
+        <Text style={styles.label}>{ordersLabel}</Text>
       </View>
       <View style={styles.divider} />
       <View style={styles.item}>
         <Text style={styles.number}>₹{stats.earnings.toLocaleString('en-IN')}</Text>
-        <Text style={styles.label}>Earnings</Text>
+        <Text style={styles.label}>{earningsLabel}</Text>
       </View>
     </View>
   );

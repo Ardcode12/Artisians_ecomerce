@@ -57,17 +57,17 @@ export default function SuccessScreen() {
     };
   }, [language, artisanName]);
 
-  // Auto-advance after 3.5 seconds
+  // Auto-advance after 3.2 seconds to logo reveal
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/');
-    }, 3500);
+      router.replace('/auth/logo-reveal');
+    }, 3200);
     return () => clearTimeout(timer);
   }, []);
 
   const handleGoToShop = () => {
     stopSpeech();
-    router.replace('/');
+    router.replace('/auth/logo-reveal');
   };
 
   return (

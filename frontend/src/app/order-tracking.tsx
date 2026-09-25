@@ -29,6 +29,7 @@ import {
 } from 'lucide-react-native';
 
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface TimelineStep {
   label: string;
@@ -42,6 +43,7 @@ interface TimelineStep {
 export default function OrderTrackingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { language } = useLanguage();
   const params = useLocalSearchParams<{
     orderId: string;
     orderNumber: string;
@@ -75,9 +77,17 @@ export default function OrderTrackingScreen() {
     status === 'processing' || status === 'packed' ? 2 :
     status === 'confirmed' ? 1 : 0;
 
+  const stepPlacedLabel = language === 'ta' ? 'ஆர்டர் செய்யப்பட்டது' : language === 'hi' ? 'ऑर्डर दिया गया' : 'Order Placed';
+  const stepPackedLabel = language === 'ta' ? 'பேக் செய்யப்பட்டது' : language === 'hi' ? 'पैक किया गया' : 'Packed';
+  const stepShippedLabel = language === 'ta' ? 'அனுப்பப்பட்டது' : language === 'hi' ? 'भेज दिया गया' : 'Shipped';
+  const stepOutLabel = language === 'ta' ? 'டெலிவரிக்கு புறப்பட்டது' : language === 'hi' ? 'डिलीवरी के लिए निकला' : 'Out for Delivery';
+  const stepDeliveredLabel = language === 'ta' ? 'டெலிவரி செய்யப்பட்டது' : language === 'hi' ? 'डिलीवर किया गया' : 'Delivered';
+
+  const screenTitle = language === 'ta' ? 'ஆர்டர் கண்காணிப்பு' : language === 'hi' ? 'ऑर्डर ट्रैकिंग' : 'Order Tracking';
+
   const TIMELINE: TimelineStep[] = [
     {
-      label: 'Order Placed',
+      label: stepPlacedLabel,
       date: orderDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
       time: orderDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
       isCompleted: statusIndex >= 0,
@@ -85,7 +95,7 @@ export default function OrderTrackingScreen() {
       Icon: Package,
     },
     {
-      label: 'Packed',
+      label: stepPackedLabel,
       date: statusIndex >= 1 ? new Date(orderDate.getTime() + 86400000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
       time: statusIndex >= 1 ? '01:15 PM' : '',
       isCompleted: statusIndex >= 1,
@@ -93,7 +103,7 @@ export default function OrderTrackingScreen() {
       Icon: Package,
     },
     {
-      label: 'Shipped',
+      label: stepShippedLabel,
       date: statusIndex >= 2 ? new Date(orderDate.getTime() + 172800000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
       time: statusIndex >= 2 ? '11:00 AM' : '',
       isCompleted: statusIndex >= 2,
@@ -101,7 +111,7 @@ export default function OrderTrackingScreen() {
       Icon: Truck,
     },
     {
-      label: 'Out for Delivery',
+      label: stepOutLabel,
       date: '',
       time: '',
       isCompleted: statusIndex >= 3,
@@ -109,7 +119,7 @@ export default function OrderTrackingScreen() {
       Icon: MapPin,
     },
     {
-      label: 'Delivered',
+      label: stepDeliveredLabel,
       date: '',
       time: '',
       isCompleted: statusIndex >= 4,
@@ -131,7 +141,7 @@ export default function OrderTrackingScreen() {
         >
           <ArrowLeft size={20} color={Colors.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
-        <Text style={styles.screenTitle}>Order Tracking</Text>
+        <Text style={styles.screenTitle}>{screenTitle}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -147,7 +157,9 @@ export default function OrderTrackingScreen() {
           </View>
           <View style={styles.orderInfo}>
             <Text style={styles.orderId}>{orderNumber}</Text>
-            <Text style={styles.orderMeta}>{items} items · ₹ {amount}</Text>
+            <Text style={styles.orderMeta}>
+              {items} {language === 'ta' ? 'பொருட்கள்' : language === 'hi' ? 'सामान' : 'items'} · ₹ {amount}
+            </Text>
           </View>
         </View>
 
@@ -204,7 +216,9 @@ export default function OrderTrackingScreen() {
           onPress={() => {}}
           activeOpacity={0.88}
         >
-          <Text style={styles.viewDetailsBtnText}>View Details</Text>
+          <Text style={styles.viewDetailsBtnText}>
+            {language === 'ta' ? 'விவரங்களைக் காண்க' : language === 'hi' ? 'विवरण देखें' : 'View Details'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

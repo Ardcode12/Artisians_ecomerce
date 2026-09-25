@@ -82,6 +82,10 @@ interface Product {
   image_url?: string;
   status?: string;
   artisan_id?: string;
+  artisan_shop_name?: string;
+  artisan_shop_logo?: string;
+  shop_name?: string;
+  shop_logo_url?: string;
   created_at?: string;
   hsn_code?: string;
   pehchan_id?: string;
@@ -142,7 +146,7 @@ export default function ListingsScreen() {
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { language } = useLanguage();
 
   const [fontsLoaded] = useFonts({
@@ -184,13 +188,19 @@ export default function ListingsScreen() {
       } else {
         await Linking.openURL(url);
       }
-      Alert.alert('GeM Export', 'Official GeM Bulk Catalog CSV generated and downloaded.');
+      Alert.alert(
+        language === 'ta' ? 'GeM ஏற்றுமதி' : language === 'hi' ? 'GeM निर्यात' : 'GeM Export',
+        language === 'ta' ? 'அதிகாரப்பூர்வ GeM பல்க பட்டியல் CSV உருவாக்கப்பட்டு பதிவிறக்கப்பட்டது.' : language === 'hi' ? 'आधिकारिक GeM बल्क कैटलॉग CSV उत्पन्न और डाउनलोड किया गया।' : 'Official GeM Bulk Catalog CSV generated and downloaded.'
+      );
     } catch (err: any) {
-      Alert.alert('Export Error', err?.message || 'Could not download GeM CSV catalog.');
+      Alert.alert(
+        language === 'ta' ? 'ஏற்றுமதி பிழை' : language === 'hi' ? 'निर्यात त्रुटि' : 'Export Error',
+        err?.message || (language === 'ta' ? 'GeM CSV பட்டியலை பதிவிறக்க முடியவில்லை.' : language === 'hi' ? 'GeM CSV कैटलॉग डाउनलोड नहीं किया जा सका।' : 'Could not download GeM CSV catalog.')
+      );
     } finally {
       setExportingCsv(false);
     }
-  }, [user?.id]);
+  }, [user?.id, language]);
 
   const handleExportGeMJSON = useCallback(async () => {
     setExportingJson(true);
@@ -202,13 +212,19 @@ export default function ListingsScreen() {
       } else {
         await Linking.openURL(url);
       }
-      Alert.alert('GeM Export', 'Standardized GeM Ingestion JSON exported successfully.');
+      Alert.alert(
+        language === 'ta' ? 'GeM ஏற்றுமதி' : language === 'hi' ? 'GeM निर्यात' : 'GeM Export',
+        language === 'ta' ? 'GeM ஒருங்கிணைப்பு JSON வெற்றிகரமாக ஏற்றுமதி செய்யப்பட்டது.' : language === 'hi' ? 'GeM एकीकरण JSON सफलतापूर्वक निर्यात किया गया।' : 'Standardized GeM Ingestion JSON exported successfully.'
+      );
     } catch (err: any) {
-      Alert.alert('Export Error', err?.message || 'Could not export GeM JSON catalog.');
+      Alert.alert(
+        language === 'ta' ? 'ஏற்றுமதி பிழை' : language === 'hi' ? 'निर्यात त्रुटि' : 'Export Error',
+        err?.message || (language === 'ta' ? 'GeM JSON பட்டியலை ஏற்றுமதி செய்ய முடியவில்லை.' : language === 'hi' ? 'GeM JSON कैटलॉग निर्यात नहीं किया जा सका।' : 'Could not export GeM JSON catalog.')
+      );
     } finally {
       setExportingJson(false);
     }
-  }, [user?.id]);
+  }, [user?.id, language]);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchProducts = useCallback(async (isRefresh = false) => {
@@ -366,6 +382,25 @@ export default function ListingsScreen() {
           {/* Info */}
           <View style={styles.info}>
             <Text style={styles.productName} numberOfLines={1}>{item.title}</Text>
+            {/* Shop Brand Name & Logo Badge */}
+            <View style={styles.cardBrandRow}>
+              {item.artisan_shop_logo || profile?.shop_logo_url ? (
+                <Image
+                  source={{ uri: normalizeImageUrl(item.artisan_shop_logo || profile?.shop_logo_url) }}
+                  style={styles.cardBrandLogo}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View style={styles.cardBrandPlaceholder}>
+                  <Text style={styles.cardBrandPlaceholderText}>
+                    {(item.artisan_shop_name || profile?.shop_name || profile?.name || 'AS').slice(0, 2).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <Text style={styles.cardBrandName} numberOfLines={1}>
+                {item.artisan_shop_name || profile?.shop_name || profile?.name || 'Artisan Studio'}
+              </Text>
+            </View>
             <Text style={styles.productPrice}>
               {item.price?.startsWith('₹') ? item.price : `₹ ${item.price}`}
             </Text>
@@ -451,6 +486,8 @@ export default function ListingsScreen() {
                 title:          item.title,
                 subtitle:       item.category || item.craft_type || '',
                 price:          item.price,
+                artisan_shop_name: item.artisan_shop_name || profile?.shop_name || '',
+                artisan_shop_logo: item.artisan_shop_logo || profile?.shop_logo_url || '',
                 imageUri:       item.image_url || '',
                 description_en: item.description_en || '',
                 description_hi: item.description_hi || '',
@@ -494,7 +531,7 @@ export default function ListingsScreen() {
               activeOpacity={0.8}
             >
               <Building2 size={13} color="#1E3A8A" strokeWidth={2.4} />
-              <Text style={styles.gemHeaderBtnText}>GeM Export</Text>
+              <Text style={styles.gemHeaderBtnText}>{language === 'ta' ? 'GeM ஏற்றுமதி' : language === 'hi' ? 'GeM निर्यात' : 'GeM Export'}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -523,10 +560,12 @@ export default function ListingsScreen() {
               <CloudOff size={20} color="#B45309" strokeWidth={2.2} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.offlineBannerTitle}>
-                  {offlineItems.length} {offlineItems.length === 1 ? 'Product' : 'Products'} Saved to Phone 💾
+                  {offlineItems.length} {language === 'ta' ? 'பொருட்கள் கைபேசியில் சேமிக்கப்பட்டன 💾' : language === 'hi' ? 'उत्पाद फ़ोन में सहेजे गए 💾' : (offlineItems.length === 1 ? 'Product' : 'Products') + ' Saved to Phone 💾'}
                 </Text>
                 <Text style={styles.offlineBannerSubtitle}>
-                  {isSyncing ? 'Syncing to marketplace...' : 'Offline game-save mode • Tap to sync now'}
+                  {isSyncing
+                    ? (language === 'ta' ? 'ஒத்திசைக்கிறது...' : language === 'hi' ? 'सिंक हो रहा है...' : 'Syncing to marketplace...')
+                    : (language === 'ta' ? 'ஆஃப்லைன் பயன்முறை • ஒத்திசைக்க தட்டவும்' : language === 'hi' ? 'ऑफ़लाइन मोड • सिंक करने के लिए टैप करें' : 'Offline game-save mode • Tap to sync now')}
                 </Text>
               </View>
             </View>
@@ -535,7 +574,7 @@ export default function ListingsScreen() {
             ) : (
               <View style={styles.syncNowBtn}>
                 <RefreshCw size={13} color="#FFFFFF" strokeWidth={2.4} />
-                <Text style={styles.syncNowBtnText}>Sync</Text>
+                <Text style={styles.syncNowBtnText}>{language === 'ta' ? 'ஒத்திசை' : language === 'hi' ? 'सिंक' : 'Sync'}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -552,10 +591,10 @@ export default function ListingsScreen() {
       {/* ── Error ── */}
       {!loading && fetchError ? (
         <View style={styles.center}>
-          <Text style={styles.errorTitle}>Could not load products</Text>
+          <Text style={styles.errorTitle}>{language === 'ta' ? 'பொருட்களை ஏற்ற முடியவில்லை' : language === 'hi' ? 'उत्पाद लोड नहीं हो सके' : 'Could not load products'}</Text>
           <Text style={styles.errorSub}>{fetchError}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={() => fetchProducts()} activeOpacity={0.8}>
-            <Text style={styles.retryBtnText}>Retry</Text>
+            <Text style={styles.retryBtnText}>{language === 'ta' ? 'மீண்டும் முயற்சி' : language === 'hi' ? 'पुनः प्रयास' : 'Retry'}</Text>
           </TouchableOpacity>
         </View>
       ) : null}
@@ -583,8 +622,8 @@ export default function ListingsScreen() {
               <View style={styles.emptyIconWrap}>
                 <Package size={36} color={TEXT_MUTED} strokeWidth={1.4} />
               </View>
-              <Text style={styles.emptyTitle}>No products yet</Text>
-              <Text style={styles.emptySub}>Tap + to list your first product</Text>
+              <Text style={styles.emptyTitle}>{language === 'ta' ? 'இன்னும் பொருட்கள் இல்லை' : language === 'hi' ? 'अभी कोई उत्पाद नहीं' : 'No products yet'}</Text>
+              <Text style={styles.emptySub}>{language === 'ta' ? 'உங்கள் முதல் பொருளைச் சேர்க்க + தட்டவும்' : language === 'hi' ? 'अपना पहला उत्पाद जोड़ने के लिए + दबाएं' : 'Tap + to list your first product'}</Text>
             </View>
           }
         />
@@ -624,8 +663,8 @@ export default function ListingsScreen() {
                   <Building2 size={22} color="#1E3A8A" strokeWidth={2.4} />
                 </View>
                 <View>
-                  <Text style={styles.gemModalTitle}>GeM Catalog Export</Text>
-                  <Text style={styles.gemModalSubtitle}>Govt. e-Marketplace standardized bulk format</Text>
+                  <Text style={styles.gemModalTitle}>{language === 'ta' ? 'GeM பட்டியல் ஏற்றுமதி' : language === 'hi' ? 'GeM कैटलॉग निर्यात' : 'GeM Catalog Export'}</Text>
+                  <Text style={styles.gemModalSubtitle}>{language === 'ta' ? 'அரசு இ-சந்தை தரப்படுத்தப்பட்ட வடிவம்' : language === 'hi' ? 'सरकारी ई-मार्केटप्लेस मानकीकृत प्रारूप' : 'Govt. e-Marketplace standardized bulk format'}</Text>
                 </View>
               </View>
               <TouchableOpacity
@@ -642,25 +681,35 @@ export default function ListingsScreen() {
               <View style={styles.gemSummaryRow}>
                 <View style={styles.gemSummaryItem}>
                   <Text style={styles.gemSummaryVal}>{products.length}</Text>
-                  <Text style={styles.gemSummaryLabel}>Listed Items</Text>
+                  <Text style={styles.gemSummaryLabel}>
+                    {language === 'ta' ? 'பட்டியலிடப்பட்டவை' : language === 'hi' ? 'सूचीबद्ध वस्तुएं' : 'Listed Items'}
+                  </Text>
                 </View>
                 <View style={styles.gemSummaryDivider} />
                 <View style={styles.gemSummaryItem}>
                   <Text style={[styles.gemSummaryVal, { color: '#059669' }]}>
                     {products.filter(p => p.gem_compliance?.is_gem_ready !== false).length}
                   </Text>
-                  <Text style={styles.gemSummaryLabel}>GeM Compliant</Text>
+                  <Text style={styles.gemSummaryLabel}>
+                    {language === 'ta' ? 'GeM இணக்கமானது' : language === 'hi' ? 'GeM अनुरूप' : 'GeM Compliant'}
+                  </Text>
                 </View>
                 <View style={styles.gemSummaryDivider} />
                 <View style={styles.gemSummaryItem}>
                   <Text style={[styles.gemSummaryVal, { color: '#1E3A8A' }]}>100%</Text>
-                  <Text style={styles.gemSummaryLabel}>Make In India</Text>
+                  <Text style={styles.gemSummaryLabel}>
+                    {language === 'ta' ? 'மேக் இன் இந்தியா' : language === 'hi' ? 'मेक इन इंडिया' : 'Make In India'}
+                  </Text>
                 </View>
               </View>
               <View style={styles.gemVerifiedNotice}>
                 <ShieldCheck size={14} color="#059669" strokeWidth={2.2} />
                 <Text style={styles.gemVerifiedNoticeText}>
-                  Class-I Local Supplier (Artisan & Weaver Public Procurement Priority)
+                  {language === 'ta'
+                    ? 'வகுப்பு-I உள்ளூர் சப்ளையர் (கைவினைஞர் மற்றும் நெசவாளர் முன்னுரிமை)'
+                    : language === 'hi'
+                    ? 'वर्ग-I स्थानीय आपूर्तिकर्ता (कारीगर व बुनकर सार्वजनिक खरीद प्राथमिकता)'
+                    : 'Class-I Local Supplier (Artisan & Weaver Public Procurement Priority)'}
                 </Text>
               </View>
             </View>
@@ -679,9 +728,15 @@ export default function ListingsScreen() {
                     <FileSpreadsheet size={24} color="#059669" strokeWidth={2.2} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.gemExportCardTitle}>Download GeM CSV Catalog</Text>
+                    <Text style={styles.gemExportCardTitle}>
+                      {language === 'ta' ? 'GeM CSV பட்டியலைப் பதிவிறக்குக' : language === 'hi' ? 'GeM CSV कैटलॉग डाउनलोड करें' : 'Download GeM CSV Catalog'}
+                    </Text>
                     <Text style={styles.gemExportCardDesc}>
-                      Official 21-column template for GeM Seller Portal Bulk Upload (HSN, Pehchan ID, dimensions)
+                      {language === 'ta'
+                        ? 'GeM விற்பனையாளர் போர்டல் பதிவேற்றத்திற்கான 21-நெடுவரிசை படிவம் (HSN, பெஹ்சான் ஐடி)'
+                        : language === 'hi'
+                        ? 'GeM विक्रेता पोर्टल बल्क अपलोड के लिए 21-कॉलम टेम्पलेट (HSN, पहचान आईडी, आयाम)'
+                        : 'Official 21-column template for GeM Seller Portal Bulk Upload (HSN, Pehchan ID, dimensions)'}
                     </Text>
                   </View>
                 </View>
@@ -704,9 +759,15 @@ export default function ListingsScreen() {
                     <FileJson size={24} color="#2563EB" strokeWidth={2.2} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.gemExportCardTitle}>Export GeM Product API JSON</Text>
+                    <Text style={styles.gemExportCardTitle}>
+                      {language === 'ta' ? 'GeM தயாரிப்பு API JSON ஏற்றுமதி' : language === 'hi' ? 'GeM उत्पाद API JSON निर्यात' : 'Export GeM Product API JSON'}
+                    </Text>
                     <Text style={styles.gemExportCardDesc}>
-                      Machine-readable JSON schema for automated GeM Ingestion API linking
+                      {language === 'ta'
+                        ? 'தானியங்கி GeM ஒருங்கிணைப்புக்கான இயந்திரம் படிக்கக்கூடிய JSON வடிவம்'
+                        : language === 'hi'
+                        ? 'स्वचालित GeM एकीकरण के लिए मशीन-पठनीय JSON स्कीमा'
+                        : 'Machine-readable JSON schema for automated GeM Ingestion API linking'}
                     </Text>
                   </View>
                 </View>
@@ -722,7 +783,11 @@ export default function ListingsScreen() {
             <View style={styles.gemFootnote}>
               <AlertCircle size={13} color="#6B7280" />
               <Text style={styles.gemFootnoteText}>
-                Pre-formatted for Ministry of Commerce & Industry / gem.gov.in integration.
+                {language === 'ta'
+                  ? 'வர்த்தகம் மற்றும் கைத்தொழில் அமைச்சகம் / gem.gov.in ஒருங்கிணைப்புக்கு வடிவமைக்கப்பட்டது.'
+                  : language === 'hi'
+                  ? 'वाणिज्य एवं उद्योग मंत्रालय / gem.gov.in एकीकरण के लिए पूर्व-स्वरूपित।'
+                  : 'Pre-formatted for Ministry of Commerce & Industry / gem.gov.in integration.'}
               </Text>
             </View>
           </View>
@@ -846,6 +911,39 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.heading,
     color: TEXT_PRIMARY,
     letterSpacing: -0.1,
+  },
+  cardBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginVertical: 1,
+  },
+  cardBrandLogo: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FAF8F5',
+    borderWidth: 0.8,
+    borderColor: '#E2E8F0',
+  },
+  cardBrandPlaceholder: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#E8F3E4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardBrandPlaceholderText: {
+    fontSize: 8.5,
+    fontWeight: '700',
+    color: '#2D5016',
+  },
+  cardBrandName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4B5563',
+    flex: 1,
   },
   productPrice: {
     fontSize: 14,

@@ -17,6 +17,8 @@ import { Fonts, Radius } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
 import { BACKEND_URL } from '@/config/api';
 
+import { useLanguage } from '@/context/LanguageContext';
+
 type TabKey = 'orders' | 'reviews';
 
 interface Order {
@@ -46,6 +48,18 @@ export function OrdersAndInquiries() {
 
   const router = useRouter();
   const { user } = useAuth();
+  const { language } = useLanguage();
+
+  const ordersTabLabel = language === 'ta' ? 'ஆர்டர்கள்' : language === 'hi' ? 'ऑर्डर' : 'Orders';
+  const reviewsTabLabel = language === 'ta' ? 'மதிப்புரைகள்' : language === 'hi' ? 'समीक्षाएं' : 'Reviews';
+  const noOrdersTitle = language === 'ta' ? 'இன்னும் ஆர்டர்கள் இல்லை' : language === 'hi' ? 'अभी तक कोई ऑर्डर नहीं' : 'No orders yet';
+  const noOrdersSub = language === 'ta' ? 'வாங்குபவர்களிடமிருந்து வரும் ஆர்டர்கள் இங்கே தோன்றும்' : language === 'hi' ? 'खरीदारों के ऑर्डर यहाँ दिखेंगे' : 'Orders from buyers will appear here';
+  const defaultOrderTitle = language === 'ta' ? 'ஆர்டர்' : language === 'hi' ? 'ऑर्डर' : 'Order';
+  const defaultCustomer = language === 'ta' ? 'வாடிக்கையாளர்' : language === 'hi' ? 'ग्राहक' : 'Customer';
+  const qtyLabel = language === 'ta' ? 'அளவு' : language === 'hi' ? 'मात्रा' : 'Qty';
+  const noReviewsTitle = language === 'ta' ? 'இன்னும் மதிப்புரைகள் இல்லை' : language === 'hi' ? 'अभी तक कोई समीक्षा नहीं' : 'No reviews yet';
+  const noReviewsSub = language === 'ta' ? 'வாடிக்கையாளர் மதிப்புரைகள் இங்கே தோன்றும்' : language === 'hi' ? 'ग्राहकों की समीक्षाएं यहाँ दिखेंगी' : 'Client reviews will show here';
+  const defaultClient = language === 'ta' ? 'வாடிக்கையாளர்' : language === 'hi' ? 'ग्राहक' : 'Client';
 
   const fetchData = useCallback(async () => {
     try {
@@ -100,7 +114,7 @@ export function OrdersAndInquiries() {
           activeOpacity={0.7}
         >
           <Text style={[styles.tabText, activeTab === 'orders' && styles.tabTextActive]}>
-            Orders {orders.length > 0 ? `(${orders.length})` : ''}
+            {ordersTabLabel} {orders.length > 0 ? `(${orders.length})` : ''}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -109,7 +123,7 @@ export function OrdersAndInquiries() {
           activeOpacity={0.7}
         >
           <Text style={[styles.tabText, activeTab === 'reviews' && styles.tabTextActive]}>
-            Reviews {reviews.length > 0 ? `(${reviews.length})` : ''}
+            {reviewsTabLabel} {reviews.length > 0 ? `(${reviews.length})` : ''}
           </Text>
         </TouchableOpacity>
       </View>
@@ -124,9 +138,9 @@ export function OrdersAndInquiries() {
           orders.length === 0 ? (
             <View style={styles.emptyBox}>
               <ShoppingBag size={28} color="#D1D5DB" strokeWidth={1.5} />
-              <Text style={styles.emptyTitle}>No orders yet</Text>
+              <Text style={styles.emptyTitle}>{noOrdersTitle}</Text>
               <Text style={styles.emptySub}>
-                Orders from buyers will appear here
+                {noOrdersSub}
               </Text>
             </View>
           ) : (
@@ -134,10 +148,10 @@ export function OrdersAndInquiries() {
               <View key={ord.id} style={styles.orderRow}>
                 <View style={styles.orderLeft}>
                   <Text style={styles.orderTitle} numberOfLines={1}>
-                    {ord.product_title || 'Order'}
+                    {ord.product_title || defaultOrderTitle}
                   </Text>
                   <Text style={styles.orderMeta}>
-                    {ord.buyer_name || 'Customer'} · Qty {ord.quantity || 1}
+                    {ord.buyer_name || defaultCustomer} · {qtyLabel} {ord.quantity || 1}
                   </Text>
                 </View>
                 <View style={styles.orderRight}>
@@ -151,9 +165,9 @@ export function OrdersAndInquiries() {
           reviews.length === 0 ? (
             <View style={styles.emptyBox}>
               <Star size={28} color="#D1D5DB" strokeWidth={1.5} />
-              <Text style={styles.emptyTitle}>No reviews yet</Text>
+              <Text style={styles.emptyTitle}>{noReviewsTitle}</Text>
               <Text style={styles.emptySub}>
-                Client reviews will show here
+                {noReviewsSub}
               </Text>
             </View>
           ) : (
@@ -172,7 +186,7 @@ export function OrdersAndInquiries() {
                   </View>
                   <Text style={styles.reviewComment} numberOfLines={2}>{rev.comment || ''}</Text>
                 </View>
-                <Text style={styles.reviewerName}>{rev.reviewer_name || 'Client'}</Text>
+                <Text style={styles.reviewerName}>{rev.reviewer_name || defaultClient}</Text>
               </View>
             ))
           )

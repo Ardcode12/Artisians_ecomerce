@@ -66,11 +66,17 @@ def generate_reel_endpoint(
 
     # 2. Extract images
     image_paths = []
-    if product.get("image_url"):
+    if req.image_url:
+        image_paths.append(req.image_url)
+    if req.images:
+        for img in req.images:
+            if img and img not in image_paths:
+                image_paths.append(img)
+    if product.get("image_url") and product.get("image_url") not in image_paths:
         image_paths.append(product.get("image_url"))
     if product.get("images"):
         for img in product.get("images"):
-            if img:
+            if img and img not in image_paths:
                 image_paths.append(img)
 
     job_id = f"reel-{uuid.uuid4().hex[:12]}"

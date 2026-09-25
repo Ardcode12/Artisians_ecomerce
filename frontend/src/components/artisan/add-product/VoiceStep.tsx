@@ -46,8 +46,41 @@ const CATEGORIES = [
   'Metalwork', 'Jewelry', 'Painting', 'Weaving', 'Embroidery',
 ];
 
+const CATEGORY_LOCALIZED: Record<string, { hi: string; ta: string }> = {
+  'Handloom Textile': { hi: 'हथकरघा वस्त्र', ta: 'கைத்தறி துணி' },
+  'Pottery & Clay': { hi: 'मिट्टी के बर्तन', ta: 'மண்பாண்டம்' },
+  'Wood Carving': { hi: 'लकड़ी की नक्काशी', ta: 'மர வேலைப்பாடு' },
+  'Metalwork': { hi: 'धातु शिल्प', ta: 'உலோக வேலை' },
+  'Jewelry': { hi: 'पारंपरिक आभूषण', ta: 'பாரம்பரிய நகைகள்' },
+  'Painting': { hi: 'चित्रकारी', ta: 'ஓவியம்' },
+  'Weaving': { hi: 'बुनाई', ta: 'நெசவு' },
+  'Embroidery': { hi: 'कढ़ाई कला', ta: 'தையல் கலை' },
+};
+
 async function readFileAsBase64(uri: string): Promise<string> {
   if (!uri) return '';
+  if (uri.startsWith('data:')) {
+    const comma = uri.indexOf(',');
+    return comma !== -1 ? uri.slice(comma + 1) : uri;
+  }
+  if (Platform.OS === 'web' || uri.startsWith('blob:') || uri.startsWith('http')) {
+    try {
+      const resp = await fetch(uri);
+      const blob = await resp.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const res = reader.result as string;
+          const comma = res.indexOf(',');
+          resolve(comma !== -1 ? res.slice(comma + 1) : res);
+        };
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return '';
+    }
+  }
   try {
     const b64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
@@ -129,6 +162,9 @@ export function VoiceStep({
   const [pulseAnim] = useState(new Animated.Value(1));
   const [waveAnims] = useState([...Array(11)].map(() => new Animated.Value(0.25)));
   const recordingRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<any>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<any>(null);
   const durationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const waveLoopRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -156,34 +192,77 @@ export function VoiceStep({
 
   const startRecording = async () => {
     setErrorMsg('');
-    if (!hasNativeAudio) {
-      setShowTextInput(true);
-      return;
+
+    // Native mobile recording via expo-audio
+    if (hasNativeAudio) {
+      try {
+        const { AudioModule, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync } = require('expo-audio');
+        const { granted } = await requestRecordingPermissionsAsync();
+        if (!granted) { Alert.alert('Microphone Permission Required', 'Please allow microphone access.', [{ text: 'OK' }]); return; }
+        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+        const recorder = new AudioModule.AudioRecorder(RecordingPresets.HIGH_QUALITY);
+        await recorder.prepareToRecordAsync();
+        recorder.record();
+        recordingRef.current = recorder;
+        setStage('recording');
+        setRecordingDuration(0);
+        pulseLoopRef.current = Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, { toValue: 1.18, duration: 550, useNativeDriver: true }),
+            Animated.timing(pulseAnim, { toValue: 1, duration: 550, useNativeDriver: true }),
+          ])
+        );
+        pulseLoopRef.current.start();
+        startWaveAnimation();
+        durationTimerRef.current = setInterval(() => setRecordingDuration(d => d + 1), 1000);
+        return;
+      } catch (err: any) {
+        logger_fallback();
+      }
     }
-    try {
-      const { AudioModule, RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync } = require('expo-audio');
-      const { granted } = await requestRecordingPermissionsAsync();
-      if (!granted) { Alert.alert('Microphone Permission Required', 'Please allow microphone access.', [{ text: 'OK' }]); return; }
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-      const recorder = new AudioModule.AudioRecorder(RecordingPresets.HIGH_QUALITY);
-      await recorder.prepareToRecordAsync();
-      recorder.record();
-      recordingRef.current = recorder;
-      setStage('recording');
-      setRecordingDuration(0);
-      pulseLoopRef.current = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.18, duration: 550, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 550, useNativeDriver: true }),
-        ])
-      );
-      pulseLoopRef.current.start();
-      startWaveAnimation();
-      durationTimerRef.current = setInterval(() => setRecordingDuration(d => d + 1), 1000);
-    } catch (err: any) {
-      setErrorMsg('Could not start recording. Please type below.');
-      setShowTextInput(true);
+
+    // Web MediaRecorder recording
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        streamRef.current = stream;
+        const mediaRecorder = new (window as any).MediaRecorder(stream);
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (e: any) => {
+          if (e.data && e.data.size > 0) {
+            audioChunksRef.current.push(e.data);
+          }
+        };
+
+        mediaRecorder.start(250);
+        mediaRecorderRef.current = mediaRecorder;
+        setStage('recording');
+        setRecordingDuration(0);
+        pulseLoopRef.current = Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, { toValue: 1.18, duration: 550, useNativeDriver: true }),
+            Animated.timing(pulseAnim, { toValue: 1, duration: 550, useNativeDriver: true }),
+          ])
+        );
+        pulseLoopRef.current.start();
+        startWaveAnimation();
+        durationTimerRef.current = setInterval(() => setRecordingDuration(d => d + 1), 1000);
+        return;
+      } catch (err: any) {
+        setErrorMsg('Microphone access denied. Please type below.');
+        setShowTextInput(true);
+        return;
+      }
     }
+
+    // No microphone available, open text input
+    setShowTextInput(true);
+  };
+
+  const logger_fallback = () => {
+    setErrorMsg('Could not start recording. Please type below.');
+    setShowTextInput(true);
   };
 
   const stopRecording = async () => {
@@ -191,26 +270,71 @@ export function VoiceStep({
     pulseAnim.setValue(1);
     stopWaveAnimation();
     if (durationTimerRef.current) { clearInterval(durationTimerRef.current); durationTimerRef.current = null; }
-    if (!recordingRef.current) return;
-    try {
-      setStage('processing');
-      setProcessingMsg('Transcribing your voice...');
-      const recorder = recordingRef.current;
-      recordingRef.current = null;
-      await recorder.stop();
-      const uri = recorder.uri;
-      if (!uri) { setStage('error'); setErrorMsg('Recording failed. Please try again.'); return; }
-      setProcessingMsg('Analyzing and generating 3-language descriptions...');
-      await sendAudioToBackend(uri);
-    } catch (err: any) {
-      setStage('error');
-      setErrorMsg(`Error: ${err.message}`);
+
+    // Stop Native Recorder
+    if (recordingRef.current) {
+      try {
+        setStage('processing');
+        setProcessingMsg('Transcribing your voice...');
+        const recorder = recordingRef.current;
+        recordingRef.current = null;
+        await recorder.stop();
+        const uri = recorder.uri;
+        if (!uri) { setStage('error'); setErrorMsg('Recording failed. Please try again.'); return; }
+        setProcessingMsg('Analyzing and generating 3-language descriptions...');
+        await sendAudioToBackend(uri);
+        return;
+      } catch (err: any) {
+        setStage('error');
+        setErrorMsg(`Error: ${err.message}`);
+        return;
+      }
+    }
+
+    // Stop Web MediaRecorder
+    if (mediaRecorderRef.current) {
+      try {
+        setStage('processing');
+        setProcessingMsg('Transcribing your voice...');
+        const recorder = mediaRecorderRef.current;
+        mediaRecorderRef.current = null;
+        await new Promise<void>((resolve) => {
+          recorder.onstop = () => resolve();
+          recorder.stop();
+        });
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((t: any) => t.stop());
+          streamRef.current = null;
+        }
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        audioChunksRef.current = [];
+
+        const b64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const res = reader.result as string;
+            const comma = res.indexOf(',');
+            resolve(comma !== -1 ? res.slice(comma + 1) : res);
+          };
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(audioBlob);
+        });
+
+        if (!b64) { setStage('error'); setErrorMsg('Audio recording was empty. Please try again.'); return; }
+        setProcessingMsg('Analyzing and generating 3-language descriptions...');
+        await sendBase64ToBackend(b64);
+        return;
+      } catch (err: any) {
+        setStage('error');
+        setErrorMsg(`Error: ${err.message}`);
+        return;
+      }
     }
   };
 
-  const sendAudioToBackend = async (audioUri: string) => {
+  const sendBase64ToBackend = async (base64Audio: string) => {
     try {
-      const base64Audio = await readFileAsBase64(audioUri);
       const base64Image = imageUri ? await readFileAsBase64(imageUri) : '';
       const resp = await fetch(`${BACKEND_URL}/api/generate-description`, {
         method: 'POST',
@@ -227,6 +351,13 @@ export function VoiceStep({
         if (data.success) { applyAiResults(data); return; }
       }
       await generateFromText('');
+    } catch { await generateFromText(''); }
+  };
+
+  const sendAudioToBackend = async (audioUri: string) => {
+    try {
+      const base64Audio = await readFileAsBase64(audioUri);
+      await sendBase64ToBackend(base64Audio);
     } catch { await generateFromText(''); }
   };
 
@@ -296,24 +427,14 @@ export function VoiceStep({
     setStage('done');
   };
 
-  const handleSave = () => {
-    if (!localTitle.trim()) { Alert.alert('Product Title Required', 'Please add a title.'); return; }
-    if (!localDescEn.trim()) { Alert.alert('Description Required', 'Please add a description.'); return; }
+  const retryRecording = () => {
     stopSpeech();
-    onUpdate({
-      title: localTitle,
-      description: localDescEn,
-      description_en: localDescEn,
-      description_hi: localDescHi,
-      description_ta: localDescTa,
-      description_te: localDescTe,
-      description_regional: localDescReg,
-      category: localCategory
-    });
-    onNext();
+    setShowTextInput(false);
+    setStage('idle');
+    startRecording();
   };
 
-  const handleListen = (text: string, langCode: string, tabKey: string) => {
+  const handleListen = async (text: string, bcp47: string, tabKey: string) => {
     if (speakingTab === tabKey) {
       stopSpeech();
       setSpeakingTab(null);
@@ -321,33 +442,94 @@ export function VoiceStep({
     }
     stopSpeech();
     setSpeakingTab(tabKey);
-    speakText(text, {
-      language: langCode,
-      rate: 0.95,
-      pitch: 1.0,
-      onDone: () => setSpeakingTab(null),
-      onError: () => setSpeakingTab(null),
-      onStopped: () => setSpeakingTab(null),
+    try {
+      speakText(text, {
+        language: bcp47,
+        onDone: () => setSpeakingTab(null),
+        onStopped: () => setSpeakingTab(null),
+        onError: () => setSpeakingTab(null),
+      });
+    } catch {
+      setSpeakingTab(null);
+    }
+  };
+
+  const handleSave = () => {
+    const titleReq =
+      appLang === 'ta'
+        ? 'தயாரிப்பு பெயர் தேவை'
+        : appLang === 'hi'
+        ? 'उत्पाद का शीर्षक आवश्यक है'
+        : 'Product Title Required';
+    const titleReqMsg =
+      appLang === 'ta'
+        ? 'தயாரிப்பு பெயரை உள்ளிடவும்.'
+        : appLang === 'hi'
+        ? 'कृपया एक शीर्षक जोड़ें।'
+        : 'Please add a title.';
+    const descReq =
+      appLang === 'ta'
+        ? 'விளக்கம் தேவை'
+        : appLang === 'hi'
+        ? 'विवरण आवश्यक है'
+        : 'Description Required';
+    const descReqMsg =
+      appLang === 'ta'
+        ? 'தயாரிப்பு விளக்கத்தை உள்ளிடவும்.'
+        : appLang === 'hi'
+        ? 'कृपया एक विवरण जोड़ें।'
+        : 'Please add a description.';
+
+    if (!localTitle.trim()) {
+      Alert.alert(titleReq, titleReqMsg);
+      return;
+    }
+    if (!localDescEn.trim() && !localDescReg.trim() && !localDescHi.trim()) {
+      Alert.alert(descReq, descReqMsg);
+      return;
+    }
+    stopSpeech();
+    onUpdate({
+      title: localTitle,
+      description: localDescEn || localDescReg || localDescHi,
+      description_en: localDescEn,
+      description_hi: localDescHi,
+      description_ta: localDescTa,
+      description_regional: localDescReg,
+      category: localCategory,
     });
+    onNext();
   };
-
-  const retryRecording = () => {
-    setStage('idle'); setErrorMsg(''); setProcessingMsg(''); setShowTextInput(false); setTextInput('');
-  };
-
-  useEffect(() => {
-    return () => {
-      if (durationTimerRef.current) clearInterval(durationTimerRef.current);
-      if (recordingRef.current?.stop) recordingRef.current.stop().catch(() => {});
-    };
-  }, []);
 
   const tapAndSpeakLocal =
-    selectedLang === 'ta' ? 'பனறி சொல்லுங்கள்' :
-    selectedLang === 'hi' ? 'बोलें और बताएं' :
-    selectedLang === 'te' ? 'నొక్కి మాట్లాడండి' : 'Tap and speak';
+    appLang === 'ta' ? 'தட்டி பேசவும்' :
+    appLang === 'hi' ? 'बोलें और बताएं' :
+    appLang === 'te' ? 'నொక్కి మాట్లాடండి' : 'Tap and speak';
 
   const showResults = stage === 'done' || (localDescEn.length > 0 && stage !== 'processing');
+
+  const describeLabel = appLang === 'ta' ? 'உங்கள் தயாரிப்பை விவரிக்கவும்' : appLang === 'hi' ? 'अपने उत्पाद का विवरण दें' : 'Describe your product';
+  const describePlaceholder = appLang === 'ta' ? 'எ.கா. பட்டு சேலை, காஞ்சிபுரம், கைத்தறி...' : appLang === 'hi' ? 'उदा. सिल्क साड़ी, हथकरघा, कांचीपुरम...' : 'e.g. Silk Saree, handwoven, Kanjivaram...';
+  const useMicText = appLang === 'ta' ? 'மைக் பயன்படுத்துக' : appLang === 'hi' ? 'माइक का उपयोग करें' : 'Use mic';
+  const generateBtnText = appLang === 'ta' ? 'AI மூலம் உருவாக்கவும்' : appLang === 'hi' ? 'AI से तैयार करें' : 'Generate with AI';
+  const craftCategoryLabel = appLang === 'ta' ? 'கைவினைப் பிரிவு' : appLang === 'hi' ? 'शिल्प श्रेणी' : 'Craft Category';
+  const aiGeneratedHeader = appLang === 'ta' ? '✅ AI உருவாக்கியது — 3 மொழிகளில்' : appLang === 'hi' ? '✅ AI द्वारा तैयार — 3 भाषाओं में' : '✅ AI Generated — In 3 Languages';
+  const regionalSub = appLang === 'ta' ? `பிராந்திய (${selectedLangMeta.local}), இந்தி மற்றும் ஆங்கிலம்` : appLang === 'hi' ? `क्षेत्रीय (${selectedLangMeta.local}), हिन्दी और अंग्रेज़ी` : `Regional (${selectedLangMeta.local}), Hindi & English`;
+  const regenerateText = appLang === 'ta' ? 'மீண்டும் உருவாக்கு' : appLang === 'hi' ? 'फिर से बनाएं' : 'Regenerate';
+  const productTitleLabel = appLang === 'ta' ? 'தயாரிப்பு பெயர் *' : appLang === 'hi' ? 'उत्पाद का नाम *' : 'Product Title *';
+  const productTitlePlaceholder = appLang === 'ta' ? 'தயாரிப்பு பெயர்...' : appLang === 'hi' ? 'उत्पाद का नाम...' : 'Product title...';
+  const voiceDescLabel = appLang === 'ta' ? 'குரல் விளக்கம் (பார்க்க, திருத்த மற்றும் கேட்க தட்டவும்)' : appLang === 'hi' ? 'आवाज़ विवरण (देखने, संपादित करने और सुनने के लिए टैप करें)' : 'Voice Description (Tap to view, edit & listen)';
+  const listenText = appLang === 'ta' ? 'கேட்க' : appLang === 'hi' ? 'सुनें' : 'Listen';
+  const stopText = appLang === 'ta' ? 'நிறுத்து' : appLang === 'hi' ? 'रोकें' : 'Stop';
+  const nextBtnLabel = appLang === 'ta' ? 'அடுத்து: விலை நிர்ணயிக்கவும் →' : appLang === 'hi' ? 'आगे: मूल्य निर्धारित करें →' : 'Next: Set Price →';
+  const tryAgainText = appLang === 'ta' ? 'மீண்டும் முயற்சி செய்' : appLang === 'hi' ? 'पुनः प्रयास करें' : 'Try Again';
+  const typeKeywordsText = appLang === 'ta' ? 'அல்லது வார்த்தைகளை தட்டச்சு செய்யவும்' : appLang === 'hi' ? 'या कीवर्ड टाइप करें' : 'or type keywords instead';
+
+  const getCategoryLabel = (cat: string) => {
+    if (appLang === 'ta') return CATEGORY_LOCALIZED[cat]?.ta || cat;
+    if (appLang === 'hi') return CATEGORY_LOCALIZED[cat]?.hi || cat;
+    return cat;
+  };
 
   return (
     <ScrollView
@@ -378,10 +560,9 @@ export function VoiceStep({
           <View style={styles.tapSpeakArea}>
             <Text style={styles.tapSpeakEn}>
               {stage === 'recording'
-                ? `Recording... ${Math.floor(recordingDuration / 60)}:${(recordingDuration % 60).toString().padStart(2, '0')}`
-                : 'Tap and speak'}
+                ? (appLang === 'ta' ? `பதிவாகிறது... ${Math.floor(recordingDuration / 60)}:${(recordingDuration % 60).toString().padStart(2, '0')}` : appLang === 'hi' ? `रिकॉर्डिंग हो रही है... ${Math.floor(recordingDuration / 60)}:${(recordingDuration % 60).toString().padStart(2, '0')}` : `Recording... ${Math.floor(recordingDuration / 60)}:${(recordingDuration % 60).toString().padStart(2, '0')}`)
+                : tapAndSpeakLocal}
             </Text>
-            <Text style={styles.tapSpeakLocal}>{tapAndSpeakLocal}</Text>
           </View>
 
           {/* Language selector pill */}
@@ -438,7 +619,7 @@ export function VoiceStep({
 
           {/* Type instead link */}
           <TouchableOpacity onPress={() => setShowTextInput(true)} activeOpacity={0.7}>
-            <Text style={styles.typeInsteadText}>or type keywords instead</Text>
+            <Text style={styles.typeInsteadText}>{typeKeywordsText}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -447,7 +628,7 @@ export function VoiceStep({
       {stage === 'processing' && (
         <View style={styles.processingBox}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.processingText}>{processingMsg || 'Processing...'}</Text>
+          <Text style={styles.processingText}>{processingMsg || (appLang === 'ta' ? 'செயலாக்குகிறது...' : appLang === 'hi' ? 'प्रक्रिया चल रही है...' : 'Processing...')}</Text>
         </View>
       )}
 
@@ -458,7 +639,7 @@ export function VoiceStep({
           <Text style={styles.errorText}>{errorMsg}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={retryRecording} activeOpacity={0.8}>
             <RefreshCw size={14} color="#FFFFFF" />
-            <Text style={styles.retryBtnText}>Try Again</Text>
+            <Text style={styles.retryBtnText}>{tryAgainText}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -466,12 +647,12 @@ export function VoiceStep({
       {/* ── Text input mode ─────────────────────────────────────── */}
       {showTextInput && stage !== 'processing' && (
         <View style={styles.textInputCard}>
-          <Text style={styles.textInputLabel}>Describe your product</Text>
+          <Text style={styles.textInputLabel}>{describeLabel}</Text>
           <TextInput
             style={styles.textInput}
             value={textInput}
             onChangeText={setTextInput}
-            placeholder="e.g. Silk Saree, handwoven, Kanjivaram..."
+            placeholder={describePlaceholder}
             placeholderTextColor={Colors.textMuted}
             multiline
             numberOfLines={3}
@@ -480,7 +661,7 @@ export function VoiceStep({
           <View style={styles.textInputActions}>
             <TouchableOpacity style={styles.backToMicBtn} onPress={retryRecording} activeOpacity={0.8}>
               <Mic size={16} color={Colors.textSecondary} />
-              <Text style={styles.backToMicText}>Use mic</Text>
+              <Text style={styles.backToMicText}>{useMicText}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.generateBtn, !textInput.trim() && styles.generateBtnDim]}
@@ -489,7 +670,7 @@ export function VoiceStep({
               activeOpacity={0.88}
             >
               <Sparkles size={16} color="#FFFFFF" />
-              <Text style={styles.generateBtnText}>Generate with AI</Text>
+              <Text style={styles.generateBtnText}>{generateBtnText}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -498,7 +679,7 @@ export function VoiceStep({
       {/* ── Category chips ───────────────────────────────────────── */}
       {!showResults && stage !== 'processing' && (
         <View style={styles.categorySection}>
-          <Text style={styles.categoryLabel}>Craft Category</Text>
+          <Text style={styles.categoryLabel}>{craftCategoryLabel}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.categoryRow}>
               {CATEGORIES.map(cat => (
@@ -509,7 +690,7 @@ export function VoiceStep({
                   activeOpacity={0.75}
                 >
                   <Text style={[styles.catChipText, localCategory === cat && styles.catChipTextActive]}>
-                    {cat}
+                    {getCategoryLabel(cat)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -523,28 +704,28 @@ export function VoiceStep({
         <View style={styles.resultsCard}>
           <View style={styles.resultsHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.resultsTitle}>✅ AI Generated — In 3 Languages</Text>
-              <Text style={styles.resultsSub}>Regional ({selectedLangMeta.local}), Hindi & English</Text>
+              <Text style={styles.resultsTitle}>{aiGeneratedHeader}</Text>
+              <Text style={styles.resultsSub}>{regionalSub}</Text>
             </View>
             <TouchableOpacity onPress={retryRecording} activeOpacity={0.7} style={styles.retryHeaderBtn}>
               <RefreshCw size={14} color={Colors.textMuted} />
-              <Text style={styles.retryHeaderText}>Regenerate</Text>
+              <Text style={styles.retryHeaderText}>{regenerateText}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Product Title */}
-          <Text style={styles.fieldLabel}>Product Title *</Text>
+          <Text style={styles.fieldLabel}>{productTitleLabel}</Text>
           <TextInput
             style={styles.fieldInput}
             value={localTitle}
             onChangeText={t => { setLocalTitle(t); onUpdate({ title: t }); }}
-            placeholder="Product title..."
+            placeholder={productTitlePlaceholder}
             placeholderTextColor={Colors.textMuted}
           />
 
           {/* Trilingual Segmented Tabs */}
           <View style={styles.descSection}>
-            <Text style={styles.fieldLabel}>Voice Description (Tap to view, edit & listen)</Text>
+            <Text style={styles.fieldLabel}>{voiceDescLabel}</Text>
             <View style={styles.tabBar}>
               <TouchableOpacity
                 style={[styles.tabBtn, activeTab === 'regional' && styles.tabBtnActive]}
@@ -592,12 +773,12 @@ export function VoiceStep({
                     {speakingTab === 'regional' ? (
                       <>
                         <VolumeX size={15} color="#C0392B" />
-                        <Text style={[styles.listenBtnText, { color: '#C0392B' }]}>Stop</Text>
+                        <Text style={[styles.listenBtnText, { color: '#C0392B' }]}>{stopText}</Text>
                       </>
                     ) : (
                       <>
                         <Volume2 size={15} color="#2D6A4F" />
-                        <Text style={styles.listenBtnText}>Listen</Text>
+                        <Text style={styles.listenBtnText}>{listenText}</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -638,12 +819,12 @@ export function VoiceStep({
                     {speakingTab === 'hi' ? (
                       <>
                         <VolumeX size={15} color="#C0392B" />
-                        <Text style={[styles.listenBtnText, { color: '#C0392B' }]}>Stop</Text>
+                        <Text style={[styles.listenBtnText, { color: '#C0392B' }]}>{stopText}</Text>
                       </>
                     ) : (
                       <>
                         <Volume2 size={15} color="#2D6A4F" />
-                        <Text style={styles.listenBtnText}>Listen</Text>
+                        <Text style={styles.listenBtnText}>{listenText}</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -678,12 +859,12 @@ export function VoiceStep({
                     {speakingTab === 'en' ? (
                       <>
                         <VolumeX size={15} color="#C0392B" />
-                        <Text style={[styles.listenBtnText, { color: '#C0392B' }]}>Stop</Text>
+                        <Text style={[styles.listenBtnText, { color: '#C0392B' }]}>{stopText}</Text>
                       </>
                     ) : (
                       <>
                         <Volume2 size={15} color="#2D6A4F" />
-                        <Text style={styles.listenBtnText}>Listen</Text>
+                        <Text style={styles.listenBtnText}>{listenText}</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -716,7 +897,7 @@ export function VoiceStep({
           disabled={!localTitle || (!localDescEn && !localDescReg && !localDescHi)}
           activeOpacity={0.88}
         >
-          <Text style={styles.nextBtnText}>Next: Set Price →</Text>
+          <Text style={styles.nextBtnText}>{nextBtnLabel}</Text>
         </TouchableOpacity>
       )}
     </ScrollView>

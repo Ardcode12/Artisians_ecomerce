@@ -52,24 +52,41 @@ export default function HelpSupportScreen() {
 
   if (!fontsLoaded) return null;
 
-  const localTitle =
-    language === 'ta' ? 'உதவி வேண்டுமோ?' :
-    language === 'hi' ? 'मदद चाहिए?' : '';
-
-  const localTalkToUs =
-    language === 'ta' ? '"எனக்கு உதவி வேண்டும்"' :
-    language === 'hi' ? '"मुझे मदद चाहिए"' : '';
-
   const MENU_ITEMS = [
-    { Icon: Video, label: 'Watch Tutorial Videos', onPress: () => {} },
-    { Icon: HelpCircle, label: 'Frequently Asked Questions', onPress: () => {} },
-    { Icon: Phone, label: 'Contact Support', onPress: () => {} },
+    {
+      Icon: Video,
+      label: language === 'ta' ? 'பயிற்சி வீடியோக்களைப் பாருங்கள்' : language === 'hi' ? 'ट्यूटोरियल वीडियो देखें' : 'Watch Tutorial Videos',
+      onPress: () => {},
+    },
+    {
+      Icon: HelpCircle,
+      label: language === 'ta' ? 'அடிக்கடி கேட்கப்படும் கேள்விகள்' : language === 'hi' ? 'अक्सर पूछे जाने वाले प्रश्न' : 'Frequently Asked Questions',
+      onPress: () => {},
+    },
+    {
+      Icon: Phone,
+      label: language === 'ta' ? 'ஆதரவைத் தொடர்பு கொள்ளவும்' : language === 'hi' ? 'समर्थन से संपर्क करें' : 'Contact Support',
+      onPress: () => {},
+    },
   ];
 
   const CONTACT_INFO = [
-    { Icon: Phone, label: '+91 98765 43210', onPress: () => Linking.openURL('tel:+919876543210') },
-    { Icon: Mail, label: 'support@enarte.com', prefix: 'Email Us', onPress: () => Linking.openURL('mailto:support@enarte.com') },
-    { Icon: Info, label: 'About Enarte', onPress: () => {} },
+    {
+      Icon: Phone,
+      label: '+91 98765 43210',
+      onPress: () => Linking.openURL('tel:+919876543210'),
+    },
+    {
+      Icon: Mail,
+      label: 'support@enarte.com',
+      prefix: language === 'ta' ? 'மின்னஞ்சல் அனுப்புக' : language === 'hi' ? 'हमें ईमेल करें' : 'Email Us',
+      onPress: () => Linking.openURL('mailto:support@enarte.com'),
+    },
+    {
+      Icon: Info,
+      label: language === 'ta' ? 'எனார்டே பற்றி' : language === 'hi' ? 'एनार्टे के बारे में' : 'About Enarte',
+      onPress: () => {},
+    },
   ];
 
   return (
@@ -85,7 +102,9 @@ export default function HelpSupportScreen() {
         >
           <ArrowLeft size={20} color={Colors.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
-        <Text style={styles.screenTitle}>Help & Support</Text>
+        <Text style={styles.screenTitle}>
+          {language === 'ta' ? 'உதவி மற்றும் ஆதரவு' : language === 'hi' ? 'सहायता और समर्थन' : 'Help & Support'}
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -96,20 +115,24 @@ export default function HelpSupportScreen() {
       >
         {/* Need Help Hero */}
         <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>Need Help?</Text>
-          {localTitle ? (
-            <Text style={styles.heroTitleLocal}>{localTitle}</Text>
-          ) : null}
+          <Text style={styles.heroTitle}>
+            {language === 'ta' ? 'உதவி வேண்டுமா?' : language === 'hi' ? 'क्या आपको मदद चाहिए?' : 'Need Help?'}
+          </Text>
+          <Text style={styles.heroTitleLocal}>
+            {language === 'ta' ? 'நாங்கள் உங்களுக்கு உதவ இங்கே உள்ளோம்' : language === 'hi' ? 'हम आपकी सहायता के लिए यहाँ हैं' : 'We are here to assist you'}
+          </Text>
 
           {/* Voice Support */}
           <View style={styles.voiceSection}>
             <View style={styles.micCircle}>
               <Mic size={28} color="#FFFFFF" strokeWidth={2} />
             </View>
-            <Text style={styles.voiceLabel}>Talk to us</Text>
-            {localTalkToUs ? (
-              <Text style={styles.voiceLabelLocal}>{localTalkToUs}</Text>
-            ) : null}
+            <Text style={styles.voiceLabel}>
+              {language === 'ta' ? 'எங்களுடன் பேசுங்கள்' : language === 'hi' ? 'हमसे बात करें' : 'Talk to us'}
+            </Text>
+            <Text style={styles.voiceLabelLocal}>
+              {language === 'ta' ? '"எனக்கு உதவி வேண்டும் என்று கூறுங்கள்"' : language === 'hi' ? '"बोलें: मुझे मदद चाहिए"' : 'Say "I need help"'}
+            </Text>
           </View>
 
           {/* Call & Chat Buttons */}
@@ -120,7 +143,9 @@ export default function HelpSupportScreen() {
               activeOpacity={0.85}
             >
               <Phone size={16} color="#FFFFFF" strokeWidth={2} />
-              <Text style={styles.callBtnText}>Call</Text>
+              <Text style={styles.callBtnText}>
+                {language === 'ta' ? 'அழைக்க' : language === 'hi' ? 'कॉल करें' : 'Call'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.chatBtn}
@@ -128,7 +153,9 @@ export default function HelpSupportScreen() {
               activeOpacity={0.85}
             >
               <MessageCircle size={16} color="#FFFFFF" strokeWidth={2} />
-              <Text style={styles.chatBtnText}>Chat</Text>
+              <Text style={styles.chatBtnText}>
+                {language === 'ta' ? 'உரையாடு' : language === 'hi' ? 'चैट करें' : 'Chat'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

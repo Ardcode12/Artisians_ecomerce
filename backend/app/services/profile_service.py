@@ -95,6 +95,18 @@ def upsert_artisan_profile(data: Dict[str, Any]) -> Dict[str, Any]:
     gstin = data.get("gstin") if data.get("gstin") is not None else existing.get("gstin", "")
     age = data.get("age") if data.get("age") is not None else existing.get("age")
     experience = data.get("experience") if data.get("experience") is not None else existing.get("experience", "")
+    shop_logo_url = data.get("shop_logo_url") if data.get("shop_logo_url") is not None else existing.get("shop_logo_url")
+    shop_logo_style = data.get("shop_logo_style") if data.get("shop_logo_style") is not None else existing.get("shop_logo_style", "badge")
+
+    # Silently generate deterministic shop logo if shop_name is present but logo is not yet set
+    if shop_name and not shop_logo_url:
+        try:
+            from app.services.logo_generator_service import generate_shop_logo_variants
+            logo_gen = generate_shop_logo_variants(shop_name, craft_type or "Handicraft", artisan_id=profile_id)
+            shop_logo_url = logo_gen.get("default_logo_url")
+            shop_logo_style = "badge"
+        except Exception as e:
+            logger.warning(f"Could not auto-generate logo for {shop_name}: {e}")
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -103,9 +115,9 @@ def upsert_artisan_profile(data: Dict[str, Any]) -> Dict[str, Any]:
             id, phone, name, shop_name, role, craft_type, craft_custom,
             bio, location, avatar_url, language, scheme_id, is_onboarded,
             bank_account_no, bank_ifsc, bank_holder_name, bank_name, upi_id,
-            pehchan_id, gstin, age, experience,
+            pehchan_id, gstin, age, experience, shop_logo_url, shop_logo_style,
             created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(phone) DO UPDATE SET
             name=excluded.name,
             shop_name=excluded.shop_name,
@@ -126,17 +138,19 @@ def upsert_artisan_profile(data: Dict[str, Any]) -> Dict[str, Any]:
             gstin=COALESCE(NULLIF(excluded.gstin, ''), profiles.gstin),
             age=COALESCE(excluded.age, profiles.age),
             experience=COALESCE(NULLIF(excluded.experience, ''), profiles.experience),
+            shop_logo_url=COALESCE(excluded.shop_logo_url, profiles.shop_logo_url),
+            shop_logo_style=COALESCE(excluded.shop_logo_style, profiles.shop_logo_style),
             updated_at=excluded.updated_at;
         """, (
             profile_id, clean_phone, name, shop_name, "artisan", craft_type, craft_custom,
             bio, location, avatar_url, language, scheme_id, is_onboarded,
             bank_account_no, bank_ifsc, bank_holder_name, bank_name, upi_id,
-            pehchan_id, gstin, age, experience,
+            pehchan_id, gstin, age, experience, shop_logo_url, shop_logo_style,
             existing.get("created_at") or now_iso, now_iso
         ))
 
     saved = get_profile_by_id_or_phone(clean_phone)
-    logger.info(f"[PROFILE SAVED] Phone: {clean_phone} | Name: {name} | Shop: {shop_name} | Pehchan: {pehchan_id}")
+    logger.info(f"[PROFILE SAVED] Phone: {clean_phone} | Name: {name} | Shop: {shop_name} | Logo: {shop_logo_url}")
     return saved or {}
 
 
@@ -170,6 +184,8 @@ def update_artisan_profile(id_or_phone: str, updates: Dict[str, Any]) -> Optiona
             upi_id = ?,
             pehchan_id = ?,
             gstin = ?,
+            shop_logo_url = ?,
+            shop_logo_style = ?,
             updated_at = ?
         WHERE id = ? OR phone = ?
         """, (
@@ -190,6 +206,8 @@ def update_artisan_profile(id_or_phone: str, updates: Dict[str, Any]) -> Optiona
             merged.get("upi_id"),
             merged.get("pehchan_id") or "",
             merged.get("gstin") or "",
+            merged.get("shop_logo_url"),
+            merged.get("shop_logo_style") or "badge",
             merged.get("updated_at"),
             existing["id"],
             existing["phone"]

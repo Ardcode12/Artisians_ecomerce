@@ -22,6 +22,7 @@ import {
 } from 'lucide-react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { BACKEND_URL } from '@/config/api';
+import { useLanguage } from '@/context/LanguageContext';
 const BG          = '#F5F0E8';
 const GREEN       = '#2D6A4F';
 const CARD_BG     = '#FFFFFF';
@@ -31,14 +32,6 @@ const TEXT_SUB    = '#6B7280';
 const { width }   = Dimensions.get('window');
 
 const SLIDER_W = width - 64;
-
-// ── "Based on" items (matching reference) ─────────────────────────────────
-const BASED_ON = [
-  { Icon: Package,    label: 'Similar products' },
-  { Icon: ShoppingBag, label: 'Material cost' },
-  { Icon: BarChart3,  label: 'Craft type' },
-  { Icon: TrendingUp, label: 'Market trends' },
-];
 
 interface PriceData {
   suggested_price: number;
@@ -99,9 +92,12 @@ export function PriceStep({
     const matCost = parseFloat(materialCostInput) || 0;
     setStage('loading');
     setErrorMsg('');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000); // 10 s timeout
     try {
       const resp = await fetch(`${BACKEND_URL}/api/suggest-price`, {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
           product_title: productTitle || 'Handmade craft',
@@ -110,6 +106,7 @@ export function PriceStep({
         }),
       });
       const data: PriceData = await resp.json();
+      clearTimeout(timeout);
       if (!resp.ok) throw new Error((data as any).error || `Server error ${resp.status}`);
       setPriceData(data);
       const initialVal = finalPrice ? finalPrice : `₹${data.suggested_price}`;
@@ -122,7 +119,13 @@ export function PriceStep({
       });
       setStage('done');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Could not fetch price suggestion');
+      clearTimeout(timeout);
+      const isTimeout = err.name === 'AbortError';
+      setErrorMsg(
+        isTimeout
+          ? `Could not reach backend (${BACKEND_URL}). Check your Wi-Fi / backend IP.`
+          : err.message || 'Could not fetch price suggestion'
+      );
       setStage('error');
     }
   };
@@ -156,6 +159,31 @@ export function PriceStep({
     onNext();
   };
 
+  const { language } = useLanguage();
+
+  const defaultProductTitle = language === 'ta' ? 'உங்கள் தயாரிப்பு' : language === 'hi' ? 'आपका उत्पाद' : 'Your product';
+  const defaultCraftType = language === 'ta' ? 'கைவினைப்பொருள்' : language === 'hi' ? 'हस्तशिल्प' : 'Handicraft';
+  const scanningText = language === 'ta' ? 'சந்தை விலைகள் மற்றும் போட்டி விகிதங்களை ஸ்கேன் செய்கிறது...' : language === 'hi' ? 'बाजार मूल्यों और प्रतिस्पर्धी दरों का विश्लेषण हो रहा है...' : 'Scanning market prices & competitor rates...';
+  const retryText = language === 'ta' ? 'மீண்டும் முயற்சி' : language === 'hi' ? 'पुनः प्रयास' : 'Retry';
+  const sellingPriceText = language === 'ta' ? 'விற்பனை விலை' : language === 'hi' ? 'बिक्री मूल्य' : 'Selling Price';
+  const tapToEditText = language === 'ta' ? 'நேரடியாக மாற்ற கீழே உள்ள எண்ணைத் தட்டவும்' : language === 'hi' ? 'सीधे संपादित करने के लिए नीचे दिए गए नंबर पर टैप करें' : 'Tap number below to edit directly';
+  const aiRecommendedText = language === 'ta' ? 'AI பரிந்துரைத்தது' : language === 'hi' ? 'AI अनुशंसित' : 'AI Recommended';
+  const resetAiText = language === 'ta' ? `AI பரிந்துரைக்கு மீட்டமைக்கவும்: ₹${suggested.toLocaleString('en-IN')}` : language === 'hi' ? `AI सुझाव पर रीसेट करें: ₹${suggested.toLocaleString('en-IN')}` : `Reset to AI suggestion: ₹${suggested.toLocaleString('en-IN')}`;
+  const unitsInStockText = language === 'ta' ? 'கையிருப்பில் உள்ள அலகுகள்' : language === 'hi' ? 'स्टॉक में इकाइयाँ' : 'Units in stock';
+  const qtyReadyText = language === 'ta' ? 'விற்பனைக்கு தயாராக உள்ள அளவு' : language === 'hi' ? 'बेचने के लिए तैयार मात्रा' : 'Quantity ready to sell';
+  const marketRangeText = language === 'ta' ? 'சந்தை விலை வரம்பு' : language === 'hi' ? 'बाजार मूल्य सीमा' : 'Market Range Benchmark';
+  const minText = language === 'ta' ? 'குறைந்தபட்சம்' : language === 'hi' ? 'न्यूनतम' : 'Min';
+  const maxText = language === 'ta' ? 'அதிகபட்சம்' : language === 'hi' ? 'अधिकतम' : 'Max';
+  const pricingFactorsText = language === 'ta' ? 'விலைக் காரணிகள்' : language === 'hi' ? 'मूल्य निर्धारण कारक' : 'Pricing Factors';
+  const setPriceBtnText = language === 'ta' ? `விலை அமைக்கவும்: ₹ ${numericPrice > 0 ? numericPrice.toLocaleString('en-IN') : '0'} →` : language === 'hi' ? `मूल्य सेट करें: ₹ ${numericPrice > 0 ? numericPrice.toLocaleString('en-IN') : '0'} →` : `Set Price: ₹ ${numericPrice > 0 ? numericPrice.toLocaleString('en-IN') : '0'} →`;
+
+  const basedOnItems = [
+    { Icon: Package, label: language === 'ta' ? 'ஒத்த தயாரிப்புகள்' : language === 'hi' ? 'समान उत्पाद' : 'Similar products' },
+    { Icon: ShoppingBag, label: language === 'ta' ? 'பொருள் செலவு' : language === 'hi' ? 'सामग्री लागत' : 'Material cost' },
+    { Icon: BarChart3, label: language === 'ta' ? 'கைவினை வகை' : language === 'hi' ? 'शिल्प का प्रकार' : 'Craft type' },
+    { Icon: TrendingUp, label: language === 'ta' ? 'சந்தை போக்குகள்' : language === 'hi' ? 'बाजार के रुझान' : 'Market trends' },
+  ];
+
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
@@ -168,9 +196,9 @@ export function PriceStep({
         )}
         <View style={{ flex: 1 }}>
           <Text style={styles.productName} numberOfLines={1}>
-            {productTitle || 'Your product'}
+            {productTitle || defaultProductTitle}
           </Text>
-          <Text style={styles.productCategorySub}>{craftType || 'Handicraft'}</Text>
+          <Text style={styles.productCategorySub}>{craftType || defaultCraftType}</Text>
         </View>
       </View>
 
@@ -178,7 +206,7 @@ export function PriceStep({
       {stage === 'loading' && (
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color={GREEN} />
-          <Text style={styles.loadingText}>Scanning market prices & competitor rates...</Text>
+          <Text style={styles.loadingText}>{scanningText}</Text>
         </View>
       )}
 
@@ -189,7 +217,7 @@ export function PriceStep({
           <Text style={styles.errorText}>{errorMsg}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={fetchPrice} activeOpacity={0.8}>
             <RefreshCw size={13} color="#FFF" />
-            <Text style={styles.retryBtnText}>Retry</Text>
+            <Text style={styles.retryBtnText}>{retryText}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -201,13 +229,13 @@ export function PriceStep({
           <View style={styles.priceCard}>
             <View style={styles.priceCardHeader}>
               <View>
-                <Text style={styles.priceCardTitle}>Selling Price</Text>
-                <Text style={styles.priceCardSubtitle}>Tap number below to edit directly</Text>
+                <Text style={styles.priceCardTitle}>{sellingPriceText}</Text>
+                <Text style={styles.priceCardSubtitle}>{tapToEditText}</Text>
               </View>
               {priceData && (
                 <View style={styles.mlBadge}>
                   <Sparkles size={11} color="#059669" />
-                  <Text style={styles.mlBadgeText}>AI Recommended</Text>
+                  <Text style={styles.mlBadgeText}>{aiRecommendedText}</Text>
                 </View>
               )}
             </View>
@@ -246,7 +274,7 @@ export function PriceStep({
             {suggested > 0 && suggested !== numericPrice && (
               <TouchableOpacity style={styles.resetAiBtn} onPress={resetToAiPrice} activeOpacity={0.8}>
                 <Sparkles size={13} color="#2D6A4F" />
-                <Text style={styles.resetAiBtnText}>Reset to AI suggestion: ₹{suggested.toLocaleString('en-IN')}</Text>
+                <Text style={styles.resetAiBtnText}>{resetAiText}</Text>
               </TouchableOpacity>
             )}
 
@@ -257,8 +285,8 @@ export function PriceStep({
             {/* Units Available Stepper */}
             <View style={styles.unitRow}>
               <View>
-                <Text style={styles.unitLabel}>Units in stock</Text>
-                <Text style={styles.unitSub}>Quantity ready to sell</Text>
+                <Text style={styles.unitLabel}>{unitsInStockText}</Text>
+                <Text style={styles.unitSub}>{qtyReadyText}</Text>
               </View>
               <View style={styles.stepper}>
                 <TouchableOpacity
@@ -291,10 +319,10 @@ export function PriceStep({
           {/* Market range + slider */}
           {priceData && (
             <View style={styles.rangeSection}>
-              <Text style={styles.rangeTitle}>Market Range Benchmark</Text>
+              <Text style={styles.rangeTitle}>{marketRangeText}</Text>
               <View style={styles.rangeRow}>
-                <Text style={styles.rangeVal}>Min: ₹ {rangeMin.toLocaleString('en-IN')}</Text>
-                <Text style={styles.rangeVal}>Max: ₹ {rangeMax.toLocaleString('en-IN')}</Text>
+                <Text style={styles.rangeVal}>{minText}: ₹ {rangeMin.toLocaleString('en-IN')}</Text>
+                <Text style={styles.rangeVal}>{maxText}: ₹ {rangeMax.toLocaleString('en-IN')}</Text>
               </View>
               <View style={styles.sliderTrack}>
                 <View style={[styles.sliderFill, { width: SLIDER_W * sliderPos }]} />
@@ -305,8 +333,8 @@ export function PriceStep({
 
           {/* Based on Factors */}
           <View style={styles.basedOnSection}>
-            <Text style={styles.basedOnTitle}>Pricing Factors</Text>
-            {BASED_ON.map(({ Icon, label }) => (
+            <Text style={styles.basedOnTitle}>{pricingFactorsText}</Text>
+            {basedOnItems.map(({ Icon, label }) => (
               <View key={label} style={styles.basedOnRow}>
                 <Icon size={18} color={TEXT_SUB} strokeWidth={1.6} />
                 <Text style={styles.basedOnLabel}>{label}</Text>
@@ -328,7 +356,7 @@ export function PriceStep({
             <ActivityIndicator size="small" color="#FFF" />
           ) : (
             <Text style={styles.usePriceBtnText}>
-              Set Price: ₹ {numericPrice > 0 ? numericPrice.toLocaleString('en-IN') : '0'} →
+              {setPriceBtnText}
             </Text>
           )}
         </TouchableOpacity>

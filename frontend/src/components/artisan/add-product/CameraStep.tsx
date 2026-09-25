@@ -46,6 +46,23 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
   const [stepIndex, setStepIndex] = useState(0);
   const { language } = useLanguage();
 
+  const processingSteps = language === 'ta' ? [
+    'கைவினைப் புகைப்படம் ஸ்கேன் செய்யப்படுகிறது...',
+    'AI ஸ்டுடியோ விளக்குகள் தானாக சரிசெய்யப்படுகிறது...',
+    'அமைப்புகள் கூர்மையாக்கப்பட்டு பின்னணி சீரமைக்கப்படுகிறது...',
+    'உயர்தர முன்னோட்டம் தயாராகிறது...',
+  ] : language === 'hi' ? [
+    'शिल्प फ़ोटो स्कैन हो रही है...',
+    'AI स्टूडियो लाइटिंग अपने आप सुधारी जा रही है...',
+    'बनावट को स्पष्ट और पृष्ठभूमि को ठीक किया जा रहा है...',
+    'अंतिम उच्च-रिज़ॉल्यूशन पूर्वावलोकन तैयार हो रहा है...',
+  ] : [
+    'Scanning craft photo...',
+    'AI auto-enhancing studio lighting...',
+    'Sharpening textures & removing backdrop...',
+    'Preparing final high-resolution preview...',
+  ];
+
   const scanAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -89,7 +106,7 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
       pulseLoop.start();
 
       stepTimer = setInterval(() => {
-        setStepIndex((idx) => (idx + 1) % PROCESSING_STEPS.length);
+        setStepIndex((idx) => (idx + 1) % processingSteps.length);
       }, 1500);
     } else {
       scanAnim.setValue(0);
@@ -101,7 +118,7 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
       pulseLoop?.stop();
       if (stepTimer) clearInterval(stepTimer);
     };
-  }, [processingState]);
+  }, [processingState, processingSteps.length]);
 
   // ── Process & enhance image ───────────────────────────────────────────────
   const processImage = async (localUri: string, base64Data?: string | null) => {
@@ -159,14 +176,20 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
       // Graceful fallback
       setCapturedUri(localUri);
       onImageCaptured(localUri, localUri);
-      setErrorMsg('Using original photo');
+      setErrorMsg(language === 'ta' ? 'அசல் புகைப்படம் பயன்படுத்தப்படுகிறது' : language === 'hi' ? 'मूल फ़ोटो का उपयोग किया जा रहा है' : 'Using original photo');
       setProcessingState('done');
     }
   };
 
   const handleCapture = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permission needed', 'Camera permission is required.'); return; }
+    if (status !== 'granted') {
+      Alert.alert(
+        language === 'ta' ? 'அனுமதி தேவை' : language === 'hi' ? 'अनुमति आवश्यक' : 'Permission needed',
+        language === 'ta' ? 'கேமரா அனுமதி தேவை.' : language === 'hi' ? 'कैमरा अनुमति आवश्यक है।' : 'Camera permission is required.'
+      );
+      return;
+    }
     setProcessingState('picking');
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85, allowsEditing: false, base64: true });
     if (!result.canceled && result.assets[0]) await processImage(result.assets[0].uri, result.assets[0].base64);
@@ -175,7 +198,13 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
 
   const handleGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permission needed', 'Gallery permission is required.'); return; }
+    if (status !== 'granted') {
+      Alert.alert(
+        language === 'ta' ? 'அனுமதி தேவை' : language === 'hi' ? 'अनुमति आवश्यक' : 'Permission needed',
+        language === 'ta' ? 'கேலரி அனுமதி தேவை.' : language === 'hi' ? 'गैलरी अनुमति आवश्यक है।' : 'Gallery permission is required.'
+      );
+      return;
+    }
     setProcessingState('picking');
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85, allowsEditing: false, base64: true });
     if (!result.canceled && result.assets[0]) await processImage(result.assets[0].uri, result.assets[0].base64);
@@ -189,8 +218,12 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
 
   // Bilingual labels
   const takeLabel = language === 'ta' ? 'படம் எடுக்கவும்' : language === 'hi' ? 'फोटो लें' : 'Take a photo';
-  const takeSub   = language === 'en' ? '' : language === 'ta' ? 'படம் எடுக்கவும்' : 'फोटो लें';
   const galleryLabel = language === 'ta' ? 'கேலரியிலிருந்து தேர்ந்தெடு' : language === 'hi' ? 'गैलरी से चुनें' : 'Choose from gallery';
+  const usePhotoLabel = language === 'ta' ? 'இந்தப் புகைப்படத்தைப் பயன்படுத்துக →' : language === 'hi' ? 'इस फ़ोटो का उपयोग करें →' : 'Use this photo →';
+  const retakeLabel = language === 'ta' ? 'மீண்டும் எடுக்கவும்' : language === 'hi' ? 'फिर से लें' : 'Retake';
+  const aiStudioText = language === 'ta' ? 'AI ஸ்டுடியோ மேம்பாட்டாளர்' : language === 'hi' ? 'AI स्टूडियो संवर्धक' : 'AI Studio Enhancer';
+  const aiSubText = language === 'ta' ? 'ஒளி, அமைப்பு மற்றும் பின்னணியை மேம்படுத்துகிறது' : language === 'hi' ? 'प्रकाश, बनावट और पृष्ठभूमि में सुधार...' : 'Enhancing lighting, textures & backdrop';
+  const aiPolishingText = language === 'ta' ? 'AI உங்கள் புகைப்படத்தை அழகுபடுத்துகிறது' : language === 'hi' ? 'AI आपकी फ़ोटो को बेहतर बना रहा है' : 'AI is polishing your photo';
 
   return (
     <View style={styles.root}>
@@ -223,11 +256,11 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
                 <Animated.View style={[styles.aiStatusCard, { transform: [{ scale: pulseAnim }] }]}>
                   <View style={styles.aiBadge}>
                     <Sparkles size={14} color="#059669" />
-                    <Text style={styles.aiBadgeText}>AI Studio Enhancer</Text>
+                    <Text style={styles.aiBadgeText}>{aiStudioText}</Text>
                   </View>
                   <ActivityIndicator size="large" color="#FFFFFF" style={{ marginVertical: 10 }} />
-                  <Text style={styles.aiStepText}>{PROCESSING_STEPS[stepIndex]}</Text>
-                  <Text style={styles.aiSubText}>Enhancing lighting, textures & backdrop</Text>
+                  <Text style={styles.aiStepText}>{processingSteps[stepIndex]}</Text>
+                  <Text style={styles.aiSubText}>{aiSubText}</Text>
                 </Animated.View>
               </View>
             )}
@@ -236,9 +269,9 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
           <View style={styles.processingBox}>
             <ActivityIndicator size="large" color={GREEN} />
             <Text style={styles.processingText}>
-              {processingState === 'picking'   ? 'Opening photo...'  :
-               processingState === 'uploading' ? 'Uploading photo...' :
-               PROCESSING_STEPS[stepIndex]}
+              {processingState === 'picking'   ? (language === 'ta' ? 'புகைப்படம் திறக்கப்படுகிறது...' : language === 'hi' ? 'फ़ोटो खोली जा रही है...' : 'Opening photo...')  :
+               processingState === 'uploading' ? (language === 'ta' ? 'புகைப்படம் பதிவேற்றப்படுகிறது...' : language === 'hi' ? 'फ़ोटो अपलोड हो रही है...' : 'Uploading photo...') :
+               processingSteps[stepIndex]}
             </Text>
           </View>
         ) : (
@@ -263,8 +296,8 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
             <Wand2 size={20} color="#FFFFFF" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.processingBottomTitle}>AI is polishing your photo</Text>
-            <Text style={styles.processingBottomSub}>{PROCESSING_STEPS[stepIndex]}</Text>
+            <Text style={styles.processingBottomTitle}>{aiPolishingText}</Text>
+            <Text style={styles.processingBottomSub}>{processingSteps[stepIndex]}</Text>
           </View>
         </View>
       )}
@@ -279,9 +312,8 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
                 <View style={styles.captureInner} />
               </TouchableOpacity>
 
-              {/* Bilingual label */}
-              <Text style={styles.captureLabel}>Take a photo</Text>
-              {takeSub ? <Text style={styles.captureSub}>{takeSub}</Text> : null}
+              {/* Localized label */}
+              <Text style={styles.captureLabel}>{takeLabel}</Text>
 
               {/* Gallery option */}
               <TouchableOpacity style={styles.galleryBtn} onPress={handleGallery} activeOpacity={0.8}>
@@ -293,13 +325,13 @@ export function CameraStep({ imageUri, onImageCaptured, onNext }: CameraStepProp
             <>
               {/* Use photo */}
               <TouchableOpacity style={styles.usePhotoBtn} onPress={onNext} activeOpacity={0.88}>
-                <Text style={styles.usePhotoBtnText}>Use this photo →</Text>
+                <Text style={styles.usePhotoBtnText}>{usePhotoLabel}</Text>
               </TouchableOpacity>
 
               {/* Retake */}
               <TouchableOpacity style={styles.retakeBtn} onPress={handleRetake} activeOpacity={0.8}>
                 <RefreshCw size={15} color={Colors.textSecondary} />
-                <Text style={styles.retakeBtnText}>Retake</Text>
+                <Text style={styles.retakeBtnText}>{retakeLabel}</Text>
               </TouchableOpacity>
             </>
           )}

@@ -157,6 +157,7 @@ export interface TranslationKeys {
   profile_section_app: string;
   profile_section_help: string;
   profile_shop_name: string;
+  profile_shop_logo?: string;
   profile_scheme_id: string;
   profile_location: string;
   profile_bank_account: string;
@@ -377,6 +378,7 @@ export const translations: Translations = {
     profile_section_app: 'App',
     profile_section_help: 'Help & Legal',
     profile_shop_name: 'Shop Name',
+    profile_shop_logo: 'Shop Logo & Brand Mark',
     profile_scheme_id: 'Scheme / Cluster ID',
     profile_location: 'Location',
     profile_bank_account: 'Bank Account',

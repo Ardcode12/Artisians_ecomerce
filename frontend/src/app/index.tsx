@@ -50,20 +50,20 @@ const SELL_CARD_BG = '#D6E8D8';
 // ── Multilingual Voice Introduction & Section Explanations (STEP 3a) ───────────
 export const HOME_PAGE_OVERVIEW_TEXTS: Record<string, string> = {
   en:
-    "Welcome to Kala Udyam! This app helps artisans like you sell your handmade products and find money and training programs for your craft. " +
+    "Welcome to Craft Bridge! Empowering Craft, Expanding Markets. This app helps artisans like you sell your handmade products and find money and training programs for your craft. " +
     "First, tap 'Sell a Product' to take photos and list your items. " +
     "Next, open 'My Products' to view your items, or tap 'Help' if you need guidance. " +
     "Tap 'Government Schemes' to find financial support and grants. " +
     "At the bottom, you can track your orders and total earnings. " +
     "Welcome to your Artisan Dashboard. Here you can snap a photo to list your handmade craft in 60 seconds, manage active listings, get help, or find government schemes and grants. Tap any section's speaker icon to hear more.",
   hi:
-    "कला उद्यम में आपका स्वागत है! यह ऐप आप जैसे कारीगरों को अपने हस्तनिर्मित उत्पाद बेचने और अपने शिल्प के लिए धन, ऋण और प्रशिक्षण कार्यक्रम खोजने में मदद करता है। " +
+    "क्राफ्ट ब्रिज में आपका स्वागत है! शिल्प को सशक्त बनाना, बाजारों का विस्तार करना। यह ऐप आप जैसे कारीगरों को अपने हस्तनिर्मित उत्पाद बेचने और अपने शिल्प के लिए धन, ऋण और प्रशिक्षण कार्यक्रम खोजने में मदद करता है। " +
     "सबसे पहले, अपने उत्पादों की तस्वीरें खींचने और उन्हें लिस्ट करने के लिए 'उत्पाद बेचें' पर टैप करें। " +
     "इसके बाद, अपने सामान देखने के लिए 'मेरे उत्पाद' खोलें, या मार्गदर्शन चाहिए तो 'सहायता' पर टैप करें। " +
     "वित्तीय सहायता और सरकारी अनुदान खोजने के लिए 'सरकारी योजनाएं' पर टैप करें। " +
     "नीचे, आप अपने ऑर्डर और कुल कमाई देख सकते हैं। किसी भी सेक्शन के बारे में और सुनने के लिए स्पीकर आइकन पर टैप करें।",
   ta:
-    "கலா உத்யமிற்கு நல்வரவு! இந்த செயலி உங்களைப் போன்ற கைவினைஞர்கள் தங்கள் கைவினைப் பொருட்களை விற்கவும், உங்கள் தொழிலுக்கான நிதி, கடன் மற்றும் பயிற்சித் திட்டங்களைப் பெறவும் உதவுகிறது. " +
+    "கிராஃப்ட் பிரிட்ஜிற்கு நல்வரவு! கைவினைக்கு அதிகாரம், சந்தைகளை விரிவாக்குதல். இந்த செயலி உங்களைப் போன்ற கைவினைஞர்கள் தங்கள் கைவினைப் பொருட்களை விற்கவும், உங்கள் தொழிலுக்கான நிதி, கடன் மற்றும் பயிற்சித் திட்டங்களைப் பெறவும் உதவுகிறது. " +
     "முதலில், உங்கள் பொருட்களின் படங்களை எடுத்து விற்க 'பொருளை விற்கவும்' என்பதைத் தட்டவும். " +
     "அடுத்து, உங்கள் பொருட்களைக் காண 'என் பொருட்கள்' என்பதைத் திறக்கவும், அல்லது வழிகாட்டல் தேவைப்பட்டால் 'உதவி' என்பதைத் தட்டவும். " +
     "அரசு நிதியுதவி மற்றும் மானியங்களைப் பெற 'அரசு நலத்திட்டங்கள்' என்பதைத் தட்டவும். " +

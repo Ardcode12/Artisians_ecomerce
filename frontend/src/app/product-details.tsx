@@ -36,6 +36,8 @@ import {
   CreditCard,
   MapPin,
   CheckCircle2,
+  ChevronRight,
+  Store,
 } from 'lucide-react-native';
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { EditProductModal, EditableProduct } from '@/components/artisan/EditProductModal';
@@ -44,12 +46,16 @@ import { useCart } from '@/context/CartContext';
 import { BACKEND_URL, normalizeImageUrl } from '@/config/api';
 import { useProductSpeech } from '@/utils/speech';
 import { ProductListenButton } from '@/components/ui/ProductListenButton';
-
+import { useLanguage } from '@/context/LanguageContext';
 import { getSelectedLanguage } from '@/utils/language-utils';
 
 export interface DetailedProduct extends EditableProduct {
   artisan_id?: string;
   artisan_name?: string;
+  artisan_shop_name?: string;
+  artisan_shop_logo?: string;
+  shop_name?: string;
+  shop_logo_url?: string;
 }
 
 const LANG_OPTIONS = ['English', 'हिंदी', 'தமிழ்'];
@@ -68,15 +74,19 @@ export default function ProductDetailsScreen() {
   const params = useLocalSearchParams();
   const { userRole, user, profile } = useAuth();
   const { addToCart, cartCount } = useCart();
+  const { language } = useLanguage();
 
-  // Initialize selectedLang based on global active language
-  const appLang = getSelectedLanguage();
-  const initialLang = appLang === 'ta' ? 'தமிழ்' : appLang === 'hi' ? 'हिंदी' : 'English';
+  const currentLangLabel = language === 'ta' ? 'தமிழ்' : language === 'hi' ? 'हिंदी' : 'English';
+  const [selectedLang, setSelectedLang] = useState(currentLangLabel);
+
+  useEffect(() => {
+    setSelectedLang(currentLangLabel);
+  }, [language]);
 
   // Local state for product data
   const [product, setProduct] = useState<DetailedProduct>({
     id: (params.id as string) || '',
-    title: (params.title as string) || 'Hand-woven Cotton Dupatta',
+    title: (params.title as string) || (language === 'ta' ? 'கைத்தறி பருத்தி துப்பட்டா' : language === 'hi' ? 'हाथ से बुना सूती दुपट्टा' : 'Hand-woven Cotton Dupatta'),
     category: (params.category as string) || (params.subtitle as string) || 'Handloom Textile',
     craft_type: (params.craft_type as string) || (params.subtitle as string) || 'Handloom Textile',
     price: (params.price as string) || '₹650',
@@ -87,11 +97,14 @@ export default function ProductDetailsScreen() {
     units: parseInt(params.units as string) || 1,
     status: (params.status as string) || 'published',
     artisan_id: (params.artisan_id as string) || undefined,
-    artisan_name: (params.artisan_name as string) || 'Master Artisan',
+    artisan_name: (params.artisan_name as string) || (language === 'ta' ? 'முதன்மை கைவினைஞர்' : language === 'hi' ? 'मास्टर कारीगर' : 'Master Artisan'),
+    artisan_shop_name: (params.artisan_shop_name as string) || (params.shop_name as string) || (params.artisan_name as string) || 'Artisan Studio',
+    artisan_shop_logo: (params.artisan_shop_logo as string) || (params.shop_logo_url as string) || '',
+    shop_name: (params.artisan_shop_name as string) || (params.shop_name as string) || (params.artisan_name as string) || 'Artisan Studio',
+    shop_logo_url: (params.artisan_shop_logo as string) || (params.shop_logo_url as string) || '',
   });
 
   const [quantity, setQuantity] = useState(1);
-  const [selectedLang, setSelectedLang] = useState(initialLang);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(1);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
@@ -156,7 +169,11 @@ export default function ProductDetailsScreen() {
 
   // Delete Artisan Product
   const promptDelete = () => {
-    const confirmMessage = `Are you sure you want to delete "${product.title}"? This action cannot be undone.`;
+    const confirmMessage = language === 'ta'
+      ? `"${product.title}" ஐ நீக்க விரும்புகிறீர்களா? இந்த செயலை மாற்ற முடியாது.`
+      : language === 'hi'
+      ? `क्या आप वाकई "${product.title}" को हटाना चाहते हैं? यह क्रिया पूर्ववत नहीं की जा सकती।`
+      : `Are you sure you want to delete "${product.title}"? This action cannot be undone.`;
 
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined' && window.confirm(confirmMessage)) {
@@ -166,11 +183,11 @@ export default function ProductDetailsScreen() {
     }
 
     Alert.alert(
-      'Delete Product',
+      language === 'ta' ? 'தயாரிப்பை நீக்கு' : language === 'hi' ? 'उत्पाद हटाएं' : 'Delete Product',
       confirmMessage,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: executeDelete },
+        { text: language === 'ta' ? 'ரத்து செய்' : language === 'hi' ? 'रद्द करें' : 'Cancel', style: 'cancel' },
+        { text: language === 'ta' ? 'நீக்கு' : language === 'hi' ? 'हटाएं' : 'Delete', style: 'destructive', onPress: executeDelete },
       ],
       { cancelable: true }
     );
@@ -195,12 +212,18 @@ export default function ProductDetailsScreen() {
       }
 
       if (Platform.OS !== 'web') {
-        Alert.alert('Deleted', 'Product was successfully removed.');
+        Alert.alert(
+          language === 'ta' ? 'நீக்கப்பட்டது' : language === 'hi' ? 'हटा दिया गया' : 'Deleted',
+          language === 'ta' ? 'தயாரிப்பு வெற்றிகரமாக நீக்கப்பட்டது.' : language === 'hi' ? 'उत्पाद सफलतापूर्वक हटा दिया गया।' : 'Product was successfully removed.'
+        );
       }
       router.replace('/listings');
     } catch (err: any) {
       console.warn('[ProductDetails] Delete error:', err.message);
-      Alert.alert('Error', err.message || 'Could not delete product');
+      Alert.alert(
+        language === 'ta' ? 'பிழை' : language === 'hi' ? 'त्रुटि' : 'Error',
+        err.message || (language === 'ta' ? 'தயாரிப்பை நீக்க முடியவில்லை' : language === 'hi' ? 'उत्पाद नहीं हटाया जा सका' : 'Could not delete product')
+      );
       setIsDeleting(false);
     }
   };
@@ -221,15 +244,22 @@ export default function ProductDetailsScreen() {
       quantity
     );
 
-    Alert.alert('Added to Cart', `Added ${quantity} × ${product.title} to your bag!`, [
-      { text: 'Keep Shopping', style: 'cancel' },
-      { text: 'View Cart', onPress: () => router.push('/cart') },
-    ]);
+    Alert.alert(
+      language === 'ta' ? 'கார்ட்டில் சேர்க்கப்பட்டது' : language === 'hi' ? 'कार्ट में जोड़ा गया' : 'Added to Cart',
+      language === 'ta' ? `${quantity} × ${product.title} உங்கள் பையில் சேர்க்கப்பட்டது!` : language === 'hi' ? `${quantity} × ${product.title} आपके बैग में जोड़ा गया!` : `Added ${quantity} × ${product.title} to your bag!`,
+      [
+        { text: language === 'ta' ? 'ஷாப்பிங் தொடர்க' : language === 'hi' ? 'खरीदारी जारी रखें' : 'Keep Shopping', style: 'cancel' },
+        { text: language === 'ta' ? 'கார்ட்டைப் பார்' : language === 'hi' ? 'कार्ट देखें' : 'View Cart', onPress: () => router.push('/cart') },
+      ]
+    );
   };
 
   // Share Product
   const handleShare = () => {
-    Alert.alert('Share Product', `Share link for "${product.title}" copied to clipboard!`);
+    Alert.alert(
+      language === 'ta' ? 'தயாரிப்பைப் பகிர்' : language === 'hi' ? 'उत्पाद साझा करें' : 'Share Product',
+      language === 'ta' ? `"${product.title}" இணைப்பு நகலெடுக்கப்பட்டது!` : language === 'hi' ? `"${product.title}" का लिंक क्लिपबोर्ड पर कॉपी किया गया!` : `Share link for "${product.title}" copied to clipboard!`
+    );
   };
 
   // Calculate Numerical Total for Direct Buy
@@ -240,7 +270,10 @@ export default function ProductDetailsScreen() {
   // Direct Order Submission
   const handleConfirmDirectOrder = async () => {
     if (!deliveryAddress.trim()) {
-      Alert.alert('Address Required', 'Please enter your shipping delivery address.');
+      Alert.alert(
+        language === 'ta' ? 'முகவரி தேவை' : language === 'hi' ? 'पता आवश्यक' : 'Address Required',
+        language === 'ta' ? 'உங்கள் விநியோக முகவரியை உள்ளிடவும்.' : language === 'hi' ? 'कृपया अपना शिपिंग डिलीवरी पता दर्ज करें।' : 'Please enter your shipping delivery address.'
+      );
       return;
     }
 
@@ -251,9 +284,9 @@ export default function ProductDetailsScreen() {
         product_title: product.title,
         product_image: heroImage,
         artisan_id: product.artisan_id || null,
-        artisan_name: product.artisan_name || 'Master Artisan',
+        artisan_name: product.artisan_name || (language === 'ta' ? 'முதன்மை கைவினைஞர்' : language === 'hi' ? 'मास्टर कारीगर' : 'Master Artisan'),
         buyer_phone: profile?.phone || '+91 93450 73473',
-        buyer_name: profile?.name || 'Handmade Buyer',
+        buyer_name: profile?.name || (language === 'ta' ? 'வாங்குபவர்' : language === 'hi' ? 'खरीदार' : 'Handmade Buyer'),
         buyer_address: deliveryAddress.trim(),
         quantity: quantity,
         total_amount: formattedOrderTotal,
@@ -274,7 +307,10 @@ export default function ProductDetailsScreen() {
         throw new Error(data.error || 'Failed to place order');
       }
     } catch (err: any) {
-      Alert.alert('Order Failed', err.message || 'Could not place order. Please try again.');
+      Alert.alert(
+        language === 'ta' ? 'ஆர்டர் தோல்வியடைந்தது' : language === 'hi' ? 'ऑर्डर विफल' : 'Order Failed',
+        err.message || (language === 'ta' ? 'ஆர்டர் செய்ய முடியவில்லை. மீண்டும் முயற்சிக்கவும்.' : language === 'hi' ? 'ऑर्डर नहीं दिया जा सका। कृपया पुनः प्रयास करें।' : 'Could not place order. Please try again.')
+      );
     } finally {
       setOrderSubmitting(false);
     }
@@ -283,7 +319,10 @@ export default function ProductDetailsScreen() {
   // Send Direct Inquiry to Artisan
   const handleSendInquiry = async () => {
     if (!inquiryMessage.trim()) {
-      Alert.alert('Empty Message', 'Please enter your question for the artisan.');
+      Alert.alert(
+        language === 'ta' ? 'வெற்று செய்தி' : language === 'hi' ? 'खाली संदेश' : 'Empty Message',
+        language === 'ta' ? 'கைவினைஞரிடம் உங்கள் கேள்வியை உள்ளிடவும்.' : language === 'hi' ? 'कृपया कारीगर के लिए अपना प्रश्न दर्ज करें।' : 'Please enter your question for the artisan.'
+      );
       return;
     }
 
@@ -294,7 +333,7 @@ export default function ProductDetailsScreen() {
         product_title: product.title,
         artisan_id: product.artisan_id || null,
         buyer_phone: profile?.phone || '+91 93450 73473',
-        buyer_name: profile?.name || 'Interested Buyer',
+        buyer_name: profile?.name || (language === 'ta' ? 'ஆர்வம் கொண்ட வாங்குபவர்' : language === 'hi' ? 'इच्छुक खरीदार' : 'Interested Buyer'),
         message: inquiryMessage.trim(),
       };
 
@@ -308,12 +347,18 @@ export default function ProductDetailsScreen() {
       if (res.ok && data.success) {
         setInquiryModalOpen(false);
         setInquiryMessage('');
-        Alert.alert('Inquiry Sent', 'Your message has been sent directly to the artisan. They will respond shortly!');
+        Alert.alert(
+          language === 'ta' ? 'விசாரணை அனுப்பப்பட்டது' : language === 'hi' ? 'पूछताछ भेजी गई' : 'Inquiry Sent',
+          language === 'ta' ? 'உங்கள் செய்தி நேரடியாக கைவினைஞருக்கு அனுப்பப்பட்டது. விரைவில் பதிலளிப்பார்கள்!' : language === 'hi' ? 'आपका संदेश सीधे कारीगर को भेज दिया गया है। वे शीघ्र उत्तर देंगे!' : 'Your message has been sent directly to the artisan. They will respond shortly!'
+        );
       } else {
         throw new Error(data.error || 'Failed to send inquiry');
       }
     } catch (err: any) {
-      Alert.alert('Inquiry Failed', err.message || 'Could not send message.');
+      Alert.alert(
+        language === 'ta' ? 'விசாரணை தோல்வியடைந்தது' : language === 'hi' ? 'पूछताछ विफल' : 'Inquiry Failed',
+        err.message || (language === 'ta' ? 'செய்தி அனுப்ப முடியவில்லை.' : language === 'hi' ? 'संदेश नहीं भेजा जा सका।' : 'Could not send message.')
+      );
     } finally {
       setInquirySubmitting(false);
     }
@@ -459,7 +504,9 @@ export default function ProductDetailsScreen() {
               <View style={styles.badgeRow}>
                 <View style={styles.aiTagRow}>
                   <Sparkles size={12} color="#D97706" />
-                  <Text style={styles.aiTagText}>GI & Heritage Certified</Text>
+                  <Text style={styles.aiTagText}>
+                    {language === 'ta' ? 'புவிசார் & பாரம்பரிய சான்றிதழ்' : language === 'hi' ? 'जीआई और विरासत प्रमाणित' : 'GI & Heritage Certified'}
+                  </Text>
                 </View>
                 {product.status ? (
                   <View
@@ -471,7 +518,11 @@ export default function ProductDetailsScreen() {
                     ]}
                   >
                     <Text style={styles.statusPillText}>
-                      {product.status.toUpperCase()}
+                      {product.status === 'published'
+                        ? (language === 'ta' ? 'வெளியிடப்பட்டது' : language === 'hi' ? 'प्रकाशित' : 'PUBLISHED')
+                        : product.status === 'draft'
+                        ? (language === 'ta' ? 'வரைவு' : language === 'hi' ? 'ड्राफ्ट' : 'DRAFT')
+                        : (language === 'ta' ? 'விற்பனையானது' : language === 'hi' ? 'बिका हुआ' : 'SOLD')}
                     </Text>
                   </View>
                 ) : null}
@@ -479,6 +530,48 @@ export default function ProductDetailsScreen() {
 
               <Text style={styles.title}>{product.title}</Text>
               <Text style={styles.subtitle}>{product.category || product.craft_type}</Text>
+
+              {/* Tappable Verified Shop & Brand Mark Row */}
+              <TouchableOpacity
+                style={styles.detailSellerRow}
+                onPress={() => {
+                  if (userRole === 'buyer') {
+                    router.push('/buyer-home');
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={styles.detailSellerLeft}>
+                  {product.artisan_shop_logo || product.shop_logo_url ? (
+                    <Image
+                      source={{ uri: normalizeImageUrl(product.artisan_shop_logo || product.shop_logo_url) }}
+                      style={styles.detailSellerLogo}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <View style={styles.detailSellerPlaceholder}>
+                      <Text style={styles.detailSellerPlaceholderText}>
+                        {(product.artisan_shop_name || product.shop_name || product.artisan_name || 'AS').slice(0, 2).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.detailSellerName} numberOfLines={1}>
+                      {product.artisan_shop_name || product.shop_name || product.artisan_name || 'Artisan Studio'}
+                    </Text>
+                    <Text style={styles.detailSellerSub}>
+                      {product.craft_type || product.category || 'Traditional Craft'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.detailSellerRight}>
+                  <View style={styles.detailVerifiedBadge}>
+                    <Check size={11} color="#059669" strokeWidth={3} />
+                    <Text style={styles.detailVerifiedText}>Verified ✓</Text>
+                  </View>
+                  <ChevronRight size={15} color="#9CA3AF" />
+                </View>
+              </TouchableOpacity>
 
               {/* Rating & Craft Marker */}
               <View style={styles.ratingRow}>
@@ -491,7 +584,9 @@ export default function ProductDetailsScreen() {
                     strokeWidth={0}
                   />
                 ))}
-                <Text style={styles.ratingCount}>4.9 (270 Reviews)</Text>
+                <Text style={styles.ratingCount}>
+                  4.9 ({language === 'ta' ? '270 விமர்சனங்கள்' : language === 'hi' ? '270 समीक्षाएं' : '270 Reviews'})
+                </Text>
               </View>
             </View>
 
@@ -515,7 +610,9 @@ export default function ProductDetailsScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={styles.stockStatus}>
-                {product.units && product.units > 0 ? `${product.units} in studio` : 'In stock'}
+                {product.units && product.units > 0
+                  ? (language === 'ta' ? `${product.units} இருப்பில் உள்ளது` : language === 'hi' ? `${product.units} उपलब्ध है` : `${product.units} in studio`)
+                  : (language === 'ta' ? 'இருப்பில் உள்ளது' : language === 'hi' ? 'उपलब्ध है' : 'In stock')}
               </Text>
             </View>
           </View>
@@ -524,12 +621,16 @@ export default function ProductDetailsScreen() {
           <View style={styles.trustBanner}>
             <View style={styles.trustItem}>
               <Truck size={16} color="#0D0D0D" />
-              <Text style={styles.trustText}>Free All-India Shipping</Text>
+              <Text style={styles.trustText}>
+                {language === 'ta' ? 'அனைத்து இந்தியா இலவச விநியோகம்' : language === 'hi' ? 'पूरे भारत में निःशुल्क शिपिंग' : 'Free All-India Shipping'}
+              </Text>
             </View>
             <View style={styles.trustDivider} />
             <View style={styles.trustItem}>
               <ShieldCheck size={16} color="#10B981" />
-              <Text style={styles.trustText}>100% Genuine Craft</Text>
+              <Text style={styles.trustText}>
+                {language === 'ta' ? '100% அசல் கைவினை' : language === 'hi' ? '100% प्रामाणिक शिल्प' : '100% Genuine Craft'}
+              </Text>
             </View>
           </View>
 
@@ -544,7 +645,9 @@ export default function ProductDetailsScreen() {
 
           {/* ── Language Preview Selector ─────────────────────── */}
           <View style={styles.langSection}>
-            <Text style={styles.sectionHeading}>Description Language</Text>
+            <Text style={styles.sectionHeading}>
+              {language === 'ta' ? 'விளக்க மொழி' : language === 'hi' ? 'विवरण की भाषा' : 'Description Language'}
+            </Text>
             <View style={styles.langRow}>
               {LANG_OPTIONS.map((lang) => {
                 const isSelected = lang === selectedLang;
@@ -572,10 +675,14 @@ export default function ProductDetailsScreen() {
           {/* ── Description ─────────────────────────────────────── */}
           <View style={styles.descSection}>
             <View style={styles.descHeaderRow}>
-              <Text style={styles.sectionHeading}>Artisan & Craft Story</Text>
+              <Text style={styles.sectionHeading}>
+                {language === 'ta' ? 'கைவினைஞர் & கைவினை கதை' : language === 'hi' ? 'कारीगर और शिल्प की कहानी' : 'Artisan & Craft Story'}
+              </Text>
               <View style={styles.aiBadgePill}>
                 <Sparkles size={11} color="#D97706" />
-                <Text style={styles.aiBadgeText}>AI Enhanced</Text>
+                <Text style={styles.aiBadgeText}>
+                  {language === 'ta' ? 'AI மேம்படுத்தப்பட்டது' : language === 'hi' ? 'AI उन्नत' : 'AI Enhanced'}
+                </Text>
               </View>
             </View>
             <Text style={styles.descText}>{getDisplayDescription()}</Text>
@@ -586,15 +693,21 @@ export default function ProductDetailsScreen() {
             <View style={styles.gemPanel}>
               <View style={styles.gemPanelHeader}>
                 <ShieldCheck size={15} color="#2563EB" />
-                <Text style={styles.gemPanelTitle}>GeM Portal Fields</Text>
+                <Text style={styles.gemPanelTitle}>
+                  {language === 'ta' ? 'GeM போர்டல் புலங்கள்' : language === 'hi' ? 'GeM पोर्टल फ़ील्ड' : 'GeM Portal Fields'}
+                </Text>
                 {product.hsn_code ? (
                   <View style={styles.gemReadyBadge}>
                     <CheckCircle2 size={11} color="#059669" />
-                    <Text style={styles.gemReadyText}>GeM Ready</Text>
+                    <Text style={styles.gemReadyText}>
+                      {language === 'ta' ? 'GeM தயார்' : language === 'hi' ? 'GeM तैयार' : 'GeM Ready'}
+                    </Text>
                   </View>
                 ) : (
                   <View style={styles.gemIncBadge}>
-                    <Text style={styles.gemIncText}>Incomplete</Text>
+                    <Text style={styles.gemIncText}>
+                      {language === 'ta' ? 'முழுமையடையாதது' : language === 'hi' ? 'अधूरा' : 'Incomplete'}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -602,7 +715,7 @@ export default function ProductDetailsScreen() {
               <View style={styles.gemGrid}>
                 {/* Row 1 */}
                 <View style={styles.gemCell}>
-                  <Text style={styles.gemCellLabel}>HSN Code</Text>
+                  <Text style={styles.gemCellLabel}>{language === 'ta' ? 'HSN குறியீடு' : language === 'hi' ? 'HSN कोड' : 'HSN Code'}</Text>
                   <Text style={styles.gemCellValue}>{product.hsn_code || '—'}</Text>
                 </View>
                 <View style={styles.gemCell}>
@@ -611,36 +724,36 @@ export default function ProductDetailsScreen() {
                 </View>
                 {/* Row 2 */}
                 <View style={styles.gemCell}>
-                  <Text style={styles.gemCellLabel}>Pehchan ID</Text>
+                  <Text style={styles.gemCellLabel}>{language === 'ta' ? 'பெஹ்சான் ஐடி' : language === 'hi' ? 'पहचान आईडी' : 'Pehchan ID'}</Text>
                   <Text style={styles.gemCellValue} numberOfLines={1}>{product.pehchan_id || '—'}</Text>
                 </View>
                 <View style={styles.gemCell}>
-                  <Text style={styles.gemCellLabel}>GI Tag No.</Text>
+                  <Text style={styles.gemCellLabel}>{language === 'ta' ? 'GI குறியீடு எண்' : language === 'hi' ? 'जीआई टैग सं.' : 'GI Tag No.'}</Text>
                   <Text style={styles.gemCellValue}>{product.gi_tag_num || '—'}</Text>
                 </View>
                 {/* Row 3 */}
                 <View style={styles.gemCell}>
-                  <Text style={styles.gemCellLabel}>Origin</Text>
-                  <Text style={styles.gemCellValue}>{product.country_of_origin || 'India'}</Text>
+                  <Text style={styles.gemCellLabel}>{language === 'ta' ? 'தோற்றம்' : language === 'hi' ? 'उत्पत्ति' : 'Origin'}</Text>
+                  <Text style={styles.gemCellValue}>{product.country_of_origin || (language === 'ta' ? 'இந்தியா' : language === 'hi' ? 'भारत' : 'India')}</Text>
                 </View>
                 <View style={styles.gemCell}>
-                  <Text style={styles.gemCellLabel}>Local Content</Text>
+                  <Text style={styles.gemCellLabel}>{language === 'ta' ? 'உள்ளூர் உள்ளடக்கம்' : language === 'hi' ? 'स्थानीय सामग्री' : 'Local Content'}</Text>
                   <Text style={styles.gemCellValue}>{product.local_content_pct ?? 100}%</Text>
                 </View>
                 {/* Row 4 */}
                 <View style={styles.gemCell}>
-                  <Text style={styles.gemCellLabel}>Weight (kg)</Text>
+                  <Text style={styles.gemCellLabel}>{language === 'ta' ? 'எடை (கிலோ)' : language === 'hi' ? 'वज़न (किग्रा)' : 'Weight (kg)'}</Text>
                   <Text style={styles.gemCellValue}>{product.weight_kg ?? '—'}</Text>
                 </View>
                 <View style={styles.gemCell}>
-                  <Text style={styles.gemCellLabel}>Dimensions</Text>
+                  <Text style={styles.gemCellLabel}>{language === 'ta' ? 'பரிமாணங்கள்' : language === 'hi' ? 'आयाम' : 'Dimensions'}</Text>
                   <Text style={styles.gemCellValue} numberOfLines={1}>{product.dimensions || '—'}</Text>
                 </View>
               </View>
 
               {product.brand_oem ? (
                 <View style={styles.gemOEMRow}>
-                  <Text style={styles.gemCellLabel}>Brand / OEM: </Text>
+                  <Text style={styles.gemCellLabel}>{language === 'ta' ? 'பிராண்ட் / OEM: ' : language === 'hi' ? 'ब्रांड / ओईएम: ' : 'Brand / OEM: '}</Text>
                   <Text style={styles.gemCellValue}>{product.brand_oem}</Text>
                 </View>
               ) : null}
@@ -654,7 +767,9 @@ export default function ProductDetailsScreen() {
             activeOpacity={0.85}
           >
             <MessageCircle size={17} color="#0D0D0D" />
-            <Text style={styles.askArtisanText}>Have a question? Message the artisan</Text>
+            <Text style={styles.askArtisanText}>
+              {language === 'ta' ? 'கேள்வி உள்ளதா? கைவினைஞருக்கு செய்தி அனுப்பவும்' : language === 'hi' ? 'कोई प्रश्न है? कारीगर को संदेश भेजें' : 'Have a question? Message the artisan'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -667,9 +782,13 @@ export default function ProductDetailsScreen() {
         ]}
       >
         <View style={styles.priceCol}>
-          <Text style={styles.priceLabel}>Price</Text>
+          <Text style={styles.priceLabel}>
+            {language === 'ta' ? 'விலை' : language === 'hi' ? 'मूल्य' : 'Price'}
+          </Text>
           <Text style={styles.priceValue}>{product.price}</Text>
-          <Text style={styles.priceSub}>Free shipping</Text>
+          <Text style={styles.priceSub}>
+            {language === 'ta' ? 'இலவச விநியோகம்' : language === 'hi' ? 'निःशुल्क शिपिंग' : 'Free shipping'}
+          </Text>
         </View>
 
         {isArtisanOwner ? (
@@ -681,7 +800,9 @@ export default function ProductDetailsScreen() {
               activeOpacity={0.88}
             >
               <Pencil size={16} color="#FFFFFF" strokeWidth={2.5} />
-              <Text style={styles.editBtnText}>Edit Product</Text>
+              <Text style={styles.editBtnText}>
+                {language === 'ta' ? 'தயாரிப்பைத் திருத்து' : language === 'hi' ? 'उत्पाद संपादित करें' : 'Edit Product'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -702,7 +823,9 @@ export default function ProductDetailsScreen() {
               activeOpacity={0.85}
             >
               <ShoppingBag size={17} color="#0D0D0D" strokeWidth={2} />
-              <Text style={styles.addToCartText}>Add to Cart</Text>
+              <Text style={styles.addToCartText}>
+                {language === 'ta' ? 'கார்ட்டில் சேர்' : language === 'hi' ? 'कार्ट में जोड़ें' : 'Add to Cart'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -710,7 +833,9 @@ export default function ProductDetailsScreen() {
               onPress={() => setBuyModalOpen(true)}
               activeOpacity={0.88}
             >
-              <Text style={styles.buyNowText}>Buy Now</Text>
+              <Text style={styles.buyNowText}>
+                {language === 'ta' ? 'உடனே வாங்கு' : language === 'hi' ? 'अभी खरीदें' : 'Buy Now'}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -747,15 +872,22 @@ export default function ProductDetailsScreen() {
                 <View style={styles.successIconCircle}>
                   <CheckCircle2 size={44} color="#10B981" />
                 </View>
-                <Text style={styles.successTitle}>Order Confirmed!</Text>
+                <Text style={styles.successTitle}>
+                  {language === 'ta' ? 'ஆர்டர் உறுதி செய்யப்பட்டது!' : language === 'hi' ? 'ऑर्डर की पुष्टि हो गई!' : 'Order Confirmed!'}
+                </Text>
                 <Text style={styles.successSub}>
-                  Your order #{placedOrderId.slice(-6).toUpperCase()} has been placed.
-                  The artisan has been notified to prepare your handcrafted piece.
+                  {language === 'ta'
+                    ? `உங்கள் ஆர்டர் #${placedOrderId.slice(-6).toUpperCase()} வைக்கப்பட்டது. கைவினைப் பொருளைத் தயாரிக்க கைவினைஞருக்கு அறிவிக்கப்பட்டுள்ளது.`
+                    : language === 'hi'
+                    ? `आपका ऑर्डर #${placedOrderId.slice(-6).toUpperCase()} दर्ज कर लिया गया है। शिल्प तैयार करने के लिए कारीगर को सूचित कर दिया गया है।`
+                    : `Your order #${placedOrderId.slice(-6).toUpperCase()} has been placed. The artisan has been notified to prepare your handcrafted piece.`}
                 </Text>
 
                 <View style={styles.orderSummaryPill}>
                   <Text style={styles.summaryItemTitle}>{product.title}</Text>
-                  <Text style={styles.summaryItemQty}>Qty: {quantity} · Total: {formattedOrderTotal}</Text>
+                  <Text style={styles.summaryItemQty}>
+                    {language === 'ta' ? `அளவு: ${quantity} · மொத்தம்: ${formattedOrderTotal}` : language === 'hi' ? `मात्रा: ${quantity} · कुल: ${formattedOrderTotal}` : `Qty: ${quantity} · Total: ${formattedOrderTotal}`}
+                  </Text>
                 </View>
 
                 <View style={styles.successButtonsRow}>
@@ -767,7 +899,9 @@ export default function ProductDetailsScreen() {
                     }}
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.secondaryDoneText}>Keep Browsing</Text>
+                    <Text style={styles.secondaryDoneText}>
+                      {language === 'ta' ? 'தொடர்ந்து உலாவுக' : language === 'hi' ? 'खरीदारी जारी रखें' : 'Keep Browsing'}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -779,7 +913,9 @@ export default function ProductDetailsScreen() {
                     }}
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.primaryDoneText}>View in Orders →</Text>
+                    <Text style={styles.primaryDoneText}>
+                      {language === 'ta' ? 'ஆர்டர்களில் பார்க்க →' : language === 'hi' ? 'ऑर्डर देखें →' : 'View in Orders →'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -788,7 +924,9 @@ export default function ProductDetailsScreen() {
               <>
                 {/* Modal Header */}
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Quick Direct Order</Text>
+                  <Text style={styles.modalTitle}>
+                    {language === 'ta' ? 'விரைவு நேரடி ஆர்டர்' : language === 'hi' ? 'त्वरित प्रत्यक्ष ऑर्डर' : 'Quick Direct Order'}
+                  </Text>
                   <TouchableOpacity
                     style={styles.modalCloseBtn}
                     onPress={() => setBuyModalOpen(false)}
@@ -804,20 +942,22 @@ export default function ProductDetailsScreen() {
                   <Image source={{ uri: heroImage }} style={styles.checkoutThumb} resizeMode="cover" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.checkoutTitle} numberOfLines={1}>{product.title}</Text>
-                    <Text style={styles.checkoutMeta}>{product.craft_type || 'Handmade'}</Text>
+                    <Text style={styles.checkoutMeta}>{product.craft_type || (language === 'ta' ? 'கைவினை' : language === 'hi' ? 'हस्तनिर्मित' : 'Handmade')}</Text>
                     <Text style={styles.checkoutPrice}>{product.price} × {quantity} = {formattedOrderTotal}</Text>
                   </View>
                 </View>
 
                 {/* Delivery Address */}
-                <Text style={styles.inputLabel}>Delivery Address</Text>
+                <Text style={styles.inputLabel}>
+                  {language === 'ta' ? 'டெலிவரி முகவரி' : language === 'hi' ? 'डिलीवरी का पता' : 'Delivery Address'}
+                </Text>
                 <View style={styles.addressInputWrapper}>
                   <MapPin size={18} color="#8E8E93" style={{ marginTop: 2 }} />
                   <TextInput
                     style={styles.addressInput}
                     value={deliveryAddress}
                     onChangeText={setDeliveryAddress}
-                    placeholder="Enter complete shipping address..."
+                    placeholder={language === 'ta' ? 'முழு விநியோக முகவரியை உள்ளிடவும்...' : language === 'hi' ? 'पूरा शिपिंग पता दर्ज करें...' : 'Enter complete shipping address...'}
                     placeholderTextColor="#A0A0A5"
                     multiline
                     numberOfLines={2}
@@ -825,7 +965,9 @@ export default function ProductDetailsScreen() {
                 </View>
 
                 {/* Payment Method Selector */}
-                <Text style={styles.inputLabel}>Payment Method</Text>
+                <Text style={styles.inputLabel}>
+                  {language === 'ta' ? 'கட்டண முறை' : language === 'hi' ? 'भुगतान विधि' : 'Payment Method'}
+                </Text>
                 <View style={styles.paymentMethodsRow}>
                   <TouchableOpacity
                     style={[
@@ -841,7 +983,7 @@ export default function ProductDetailsScreen() {
                         paymentMethod === 'cod' && styles.paymentPillTextActive,
                       ]}
                     >
-                      Cash on Delivery
+                      {language === 'ta' ? 'பொருளைப் பெறும்போது பணம்' : language === 'hi' ? 'कैश ऑन डिलीवरी' : 'Cash on Delivery'}
                     </Text>
                   </TouchableOpacity>
 
@@ -877,7 +1019,7 @@ export default function ProductDetailsScreen() {
                         paymentMethod === 'card' && styles.paymentPillTextActive,
                       ]}
                     >
-                      Card
+                      {language === 'ta' ? 'கார்டு' : language === 'hi' ? 'कार्ड' : 'Card'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -885,7 +1027,9 @@ export default function ProductDetailsScreen() {
                 {/* Order Total & Confirm Button */}
                 <View style={styles.modalFooterRow}>
                   <View>
-                    <Text style={styles.footerTotalLabel}>Total Amount</Text>
+                    <Text style={styles.footerTotalLabel}>
+                      {language === 'ta' ? 'மொத்த தொகை' : language === 'hi' ? 'कुल राशि' : 'Total Amount'}
+                    </Text>
                     <Text style={styles.footerTotalValue}>{formattedOrderTotal}</Text>
                   </View>
 
@@ -898,7 +1042,9 @@ export default function ProductDetailsScreen() {
                     {orderSubmitting ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.confirmOrderText}>Confirm Order →</Text>
+                      <Text style={styles.confirmOrderText}>
+                        {language === 'ta' ? 'ஆர்டரை உறுதிப்படுத்துக →' : language === 'hi' ? 'ऑर्डर की पुष्टि करें →' : 'Confirm Order →'}
+                      </Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -921,7 +1067,9 @@ export default function ProductDetailsScreen() {
         >
           <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Message Artisan</Text>
+              <Text style={styles.modalTitle}>
+                {language === 'ta' ? 'கைவினைஞருக்கு செய்தி' : language === 'hi' ? 'कारीगर को संदेश' : 'Message Artisan'}
+              </Text>
               <TouchableOpacity
                 style={styles.modalCloseBtn}
                 onPress={() => setInquiryModalOpen(false)}
@@ -933,14 +1081,18 @@ export default function ProductDetailsScreen() {
             </View>
 
             <Text style={styles.inquiryIntro}>
-              Ask about custom sizing, materials, bulk orders, or dispatch dates.
+              {language === 'ta'
+                ? 'தனிப்பயன் அளவுகள், பொருட்கள் அல்லது மொத்த ஆர்டர்கள் பற்றி கேட்கவும்.'
+                : language === 'hi'
+                ? 'कस्टम साइजिंग, सामग्री, बल्क ऑर्डर या डिलीवरी तिथि के बारे में पूछें।'
+                : 'Ask about custom sizing, materials, bulk orders, or dispatch dates.'}
             </Text>
 
             <TextInput
               style={styles.inquiryTextInput}
               value={inquiryMessage}
               onChangeText={setInquiryMessage}
-              placeholder="e.g. Can this dupatta be made in indigo blue with 2.5m length?"
+              placeholder={language === 'ta' ? 'எ.கா. இந்த துப்பட்டாவை 2.5 மீட்டர் நீளத்தில் உருவாக்க முடியுமா?' : language === 'hi' ? 'उदा. क्या यह दुपट्टा 2.5 मीटर लंबाई में इंडिगो नीले रंग में बनाया जा सकता है?' : 'e.g. Can this dupatta be made in indigo blue with 2.5m length?'}
               placeholderTextColor="#A0A0A5"
               multiline
               numberOfLines={4}
@@ -955,7 +1107,9 @@ export default function ProductDetailsScreen() {
               {inquirySubmitting ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.sendInquiryBtnText}>Send Message to Artisan</Text>
+                <Text style={styles.sendInquiryBtnText}>
+                  {language === 'ta' ? 'செய்தி அனுப்புக →' : language === 'hi' ? 'संदेश भेजें →' : 'Send Message to Artisan'}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
@@ -1811,5 +1965,80 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#BFDBFE',
+  },
+
+  /* Tappable Verified Shop Brand Row */
+  detailSellerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F7F6F2',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E8E5DD',
+  },
+  detailSellerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  detailSellerLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  detailSellerPlaceholder: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#E8F3E4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailSellerPlaceholderText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2D5016',
+  },
+  detailSellerName: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: Fonts.headingBold,
+    color: '#1C1917',
+  },
+  detailSellerSub: {
+    fontSize: 11,
+    color: '#78716C',
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  detailSellerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  detailVerifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 0.8,
+    borderColor: '#A7F3D0',
+  },
+  detailVerifiedText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#065F46',
   },
 });

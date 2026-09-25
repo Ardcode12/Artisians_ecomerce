@@ -30,10 +30,12 @@ import {
 
 import { Colors, Fonts, Shadow } from '@/constants/artisan-theme';
 import { BACKEND_URL } from '@/config/api';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function ManageStockScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { language } = useLanguage();
   const params = useLocalSearchParams<{
     productId: string;
     productTitle: string;
@@ -56,6 +58,23 @@ export default function ManageStockScreen() {
   const handleUpdateStock = async () => {
     if (!params.productId) return;
     setSaving(true);
+    const successMsg =
+      language === 'ta'
+        ? 'கையிருப்பு வெற்றிகரமாக புதுப்பிக்கப்பட்டது!'
+        : language === 'hi'
+        ? 'स्टॉक सफलतापूर्वक अपडेट हो गया!'
+        : 'Stock updated successfully!';
+    const successTitle =
+      language === 'ta' ? 'வெற்றி' : language === 'hi' ? 'सफलता' : 'Success';
+    const errorTitle =
+      language === 'ta' ? 'பிழை' : language === 'hi' ? 'त्रुटि' : 'Error';
+    const fallbackErrMsg =
+      language === 'ta'
+        ? 'கையிருப்பை புதுப்பிக்க முடியவில்லை'
+        : language === 'hi'
+        ? 'स्टॉक अपडेट नहीं किया जा सका'
+        : 'Could not update stock';
+
     try {
       const resp = await fetch(`${BACKEND_URL}/api/products/${params.productId}`, {
         method: 'PUT',
@@ -65,24 +84,44 @@ export default function ManageStockScreen() {
       const data = await resp.json();
       if (resp.ok) {
         if (Platform.OS === 'web') {
-          window.alert('Stock updated successfully!');
+          window.alert(successMsg);
         } else {
-          Alert.alert('Success', 'Stock updated successfully!');
+          Alert.alert(successTitle, successMsg);
         }
         router.back();
       } else {
-        throw new Error(data.error || 'Failed to update stock');
+        throw new Error(data.error || fallbackErrMsg);
       }
     } catch (err: any) {
+      const errText = err.message || fallbackErrMsg;
       if (Platform.OS === 'web') {
-        window.alert(err.message || 'Could not update stock');
+        window.alert(errText);
       } else {
-        Alert.alert('Error', err.message || 'Could not update stock');
+        Alert.alert(errorTitle, errText);
       }
     } finally {
       setSaving(false);
     }
   };
+
+  const screenTitle =
+    language === 'ta'
+      ? 'கையிருப்பை நிர்வகிக்கவும்'
+      : language === 'hi'
+      ? 'स्टॉक प्रबंधित करें'
+      : 'Manage Stock';
+  const availableStockLabel =
+    language === 'ta'
+      ? 'கையிருப்பில் உள்ள அளவு'
+      : language === 'hi'
+      ? 'उपलब्ध स्टॉक'
+      : 'Available Stock';
+  const updateBtnLabel =
+    language === 'ta'
+      ? 'கையிருப்பை புதுப்பிக்கவும்'
+      : language === 'hi'
+      ? 'स्टॉक अपडेट करें'
+      : 'Update Stock';
 
   return (
     <View style={styles.root}>
@@ -97,7 +136,7 @@ export default function ManageStockScreen() {
         >
           <ArrowLeft size={20} color={Colors.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
-        <Text style={styles.screenTitle}>Manage Stock</Text>
+        <Text style={styles.screenTitle}>{screenTitle}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -115,7 +154,7 @@ export default function ManageStockScreen() {
         )}
 
         {/* Available Stock Label */}
-        <Text style={styles.stockLabel}>Available Stock</Text>
+        <Text style={styles.stockLabel}>{availableStockLabel}</Text>
 
         {/* Stock Counter */}
         <View style={styles.counterRow}>
@@ -150,7 +189,7 @@ export default function ManageStockScreen() {
           {saving ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
-            <Text style={styles.updateBtnText}>Update Stock</Text>
+            <Text style={styles.updateBtnText}>{updateBtnLabel}</Text>
           )}
         </TouchableOpacity>
       </View>

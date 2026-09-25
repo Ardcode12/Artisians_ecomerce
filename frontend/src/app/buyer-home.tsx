@@ -48,6 +48,7 @@ import {
 import { Fonts, Shadow, Radius, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { useProductSpeech } from '@/utils/speech';
 import { ProductListenButton } from '@/components/ui/ProductListenButton';
 import { LanguagePicker } from '@/components/artisan/LanguagePicker';
@@ -92,6 +93,10 @@ interface Product {
   is_gi_tagged?: boolean;
   is_verified?: boolean;
   badge?: 'bestseller' | 'new' | 'pricedrop';
+  artisan_shop_name?: string;
+  artisan_shop_logo?: string;
+  shop_name?: string;
+  shop_logo_url?: string;
 }
 
 interface ArtisanMaker {
@@ -130,25 +135,25 @@ export interface BuyerMessage {
   messages?: MessageItem[];
 }
 
-// Clean categories without emojis
-const CATEGORY_ITEMS = [
-  { id: 'all', label: 'All Crafts', filter: 'All', Icon: Layers },
-  { id: 'textiles', label: 'Handlooms & Sarees', filter: 'Handloom', Icon: Sparkles },
-  { id: 'embroidery', label: 'Embroidery & Toys', filter: 'Embroidery', Icon: Tag },
-  { id: 'pottery', label: 'Pottery & Clay', filter: 'Pottery', Icon: Package },
-  { id: 'woodcraft', label: 'Woodcraft', filter: 'Woodcraft', Icon: Store },
-  { id: 'metalwork', label: 'Metalcraft', filter: 'Metalcraft', Icon: ShieldCheck },
-  { id: 'jewelry', label: 'Jewelry', filter: 'Jewelry', Icon: Award },
-  { id: 'paintings', label: 'Folk Art', filter: 'Paintings', Icon: ShoppingBag },
+// Clean categories with full Hindi and Tamil localizations
+const getCategoryItems = (language: string) => [
+  { id: 'all', label: language === 'ta' ? 'அனைத்து கைவினை' : language === 'hi' ? 'सभी शिल्प' : 'All Crafts', filter: 'All', Icon: Layers },
+  { id: 'textiles', label: language === 'ta' ? 'கைத்தறி & சேலைகள்' : language === 'hi' ? 'हथकरघा एवं साड़ियां' : 'Handlooms & Sarees', filter: 'Handloom', Icon: Sparkles },
+  { id: 'embroidery', label: language === 'ta' ? 'தையல் & பொம்மைகள்' : language === 'hi' ? 'कढ़ाई एवं खिलौने' : 'Embroidery & Toys', filter: 'Embroidery', Icon: Tag },
+  { id: 'pottery', label: language === 'ta' ? 'மண்பாண்டங்கள்' : language === 'hi' ? 'मिट्टी के बर्तन' : 'Pottery & Clay', filter: 'Pottery', Icon: Package },
+  { id: 'woodcraft', label: language === 'ta' ? 'மரச் சிற்பம்' : language === 'hi' ? 'काष्ठशिल्प' : 'Woodcraft', filter: 'Woodcraft', Icon: Store },
+  { id: 'metalwork', label: language === 'ta' ? 'உலோகக் கைவினை' : language === 'hi' ? 'धातुशिल्प' : 'Metalcraft', filter: 'Metalcraft', Icon: ShieldCheck },
+  { id: 'jewelry', label: language === 'ta' ? 'பாரம்பரிய நகைகள்' : language === 'hi' ? 'पारंपरिक आभूषण' : 'Jewelry', filter: 'Jewelry', Icon: Award },
+  { id: 'paintings', label: language === 'ta' ? 'நாட்டுப்புற கலை' : language === 'hi' ? 'लोक कला' : 'Folk Art', filter: 'Paintings', Icon: ShoppingBag },
 ];
 
-const HERO_SLIDES = [
+const getHeroSlides = (language: string) => [
   {
     id: 'slide-1',
-    tag: 'DIRECT FROM ARTISANS',
-    headline: 'Buy Direct. Empower an Artisan.',
-    subtext: 'Every purchase goes straight to the maker. Zero middlemen.',
-    cta: 'Explore Catalog',
+    tag: language === 'ta' ? 'கைவினைஞர்களிடமிருந்து நேரடி' : language === 'hi' ? 'कारीगरों से सीधे' : 'DIRECT FROM ARTISANS',
+    headline: language === 'ta' ? 'நேரடியாக வாங்குங்கள். கைவினைஞர்களை ஆதரியுங்கள்.' : language === 'hi' ? 'सीधे खरीदें। कारीगर को सशक्त बनाएं।' : 'Buy Direct. Empower an Artisan.',
+    subtext: language === 'ta' ? 'ஒவ்வொரு வாங்குதலும் நேரடியாக தயாரிப்பாளருக்குச் செல்கிறது. இடைத்தரகர்கள் இல்லை.' : language === 'hi' ? 'प्रत्येक खरीद सीधे निर्माता तक जाती है। शून्य बिचौलिए।' : 'Every purchase goes straight to the maker. Zero middlemen.',
+    cta: language === 'ta' ? 'பட்டியலைக் காண்க' : language === 'hi' ? 'कैटलॉग देखें' : 'Explore Catalog',
     bg: '#0D0D0D',
     textColor: '#FFFFFF',
     tagColor: '#FBBF24',
@@ -157,10 +162,10 @@ const HERO_SLIDES = [
   },
   {
     id: 'slide-2',
-    tag: 'FESTIVE HANDMADE COLLECTION',
-    headline: 'Authentic Heritage Crafts',
-    subtext: 'Handcrafted sarees, regional pottery, and carved treasures.',
-    cta: 'Shop Now',
+    tag: language === 'ta' ? 'பண்டிகை கைவினைத் தொகுப்பு' : language === 'hi' ? 'उत्सव हस्तनिर्मित संग्रह' : 'FESTIVE HANDMADE COLLECTION',
+    headline: language === 'ta' ? 'அசல் பாரம்பரிய கைவினைப் பொருட்கள்' : language === 'hi' ? 'प्रामाणिक विरासत शिल्प' : 'Authentic Heritage Crafts',
+    subtext: language === 'ta' ? 'கைத்தறிப் புடவைகள், மண்பாண்டங்கள் மற்றும் செதுக்கப்பட்ட பொக்கிஷங்கள்.' : language === 'hi' ? 'हस्तनिर्मित साड़ियां, क्षेत्रीय मिट्टी के बर्तन और नक्काशीदार खजाने।' : 'Handcrafted sarees, regional pottery, and carved treasures.',
+    cta: language === 'ta' ? 'இப்போதே வாங்குங்கள்' : language === 'hi' ? 'अभी खरीदें' : 'Shop Now',
     bg: '#1C1917',
     textColor: '#FFFFFF',
     tagColor: '#FB923C',
@@ -169,10 +174,10 @@ const HERO_SLIDES = [
   },
   {
     id: 'slide-3',
-    tag: 'VERIFIED MAKERS',
-    headline: 'Certified Heritage Artisans',
-    subtext: 'Direct artisan pricing with fair trade guarantee.',
-    cta: 'Meet The Makers',
+    tag: language === 'ta' ? 'சரிபார்க்கப்பட்ட கைவினைஞர்கள்' : language === 'hi' ? 'सत्यापित कारीगर' : 'VERIFIED MAKERS',
+    headline: language === 'ta' ? 'சான்றளிக்கப்பட்ட தலைசிறந்த கைவினைஞர்கள்' : language === 'hi' ? 'प्रमाणित विरासत कारीगर' : 'Certified Heritage Artisans',
+    subtext: language === 'ta' ? 'நேரடி கைவினைஞர் விலை மற்றும் நியாயமான வர்த்தக உத்தரவாதம்.' : language === 'hi' ? 'उचित मूल्य गारंटी के साथ सीधे कारीगर मूल्य निर्धारण।' : 'Direct artisan pricing with fair trade guarantee.',
+    cta: language === 'ta' ? 'கைவினைஞர்களைச் சந்தியுங்கள்' : language === 'hi' ? 'कारीगरों से मिलें' : 'Meet The Makers',
     bg: '#142820',
     textColor: '#FFFFFF',
     tagColor: '#34D399',
@@ -181,10 +186,22 @@ const HERO_SLIDES = [
   },
 ];
 
-const HOW_IT_WORKS = [
-  { step: '1', Icon: Search, text: 'Discover certified artisan products' },
-  { step: '2', Icon: MessageCircle, text: 'Chat directly with the maker' },
-  { step: '3', Icon: Truck, text: 'Direct delivery, fair price guaranteed' },
+const getHowItWorks = (language: string) => [
+  {
+    step: '1',
+    Icon: Search,
+    text: language === 'ta' ? 'சான்றளிக்கப்பட்ட கைவினைப் பொருட்களைக் கண்டறியுங்கள்' : language === 'hi' ? 'प्रमाणित कारीगर शिल्प खोजें' : 'Discover certified artisan products',
+  },
+  {
+    step: '2',
+    Icon: MessageCircle,
+    text: language === 'ta' ? 'கைவினைஞரிடம் நேரடியாக உரையாடுங்கள்' : language === 'hi' ? 'कारीगर से सीधे चैट करें' : 'Chat directly with the maker',
+  },
+  {
+    step: '3',
+    Icon: Truck,
+    text: language === 'ta' ? 'நேரடி டெலிவரி, நியாயமான விலை உத்தரவாதம்' : language === 'hi' ? 'सीधी डिलीवरी, उचित मूल्य की गारंटी' : 'Direct delivery, fair price guaranteed',
+  },
 ];
 
 export default function BuyerHomeScreen() {
@@ -238,9 +255,14 @@ export default function BuyerHomeScreen() {
   const { addToCart: addGlobalCart, cartCount } = useCart();
   const { buyerProfile, profile, signOut, phone } = useAuth();
   const { isSpeaking, toggle: toggleSpeech } = useProductSpeech();
+  const { language } = useLanguage();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const mainScrollRef = useRef<ScrollView>(null);
+
+  const categoryItems = getCategoryItems(language);
+  const heroSlides = getHeroSlides(language);
+  const howItWorks = getHowItWorks(language);
 
   // Initialize booking details from auth
   useEffect(() => {
@@ -351,7 +373,7 @@ export default function BuyerHomeScreen() {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlideIndex((prev) => {
-        const next = (prev + 1) % HERO_SLIDES.length;
+        const next = (prev + 1) % heroSlides.length;
         heroScrollRef.current?.scrollTo({
           x: next * (SCREEN_WIDTH - 32),
           animated: true,
@@ -360,7 +382,7 @@ export default function BuyerHomeScreen() {
       });
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [heroSlides.length]);
 
   // Toggle Wishlist
   const toggleWishlist = async (productId: string) => {
@@ -385,9 +407,14 @@ export default function BuyerHomeScreen() {
       1
     );
 
-    Alert.alert('Added to Bag', `"${product.title}" added to your bag.`, [
-      { text: 'Keep Browsing', style: 'cancel' },
-      { text: 'View Bag', onPress: () => router.push('/cart') },
+    const alertTitle = language === 'ta' ? 'பை-யில் சேர்க்கப்பட்டது' : language === 'hi' ? 'बैग में जोड़ा गया' : 'Added to Bag';
+    const alertMsg = language === 'ta' ? `"${product.title}" உங்கள் பையில் சேர்க்கப்பட்டது.` : language === 'hi' ? `"${product.title}" आपके बैग में जोड़ दिया गया है।` : `"${product.title}" added to your bag.`;
+    const btnKeep = language === 'ta' ? 'தொடர்ந்து பார்க்க' : language === 'hi' ? 'खरीदारी जारी रखें' : 'Keep Browsing';
+    const btnView = language === 'ta' ? 'பையைக் காண்க' : language === 'hi' ? 'बैग देखें' : 'View Bag';
+
+    Alert.alert(alertTitle, alertMsg, [
+      { text: btnKeep, style: 'cancel' },
+      { text: btnView, onPress: () => router.push('/cart') },
     ]);
   };
 
@@ -402,7 +429,10 @@ export default function BuyerHomeScreen() {
   const handleConfirmBooking = async () => {
     if (!bookingProduct) return;
     if (!bookingAddress.trim()) {
-      Alert.alert('Address Required', 'Please enter your shipping delivery address.');
+      Alert.alert(
+        language === 'ta' ? 'முகவரி தேவை' : language === 'hi' ? 'पता आवश्यक है' : 'Address Required',
+        language === 'ta' ? 'உங்கள் டெலிவரி முகவரியை உள்ளிடவும்.' : language === 'hi' ? 'कृपया अपना डिलीवरी पता दर्ज करें।' : 'Please enter your shipping delivery address.'
+      );
       return;
     }
 
@@ -449,16 +479,26 @@ export default function BuyerHomeScreen() {
 
         setBookingModalOpen(false);
         Alert.alert(
-          'Booking Confirmed!',
-          `Your order for "${bookingProduct.title}" (Qty: ${bookingQty}) has been confirmed. The seller has received your booking notification and message.`,
+          language === 'ta' ? 'முன்பதிவு உறுதி செய்யப்பட்டது!' : language === 'hi' ? 'बुकिंग की पुष्टि हो गई!' : 'Booking Confirmed!',
+          language === 'ta'
+            ? `"${bookingProduct.title}" (அளவு: ${bookingQty}) முன்பதிவு செய்யப்பட்டது. விற்பனையாளருக்கு அறிவிக்கப்பட்டுள்ளது.`
+            : language === 'hi'
+            ? `"${bookingProduct.title}" (मात्रा: ${bookingQty}) का ऑर्डर कन्फर्म हो गया है। विक्रेता को सूचित कर दिया गया है।`
+            : `Your order for "${bookingProduct.title}" (Qty: ${bookingQty}) has been confirmed. The seller has received your booking notification and message.`,
           [{ text: 'OK' }]
         );
         fetchData();
       } else {
-        Alert.alert('Booking Error', data.error || 'Could not place booking. Please try again.');
+        Alert.alert(
+          language === 'ta' ? 'முன்பதிவு தோல்வி' : language === 'hi' ? 'बुकिंग त्रुटि' : 'Booking Error',
+          data.error || (language === 'ta' ? 'முன்பதிவு செய்ய முடியவில்லை. மீண்டும் முயற்சிக்கவும்.' : language === 'hi' ? 'बुकिंग नहीं हो सकी। कृपया पुनः प्रयास करें।' : 'Could not place booking. Please try again.')
+        );
       }
     } catch (_) {
-      Alert.alert('Error', 'Network error placing booking.');
+      Alert.alert(
+        language === 'ta' ? 'பிழை' : language === 'hi' ? 'त्रुटि' : 'Error',
+        language === 'ta' ? 'இணைப்புப் பிழை.' : language === 'hi' ? 'नेटवर्क त्रुटि।' : 'Network error placing booking.'
+      );
     } finally {
       setIsBooking(false);
     }
@@ -467,7 +507,13 @@ export default function BuyerHomeScreen() {
   // Open Direct Message Modal
   const handleOpenMessage = (product: Product) => {
     setMessageProduct(product);
-    setMessageText(`Hello! I am interested in "${product.title}". Is this available for immediate dispatch or custom order?`);
+    setMessageText(
+      language === 'ta'
+        ? `வணக்கம்! நான் "${product.title}" வாங்க விரும்புகிறேன். இது உடனே கிடைக்குமா அல்லது தயாரித்து அனுப்புவீர்களா?`
+        : language === 'hi'
+        ? `नमस्ते! मुझे "${product.title}" में रुचि है। क्या यह तुरंत उपलब्ध है?`
+        : `Hello! I am interested in "${product.title}". Is this available for immediate dispatch or custom order?`
+    );
     setMessageModalOpen(true);
   };
 
@@ -494,13 +540,26 @@ export default function BuyerHomeScreen() {
       const data = await res.json();
       if (res.ok && data.success) {
         setMessageModalOpen(false);
-        Alert.alert('Message Sent', 'Your message was sent directly to the seller. They can reply from their dashboard.');
+        Alert.alert(
+          language === 'ta' ? 'செய்தி அனுப்பப்பட்டது' : language === 'hi' ? 'संदेश भेजा गया' : 'Message Sent',
+          language === 'ta'
+            ? 'உங்கள் செய்தி விற்பனையாளருக்கு அனுப்பப்பட்டது. அவர்கள் பதிலளிப்பார்கள்.'
+            : language === 'hi'
+            ? 'आपका संदेश सीधे विक्रेता को भेज दिया गया है। वे अपने डैशबोर्ड से उत्तर दे सकते हैं।'
+            : 'Your message was sent directly to the seller. They can reply from their dashboard.'
+        );
         fetchData();
       } else {
-        Alert.alert('Error', 'Failed to send message.');
+        Alert.alert(
+          language === 'ta' ? 'பிழை' : language === 'hi' ? 'त्रुटि' : 'Error',
+          language === 'ta' ? 'செய்தி அனுப்ப முடியவில்லை.' : language === 'hi' ? 'संदेश भेजने में विफल।' : 'Failed to send message.'
+        );
       }
     } catch (_) {
-      Alert.alert('Error', 'Network error sending message.');
+      Alert.alert(
+        language === 'ta' ? 'பிழை' : language === 'hi' ? 'त्रुटि' : 'Error',
+        language === 'ta' ? 'இணைப்புப் பிழை.' : language === 'hi' ? 'नेटवर्क त्रुटि।' : 'Network error sending message.'
+      );
     } finally {
       setIsSendingMessage(false);
     }
@@ -628,7 +687,8 @@ export default function BuyerHomeScreen() {
           >
             <MapPin size={13} color="#B5502F" strokeWidth={2.2} />
             <Text style={styles.locationText} numberOfLines={1}>
-              Delivering to <Text style={styles.locationCity}>{deliveryCity}</Text>
+              {language === 'ta' ? 'டெலிவரி இடம்: ' : language === 'hi' ? 'डिलीवरी का स्थान: ' : 'Delivering to '}
+              <Text style={styles.locationCity}>{deliveryCity}</Text>
             </Text>
             <ChevronRight size={12} color="#6B7280" />
           </TouchableOpacity>
@@ -677,7 +737,13 @@ export default function BuyerHomeScreen() {
             <Search size={18} color="#9CA3AF" strokeWidth={2} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search handloom sarees, pottery, woodcraft..."
+              placeholder={
+                language === 'ta'
+                  ? 'கைத்தறி சேலைகள், மண்பாண்டங்கள், கைவினைகளைத் தேடுங்கள்...'
+                  : language === 'hi'
+                  ? 'हथकरघा साड़ी, मिट्टी के बर्तन, काष्ठशिल्प खोजें...'
+                  : 'Search handloom sarees, pottery, woodcraft...'
+              }
               placeholderTextColor="#9CA3AF"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -718,7 +784,7 @@ export default function BuyerHomeScreen() {
               }}
               contentContainerStyle={styles.heroCarousel}
             >
-              {HERO_SLIDES.map((slide) => (
+              {heroSlides.map((slide) => (
                 <View
                   key={slide.id}
                   style={[
@@ -752,7 +818,7 @@ export default function BuyerHomeScreen() {
             </ScrollView>
 
             <View style={styles.dotsRow}>
-              {HERO_SLIDES.map((_, idx) => (
+              {heroSlides.map((_, idx) => (
                 <View
                   key={idx}
                   style={[
@@ -767,13 +833,15 @@ export default function BuyerHomeScreen() {
 
         {/* ── Category Filters (Clean Without Emojis) ───────────────── */}
         <View style={styles.categorySection}>
-          <Text style={styles.sectionTitle}>Shop by Craft</Text>
+          <Text style={styles.sectionTitle}>
+            {language === 'ta' ? 'கைவினைப் பிரிவு வாரியாக' : language === 'hi' ? 'शिल्प के अनुसार खरीदें' : 'Shop by Craft'}
+          </Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoryScroll}
           >
-            {CATEGORY_ITEMS.map((cat) => {
+            {categoryItems.map((cat) => {
               const isSelected = selectedCategory === cat.filter;
               const IconComp = cat.Icon;
               return (
@@ -801,9 +869,15 @@ export default function BuyerHomeScreen() {
         {!searchQuery && artisans.length > 0 && (
           <View style={styles.makersSection}>
             <View style={styles.makersHeader}>
-              <Text style={styles.makersTitle}>Meet the Makers</Text>
+              <Text style={styles.makersTitle}>
+                {language === 'ta' ? 'கைவினைஞர்களைச் சந்தியுங்கள்' : language === 'hi' ? 'कारीगरों से मिलें' : 'Meet the Makers'}
+              </Text>
               <Text style={styles.makersSubtext}>
-                Verified regional artisans preserving generational crafts
+                {language === 'ta'
+                  ? 'தலைமுறை கைவினைகளைப் பாதுகாக்கும் சரிபார்க்கப்பட்ட கைவினைஞர்கள்'
+                  : language === 'hi'
+                  ? 'पीढ़ियों के शिल्प को संरक्षित करने वाले सत्यापित कारीगर'
+                  : 'Verified regional artisans preserving generational crafts'}
               </Text>
             </View>
 
@@ -837,7 +911,9 @@ export default function BuyerHomeScreen() {
                     }}
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.makerShopBtnText}>View Craft</Text>
+                    <Text style={styles.makerShopBtnText}>
+                      {language === 'ta' ? 'பொருட்கள்' : language === 'hi' ? 'शिल्प देखें' : 'View Craft'}
+                    </Text>
                     <ArrowRight size={10} color="#0D0D0D" />
                   </TouchableOpacity>
                 </View>
@@ -851,15 +927,23 @@ export default function BuyerHomeScreen() {
           <View style={styles.productsHeader}>
             <View>
               <Text style={styles.productsTitle}>
-                {selectedCategory === 'All' ? 'Seller Products Catalog' : `${selectedCategory} Collection`}
+                {selectedCategory === 'All'
+                  ? (language === 'ta' ? 'கைவினைப் பொருட்கள் பட்டியல்' : language === 'hi' ? 'कारीगर उत्पाद कैटलॉग' : 'Seller Products Catalog')
+                  : (language === 'ta' ? `${selectedCategory} தொகுப்பு` : language === 'hi' ? `${selectedCategory} संग्रह` : `${selectedCategory} Collection`)}
               </Text>
               <Text style={styles.productsSubheader}>
-                Direct from master artisans · {filteredProducts.length} items available
+                {language === 'ta'
+                  ? `கைவினைஞர்களிடமிருந்து நேரடியாக · ${filteredProducts.length} பொருட்கள் உள்ளன`
+                  : language === 'hi'
+                  ? `कारीगरों से सीधे · ${filteredProducts.length} वस्तुएं उपलब्ध`
+                  : `Direct from master artisans · ${filteredProducts.length} items available`}
               </Text>
             </View>
             {selectedCategory !== 'All' && (
               <TouchableOpacity onPress={() => setSelectedCategory('All')}>
-                <Text style={styles.clearFilterText}>View All</Text>
+                <Text style={styles.clearFilterText}>
+                  {language === 'ta' ? 'அனைத்தும்' : language === 'hi' ? 'सभी देखें' : 'View All'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -867,14 +951,22 @@ export default function BuyerHomeScreen() {
           {loading ? (
             <View style={styles.loaderBox}>
               <ActivityIndicator size="small" color="#0D0D0D" />
-              <Text style={styles.loaderText}>Loading seller products...</Text>
+              <Text style={styles.loaderText}>
+                {language === 'ta' ? 'தயாரிப்புகள் ஏற்றப்படுகின்றன...' : language === 'hi' ? 'उत्पाद लोड हो रहे हैं...' : 'Loading seller products...'}
+              </Text>
             </View>
           ) : filteredProducts.length === 0 ? (
             <View style={styles.emptyBox}>
               <Package size={40} color="#9CA3AF" />
-              <Text style={styles.emptyTitle}>No Products Found</Text>
+              <Text style={styles.emptyTitle}>
+                {language === 'ta' ? 'பொருட்கள் எதுவும் கிடைக்கவில்லை' : language === 'hi' ? 'कोई उत्पाद नहीं मिला' : 'No Products Found'}
+              </Text>
               <Text style={styles.emptySub}>
-                Try clearing your search filter or checking back soon as more artisans list items.
+                {language === 'ta'
+                  ? 'தேடல் வடிப்பானை நீக்க முயற்சிக்கவும் அல்லது புதிய தயாரிப்புகளை எதிர்நோக்குங்கள்.'
+                  : language === 'hi'
+                  ? 'अपना खोज फ़िल्टर साफ़ करके पुनः प्रयास करें।'
+                  : 'Try clearing your search filter or checking back soon as more artisans list items.'}
               </Text>
               <TouchableOpacity
                 style={styles.resetBtn}
@@ -883,7 +975,9 @@ export default function BuyerHomeScreen() {
                   setSearchQuery('');
                 }}
               >
-                <Text style={styles.resetBtnText}>Reset Filters</Text>
+                <Text style={styles.resetBtnText}>
+                  {language === 'ta' ? 'வடிப்பான்களை மீட்டமை' : language === 'hi' ? 'फ़िल्टर रीसेट करें' : 'Reset Filters'}
+                </Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -912,6 +1006,8 @@ export default function BuyerHomeScreen() {
                                 units: item.units || 1,
                                 artisan_id: item.artisan_id || '',
                                 artisan_name: item.artisan_name || '',
+                                artisan_shop_name: item.artisan_shop_name || item.shop_name || item.artisan_name || '',
+                                artisan_shop_logo: item.artisan_shop_logo || item.shop_logo_url || '',
                               },
                             })
                           }
@@ -933,7 +1029,9 @@ export default function BuyerHomeScreen() {
                             ]}
                           >
                             <Text style={styles.cardBadgeText}>
-                              {item.badge === 'bestseller' ? 'Bestseller' : 'New Arrival'}
+                              {item.badge === 'bestseller'
+                                ? (language === 'ta' ? 'அதிக விற்பனை' : language === 'hi' ? 'सर्वाधिक बिकने वाला' : 'Bestseller')
+                                : (language === 'ta' ? 'புதிய வரவு' : language === 'hi' ? 'नया आगमन' : 'New Arrival')}
                             </Text>
                           </View>
                         )}
@@ -966,9 +1064,25 @@ export default function BuyerHomeScreen() {
                         <Text style={styles.cardTitle} numberOfLines={1}>
                           {item.title}
                         </Text>
-                        <Text style={styles.artisanSubtext} numberOfLines={1}>
-                          by {item.artisan_name || 'Master Artisan'}
-                        </Text>
+                        {/* Brand Name & Shop Logo below product title, above price */}
+                        <View style={styles.cardBrandRow}>
+                          {item.artisan_shop_logo || item.shop_logo_url ? (
+                            <Image
+                              source={{ uri: normalizeImageUrl(item.artisan_shop_logo || item.shop_logo_url) }}
+                              style={styles.cardBrandLogo}
+                              resizeMode="contain"
+                            />
+                          ) : (
+                            <View style={styles.cardBrandPlaceholder}>
+                              <Text style={styles.cardBrandPlaceholderText}>
+                                {(item.artisan_shop_name || item.shop_name || item.artisan_name || 'AS').slice(0, 2).toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
+                          <Text style={styles.cardBrandName} numberOfLines={1}>
+                            {item.artisan_shop_name || item.shop_name || item.artisan_name || 'Artisan Studio'}
+                          </Text>
+                        </View>
 
                         {/* Price Row */}
                         <View style={styles.priceRow}>
@@ -985,7 +1099,9 @@ export default function BuyerHomeScreen() {
                             onPress={() => handleOpenBooking(item)}
                             activeOpacity={0.85}
                           >
-                            <Text style={styles.bookNowBtnText}>Book Now</Text>
+                            <Text style={styles.bookNowBtnText}>
+                              {language === 'ta' ? 'முன்பதிவு' : language === 'hi' ? 'बुक करें' : 'Book Now'}
+                            </Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -1015,9 +1131,11 @@ export default function BuyerHomeScreen() {
 
         {/* ── Trust Strip: How It Works (Clean Vector Icons) ────────── */}
         <View style={styles.trustSection}>
-          <Text style={styles.trustSectionTitle}>Why Buy on Artisans Marketplace?</Text>
+          <Text style={styles.trustSectionTitle}>
+            {language === 'ta' ? 'கைவினைச் சந்தையில் ஏன் வாங்க வேண்டும்?' : language === 'hi' ? 'कारीगर बाज़ार से क्यों खरीदें?' : 'Why Buy on Artisans Marketplace?'}
+          </Text>
           <View style={styles.trustCardsRow}>
-            {HOW_IT_WORKS.map((step) => {
+            {howItWorks.map((step) => {
               const IconComp = step.Icon;
               return (
                 <View key={step.step} style={styles.trustCard}>
@@ -2526,5 +2644,38 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#9CA3AF',
     marginTop: 2,
+  },
+  cardBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginVertical: 3,
+  },
+  cardBrandLogo: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FAF8F5',
+    borderWidth: 0.8,
+    borderColor: '#E2E8F0',
+  },
+  cardBrandPlaceholder: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#E8F3E4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardBrandPlaceholderText: {
+    fontSize: 8.5,
+    fontWeight: '700',
+    color: '#2D5016',
+  },
+  cardBrandName: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#4B5563',
+    flex: 1,
   },
 });

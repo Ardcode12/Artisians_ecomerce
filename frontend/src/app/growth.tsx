@@ -95,16 +95,63 @@ export const GROWTH_SECTION_TEXTS: Record<string, Record<string, string>> = {
   },
 };
 
-// ── Color Schemes & Visual Images for the 4 Grid Cards ─────────────────────
-const CARDS_CONFIG = [
+// ── Color Schemes & Visual Images for the 4 Grid Cards (language-aware) ───
+const CARDS_TITLES: Record<string, Record<string, string>> = {
+  design: {
+    en: 'Design Ideas',
+    hi: 'डिज़ाइन आइडियाज़',
+    ta: 'வடிவமைப்பு யோசனைகள்',
+  },
+  materials: {
+    en: 'Raw Materials & Tools',
+    hi: 'कच्चा माल और उपकरण',
+    ta: 'மூலப்பொருட்கள் & கருவிகள்',
+  },
+  schemes: {
+    en: 'Govt. Schemes',
+    hi: 'सरकारी योजनाएं',
+    ta: 'அரசு நலத்திட்டங்கள்',
+  },
+  forecast: {
+    en: 'Demand Forecast',
+    hi: 'त्यौहार मांग',
+    ta: 'தேவை கணிப்பு',
+  },
+};
+
+const CARDS_SUBTITLES: Record<string, Record<string, string>> = {
+  design: {
+    en: 'Modern fusion trends & creative product ideas.',
+    hi: 'आधुनिक ट्रेंड और नए उत्पाद विचार।',
+    ta: 'நவீன இணைவு போக்குகள் மற்றும் புதிய யோசனைகள்.',
+  },
+  materials: {
+    en: 'Trusted bulk suppliers for yarn, clay & equipment.',
+    hi: 'धागा, मिट्टी और उपकरणों के विश्वसनीय थोक सप्लायर।',
+    ta: 'நூல், களிமண் மற்றும் கருவிகளுக்கான நம்பகமான சப்ளையர்.',
+  },
+  schemes: {
+    en: 'Subsidies, loans & PM Vishwakarma support.',
+    hi: 'सब्सिडी, ऋण और पीएम विश्वकर्मा सहायता।',
+    ta: 'மானியம், கடன் மற்றும் பி.எம் விஸ்வகர்மா ஆதரவு.',
+  },
+  forecast: {
+    en: 'Festive season peaks & advance stock planning.',
+    hi: 'त्यौहारी सीजन और अग्रिम स्टॉक योजना।',
+    ta: 'பண்டிகை காலம் மற்றும் முன்கூட்டிய இருப்பு திட்டமிடல்.',
+  },
+};
+
+const getCardsConfig = (lang: string) => [
   {
     id: 'design',
-    title: 'Design Ideas',
+    title: CARDS_TITLES.design[lang] || CARDS_TITLES.design.en,
     vernacular: 'नए डिज़ाइन • புது வடிவமைப்பு',
-    subtitle: 'Modern fusion trends & creative product ideas.',
-    imageUrl: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=400&q=80',
+    subtitle: CARDS_SUBTITLES.design[lang] || CARDS_SUBTITLES.design.en,
+    imageUrl: null,
+    localImage: require('../../assets/images/design-ideas-hero.jpg'),
     icon: Lightbulb,
-    cardBg: '#EFF7F1',         // Soft pastel mint
+    cardBg: '#EFF7F1',
     borderCol: '#DDF0E1',
     iconBg: '#D6EFE0',
     iconCol: '#1B6A3B',
@@ -113,12 +160,13 @@ const CARDS_CONFIG = [
   },
   {
     id: 'materials',
-    title: 'Raw Materials & Tools',
+    title: CARDS_TITLES.materials[lang] || CARDS_TITLES.materials.en,
     vernacular: 'कच्चा माल • மூலப்பொருள்',
-    subtitle: 'Trusted bulk suppliers for yarn, clay & equipment.',
-    imageUrl: 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?w=400&q=80',
+    subtitle: CARDS_SUBTITLES.materials[lang] || CARDS_SUBTITLES.materials.en,
+    imageUrl: null,
+    localImage: require('../../assets/images/raw-materials-hero.jpg'),
     icon: ShoppingCart,
-    cardBg: '#FDF5ED',         // Soft warm peach
+    cardBg: '#FDF5ED',
     borderCol: '#FCECDD',
     iconBg: '#FDE7D2',
     iconCol: '#B45309',
@@ -127,12 +175,13 @@ const CARDS_CONFIG = [
   },
   {
     id: 'schemes',
-    title: 'Govt. Schemes',
+    title: CARDS_TITLES.schemes[lang] || CARDS_TITLES.schemes.en,
     vernacular: 'सरकारी योजना • அரசு திட்டம்',
-    subtitle: 'Subsidies, loans & PM Vishwakarma support.',
-    imageUrl: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?w=400&q=80',
+    subtitle: CARDS_SUBTITLES.schemes[lang] || CARDS_SUBTITLES.schemes.en,
+    imageUrl: null,
+    localImage: require('../../assets/images/schemes-artisan.jpg'),
     icon: FileText,
-    cardBg: '#EFF5FA',         // Soft pastel sky blue
+    cardBg: '#EFF5FA',
     borderCol: '#DDE9F5',
     iconBg: '#DBE9F7',
     iconCol: '#1D4ED8',
@@ -141,12 +190,13 @@ const CARDS_CONFIG = [
   },
   {
     id: 'forecast',
-    title: 'Demand Forecast',
+    title: CARDS_TITLES.forecast[lang] || CARDS_TITLES.forecast.en,
     vernacular: 'त्यौहार मांग • திருவிழா தேவை',
-    subtitle: 'Festive season peaks & advance stock planning.',
-    imageUrl: 'https://images.unsplash.com/photo-1605117815565-91e842c70f87?w=400&q=80',
+    subtitle: CARDS_SUBTITLES.forecast[lang] || CARDS_SUBTITLES.forecast.en,
+    imageUrl: null,
+    localImage: require('../../assets/images/demand-forecast-hero.jpg'),
     icon: TrendingUp,
-    cardBg: '#FDF1EF',         // Soft pastel blush / coral
+    cardBg: '#FDF1EF',
     borderCol: '#FCE4E0',
     iconBg: '#FCE0DA',
     iconCol: '#B91C1C',
@@ -154,6 +204,7 @@ const CARDS_CONFIG = [
     arrowCol: '#B91C1C',
   },
 ];
+
 
 export default function GrowthHubScreen() {
   const insets = useSafeAreaInsets();
@@ -166,6 +217,18 @@ export default function GrowthHubScreen() {
 
   const [activeTab, setActiveTab] = useState<ArtisanTab>('growth');
   const [selectedModal, setSelectedModal] = useState<string | null>(null);
+
+  // Build language-aware cards
+  const CARDS_CONFIG = getCardsConfig(currentAppLang);
+
+  // Translated header texts
+  const headerTitle = currentAppLang === 'ta' ? 'கைவினை பாலம்' : currentAppLang === 'hi' ? 'क्राफ्ट ब्रिज' : 'Craft Bridge';
+  const headerSubtitle = currentAppLang === 'ta'
+    ? 'கைவினைக்கு அதிகாரம், சந்தைகளை விரிவாக்குதல்'
+    : currentAppLang === 'hi'
+    ? 'शिल्प को सशक्त बनाना, बाजारों का विस्तार करना'
+    : 'Empowering Craft, Expanding Markets';
+
 
   useEffect(() => {
     setSpeechSupported(isSpeechSupported());
@@ -269,7 +332,7 @@ export default function GrowthHubScreen() {
         {/* Visual Picture Container with Overlay Badge */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: card.imageUrl }}
+            source={(card as any).localImage || { uri: card.imageUrl }}
             style={styles.cardImage}
             resizeMode="cover"
           />
@@ -347,9 +410,9 @@ export default function GrowthHubScreen() {
             <ArrowLeft size={22} color="#1E293B" strokeWidth={2.2} />
           </TouchableOpacity>
 
-          <Text style={styles.title}>Craft Bridge</Text>
+          <Text style={styles.title}>{headerTitle}</Text>
           <Text style={styles.subtitle}>
-            Tools and support to grow your craft business
+            {headerSubtitle}
           </Text>
         </View>
 
@@ -621,6 +684,11 @@ export default function GrowthHubScreen() {
             </View>
 
             <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              <Image
+                source={require('../../assets/images/schemes-artisan.jpg')}
+                style={{ width: '100%', height: 160, borderRadius: 14, marginBottom: 16 }}
+                resizeMode="cover"
+              />
               <View style={styles.schemeCard}>
                 <View style={styles.schemeBadgeRow}>
                   <Text style={styles.schemeCategory}>Flagship Scheme</Text>

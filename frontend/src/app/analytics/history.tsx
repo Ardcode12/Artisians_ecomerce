@@ -241,6 +241,68 @@ export default function ActivityHistoryScreen() {
       ? (currentAppLang === 'ta' ? 'நிறுத்தவும்' : currentAppLang === 'hi' ? 'रोकें' : 'Stop')
       : (currentAppLang === 'ta' ? 'கேட்க' : currentAppLang === 'hi' ? 'सुनें' : 'Listen');
 
+  const getFilterLabel = (f: string, lang: string) => {
+    if (lang === 'ta') {
+      switch (f) {
+        case 'All': return 'அனைத்தும்';
+        case 'Orders': return 'ஆர்டர்கள்';
+        case 'Listings': return 'பொருட்கள்';
+        case 'Inquiries': return 'விசாரணைகள்';
+        case 'Payments': return 'கட்டணங்கள்';
+        default: return f;
+      }
+    }
+    if (lang === 'hi') {
+      switch (f) {
+        case 'All': return 'सभी';
+        case 'Orders': return 'ऑर्डर';
+        case 'Listings': return 'लिस्टिंग';
+        case 'Inquiries': return 'पूछताछ';
+        case 'Payments': return 'भुगतान';
+        default: return f;
+      }
+    }
+    return f;
+  };
+
+  const formatDateHeading = (dateStr: string, lang: string) => {
+    if (dateStr === 'Today') {
+      return lang === 'ta' ? 'இன்று' : lang === 'hi' ? 'आज' : 'Today';
+    }
+    if (dateStr === 'Yesterday') {
+      return lang === 'ta' ? 'நேற்று' : lang === 'hi' ? 'कल' : 'Yesterday';
+    }
+    return dateStr;
+  };
+
+  const pageTitle =
+    currentAppLang === 'ta'
+      ? 'செயல்பாட்டு வரலாறு'
+      : currentAppLang === 'hi'
+      ? 'गतिविधि इतिहास'
+      : 'Activity History';
+
+  const pageSubtitle =
+    currentAppLang === 'ta'
+      ? 'உங்கள் வணிகத்தில் நடந்த அனைத்தும்'
+      : currentAppLang === 'hi'
+      ? 'आपके व्यवसाय में हुई सभी गतिविधियाँ'
+      : "Everything that's happened in your business";
+
+  const searchPlaceholder =
+    currentAppLang === 'ta'
+      ? 'வரலாற்றைத் தேடவும்...'
+      : currentAppLang === 'hi'
+      ? 'इतिहास खोजें...'
+      : 'Search history...';
+
+  const emptyText =
+    currentAppLang === 'ta'
+      ? 'உங்கள் முதல் தயாரிப்பை வெளியிட்டவுடன் உங்கள் செயல்பாடுகள் இங்கே காண்பிக்கப்படும்.'
+      : currentAppLang === 'hi'
+      ? 'अपना पहला उत्पाद प्रकाशित करने के बाद आपकी गतिविधि यहाँ दिखाई देगी।'
+      : 'Your activity will show up here once you publish your first product.';
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF8F5" />
@@ -278,8 +340,8 @@ export default function ActivityHistoryScreen() {
 
       {/* Title and Subtitle */}
       <View style={styles.titleSection}>
-        <Text style={styles.pageTitle}>Activity History</Text>
-        <Text style={styles.pageSubtitle}>Everything that's happened in your business</Text>
+        <Text style={styles.pageTitle}>{pageTitle}</Text>
+        <Text style={styles.pageSubtitle}>{pageSubtitle}</Text>
       </View>
 
       {/* Search Bar matching Image 3 */}
@@ -288,7 +350,7 @@ export default function ActivityHistoryScreen() {
           <Search size={20} color="#7A8699" strokeWidth={2} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search history..."
+            placeholder={searchPlaceholder}
             placeholderTextColor="#8C97A5"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -333,7 +395,7 @@ export default function ActivityHistoryScreen() {
                     isSelected ? styles.filterTextActive : styles.filterTextInactive,
                   ]}
                 >
-                  {f}
+                  {getFilterLabel(f, currentAppLang)}
                 </Text>
               </TouchableOpacity>
             );
@@ -352,14 +414,12 @@ export default function ActivityHistoryScreen() {
           </View>
         ) : groups.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              Your activity will show up here once you publish your first product.
-            </Text>
+            <Text style={styles.emptyText}>{emptyText}</Text>
           </View>
         ) : (
           groups.map((group, gIdx) => (
             <View key={gIdx} style={styles.dateGroupWrap}>
-              <Text style={styles.dateHeading}>{group.date}</Text>
+              <Text style={styles.dateHeading}>{formatDateHeading(group.date, currentAppLang)}</Text>
 
               <View style={styles.eventsList}>
                 {group.events.map((event: any, eIdx: number) => (

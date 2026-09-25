@@ -66,14 +66,14 @@ export default function AddProductScreen() {
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { language } = useLanguage();
 
   const STEPS = [
-    { label: t('add_product_step_photo') || 'Photo', Icon: Camera },
-    { label: t('add_product_step_describe') || 'Describe', Icon: Mic },
-    { label: t('add_product_step_price') || 'Price', Icon: Tag },
-    { label: t('add_product_step_social') || 'Social Reach', Icon: InstagramIcon },
-    { label: t('add_product_step_publish') || 'Publish', Icon: Send },
+    { label: language === 'ta' ? 'புகைப்படம்' : language === 'hi' ? 'तस्वीर' : 'Photo', Icon: Camera },
+    { label: language === 'ta' ? 'விளக்கம்' : language === 'hi' ? 'विवरण' : 'Describe', Icon: Mic },
+    { label: language === 'ta' ? 'விலை' : language === 'hi' ? 'मूल्य' : 'Price', Icon: Tag },
+    { label: language === 'ta' ? 'சமூக தளம்' : language === 'hi' ? 'सोशल पहुंच' : 'Social Reach', Icon: InstagramIcon },
+    { label: language === 'ta' ? 'வெளியீடு' : language === 'hi' ? 'प्रकाशित करें' : 'Publish', Icon: Send },
   ];
 
   const [fontsLoaded] = useFonts({
@@ -108,7 +108,9 @@ export default function AddProductScreen() {
         >
           <ArrowLeft size={20} color={Colors.textPrimary} strokeWidth={2.2} />
         </TouchableOpacity>
-        <Text style={styles.screenTitle}>{t('add_product_title') || 'Add New Product'}</Text>
+        <Text style={styles.screenTitle}>
+          {language === 'ta' ? 'புதிய தயாரிப்பைச் சேர்க்கவும்' : language === 'hi' ? 'नया उत्पाद जोड़ें' : 'Add New Product'}
+        </Text>
         <View style={styles.stepCount}>
           <Text style={styles.stepCountText}>{currentStep + 1}/{STEPS.length}</Text>
         </View>

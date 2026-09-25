@@ -145,8 +145,22 @@ export default function ShopScreen() {
         return;
       }
 
+      // Check if location services are enabled on the device
+      const enabled = await Location.hasServicesEnabledAsync();
+      if (!enabled) {
+        setErrorMsg(
+          language === 'ta' ? 'GPS சேவை முடக்கப்பட்டுள்ளது. சாதன அமைப்புகளில் இருப்பிட சேவையை இயக்கவும்.' :
+          language === 'hi' ? 'GPS सेवा बंद है। कृपया डिवाइस सेटिंग में स्थान सेवा चालू करें।' :
+          'Location services are disabled. Please enable GPS in device settings.'
+        );
+        setFetchingLocation(false);
+        return;
+      }
+
       const position = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
+        timeInterval: 10000,
+        distanceInterval: 0,
       });
 
       const [geo] = await Location.reverseGeocodeAsync({
@@ -176,11 +190,20 @@ export default function ShopScreen() {
       }
     } catch (err: any) {
       console.warn('GPS location error:', err);
-      setErrorMsg(
-        language === 'ta' ? 'GPS இருப்பிடத்தைப் பெற முடியவில்லை. கீழே கைமுறையாக உள்ளிடவும்.' :
-        language === 'hi' ? 'GPS स्थान नहीं मिला। कृपया नीचे टाइप करें।' :
-        'Could not fetch GPS location. Please enter manually below.'
-      );
+      // Specific handling for timeout errors
+      if (err?.code === 'E_LOCATION_TIMEOUT' || err?.message?.includes('timed out')) {
+        setErrorMsg(
+          language === 'ta' ? 'GPS நேரம் முடிந்தது. வெளியில் சென்று மீண்டும் முயற்சிக்கவும்.' :
+          language === 'hi' ? 'GPS टाइमआउट। खुली जगह पर जाकर दोबारा कोशिश करें।' :
+          'GPS timed out. Try moving to an open area and try again.'
+        );
+      } else {
+        setErrorMsg(
+          language === 'ta' ? 'GPS இருப்பிடத்தைப் பெற முடியவில்லை. கீழே கைமுறையாக உள்ளிடவும்.' :
+          language === 'hi' ? 'GPS स्थान नहीं मिला। कृपया नीचे टाइप करें।' :
+          'Could not fetch GPS location. Please enter manually below.'
+        );
+      }
     } finally {
       setFetchingLocation(false);
     }

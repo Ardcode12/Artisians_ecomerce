@@ -29,19 +29,43 @@ def _resolve_image_to_local(img_ref: str, work_dir: Path, idx: int) -> str:
     if not img_ref:
         return ""
 
-    # Case 1: Already an existing local path
+    # Case 0: Base64 data URI
+    if img_ref.startswith("data:image") or "base64," in img_ref:
+        try:
+            import base64
+            clean_b64 = img_ref.split("base64,")[-1].strip()
+            target = work_dir / f"input_photo_{idx}.jpg"
+            target.write_bytes(base64.b64decode(clean_b64))
+            return str(target.resolve())
+        except Exception as b64_err:
+            logger.warning(f"Could not decode base64 image: {b64_err}")
+
+    # Case 1: file:// URI
+    if img_ref.startswith("file://"):
+        import urllib.parse
+        clean_ref = img_ref.replace("file:///", "").replace("file://", "")
+        clean_ref = urllib.parse.unquote(clean_ref)
+        p = Path(clean_ref)
+        if p.is_file() and p.exists():
+            return str(p.resolve())
+
+    # Case 2: Already an existing local path
     p = Path(img_ref)
     if p.is_file() and p.exists():
         return str(p.resolve())
 
-    # Case 2: Uploads path relative or URL
+    # Case 3: Uploads path relative or URL
     if "/uploads/" in img_ref:
         filename = img_ref.split("/uploads/")[-1]
         local_upload = Path(UPLOADS_DIR) / filename
         if local_upload.exists():
             return str(local_upload.resolve())
+    elif not img_ref.startswith("http") and not img_ref.startswith("/"):
+        local_upload = Path(UPLOADS_DIR) / img_ref
+        if local_upload.exists():
+            return str(local_upload.resolve())
 
-    # Case 3: HTTP/HTTPS URL -> Download to work dir
+    # Case 4: HTTP/HTTPS URL -> Download to work dir
     if img_ref.startswith("http://") or img_ref.startswith("https://"):
         try:
             target = work_dir / f"input_photo_{idx}.jpg"
@@ -72,6 +96,19 @@ def run_reel_pipeline(job_id: str, user_id: str, product: dict,
             loc = _resolve_image_to_local(img, work, i)
             if loc and os.path.exists(loc):
                 local_images.append(loc)
+
+        if not local_images:
+            # Check if any recent image in UPLOADS_DIR exists
+            try:
+                upload_files = sorted(
+                    [f for f in Path(UPLOADS_DIR).glob("*.jpg") if f.is_file()],
+                    key=lambda x: x.stat().st_mtime,
+                    reverse=True
+                )
+                if upload_files:
+                    local_images.append(str(upload_files[0].resolve()))
+            except Exception:
+                pass
 
         if not local_images:
             # Fallback placeholder if no product photos exist
@@ -137,6 +174,8 @@ def run_reel_pipeline(job_id: str, user_id: str, product: dict,
         logger.info(f"[{job_id}] Step 4: Uploading video to storage...")
         video_url = upload_reel(mp4_path, job_id)
         update_job(job_id, video_url=video_url)
+        import time
+        time.sleep(3)
 
         # ── 6. INSTAGRAM PUBLISH ──────────────────────────────────────────
         if not post_to_instagram:
@@ -156,6 +195,16 @@ def run_reel_pipeline(job_id: str, user_id: str, product: dict,
                 job_id,
                 status="VIDEO_READY",
                 stage="Reel ready — Instagram account not connected",
+                progress=100
+            )
+            return
+
+        if not video_url.startswith("https://"):
+            logger.warning(f"[{job_id}] Video URL '{video_url}' is not public HTTPS. Skipping Meta API publish.")
+            update_job(
+                job_id,
+                status="VIDEO_READY",
+                stage="Reel ready for download (Public HTTPS required for Instagram)",
                 progress=100
             )
             return

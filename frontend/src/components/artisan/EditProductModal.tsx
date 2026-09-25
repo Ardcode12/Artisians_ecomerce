@@ -16,6 +16,7 @@ import {
 import { X, Check, Sparkles, Tag, Layers, Globe, PackageCheck, AlertCircle, Building2, RefreshCw, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react-native';
 import { Colors, Fonts, Radius, Shadow, Spacing } from '@/constants/artisan-theme';
 import { BACKEND_URL } from '@/config/api';
+import { useLanguage } from '@/context/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -87,6 +88,7 @@ export function EditProductModal({
   onClose,
   onSuccess,
 }: EditProductModalProps) {
+  const { language } = useLanguage();
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('Handicraft');
@@ -161,11 +163,15 @@ export function EditProductModal({
 
   const handleSave = async () => {
     if (!title.trim()) {
-      setErrorMsg('Product title cannot be empty.');
+      setErrorMsg(
+        language === 'ta' ? 'தயாரிப்பு தலைப்பு காலியாக இருக்க முடியாது.' : language === 'hi' ? 'उत्पाद शीर्षक खाली नहीं हो सकता।' : 'Product title cannot be empty.'
+      );
       return;
     }
     if (!price.trim()) {
-      setErrorMsg('Product price cannot be empty.');
+      setErrorMsg(
+        language === 'ta' ? 'தயாரிப்பு விலை காலியாக இருக்க முடியாது.' : language === 'hi' ? 'उत्पाद मूल्य खाली नहीं हो सकता।' : 'Product price cannot be empty.'
+      );
       return;
     }
 
@@ -195,7 +201,7 @@ export function EditProductModal({
         package_contents: packageContents.trim() || `1 N ${title.trim()}`,
       };
 
-      const resp = await fetch(`${BACKEND_URL}/api/products/${product.id}`, {
+      const resp = await fetch(`${BACKEND_URL}/api/products/${product?.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -210,12 +216,15 @@ export function EditProductModal({
         throw new Error(data.error || `Server error (${resp.status})`);
       }
 
-      Alert.alert('Success', 'Product updated with GeM specifications!');
+      Alert.alert(
+        language === 'ta' ? 'வெற்றி' : language === 'hi' ? 'सफल' : 'Success',
+        language === 'ta' ? 'தயாரிப்பு GeM விவரக்குறிப்புகளுடன் வெற்றிகரமாக புதுப்பிக்கப்பட்டது!' : language === 'hi' ? 'उत्पाद GeM विनिर्देशों के साथ सफलतापूर्वक अपडेट किया गया!' : 'Product updated with GeM specifications!'
+      );
       onSuccess(data.product);
       onClose();
     } catch (err: any) {
       console.warn('[EditProductModal] Error:', err.message);
-      setErrorMsg(err.message || 'Failed to update product. Please check your connection.');
+      setErrorMsg(err.message || (language === 'ta' ? 'தயாரிப்பைப் புதுப்பிக்க முடியவில்லை. உங்கள் இணைப்பைச் சரிபார்க்கவும்.' : language === 'hi' ? 'उत्पाद अपडेट करने में विफल। कृपया अपना कनेक्शन जांचें।' : 'Failed to update product. Please check your connection.'));
     } finally {
       setSaving(false);
     }
@@ -232,8 +241,12 @@ export function EditProductModal({
           {/* Header */}
           <View style={styles.sheetHeader}>
             <View>
-              <Text style={styles.sheetTitle}>Edit Product</Text>
-              <Text style={styles.sheetSub}>Update your catalog details</Text>
+              <Text style={styles.sheetTitle}>
+                {language === 'ta' ? 'தயாரிப்பைத் திருத்து' : language === 'hi' ? 'उत्पाद संपादित करें' : 'Edit Product'}
+              </Text>
+              <Text style={styles.sheetSub}>
+                {language === 'ta' ? 'உங்கள் பட்டியல் விவரங்களைப் புதுப்பிக்கவும்' : language === 'hi' ? 'अपने कैटलॉग विवरण अपडेट करें' : 'Update your catalog details'}
+              </Text>
             </View>
             <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
               <X size={20} color="#0D0D0D" />
@@ -255,7 +268,9 @@ export function EditProductModal({
 
             {/* 1. Title */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Product Title *</Text>
+              <Text style={styles.fieldLabel}>
+                {language === 'ta' ? 'தயாரிப்பு பெயர் *' : language === 'hi' ? 'उत्पाद का नाम *' : 'Product Title *'}
+              </Text>
               <TextInput
                 style={styles.textInput}
                 value={title}
@@ -263,7 +278,7 @@ export function EditProductModal({
                   setTitle(t);
                   if (errorMsg) setErrorMsg('');
                 }}
-                placeholder="e.g. Handcrafted Terracotta Vase"
+                placeholder={language === 'ta' ? 'எ.கா. கைவினை சுடுமண் பூந்தொட்டி' : language === 'hi' ? 'उदा. हस्तनिर्मित टेराकोटा फूलदान' : 'e.g. Handcrafted Terracotta Vase'}
                 placeholderTextColor="#9CA3AF"
               />
             </View>
@@ -271,7 +286,9 @@ export function EditProductModal({
             {/* 2. Price & Units in a row */}
             <View style={styles.rowTwo}>
               <View style={[styles.fieldGroup, { flex: 1.2 }]}>
-                <Text style={styles.fieldLabel}>Price (₹) *</Text>
+                <Text style={styles.fieldLabel}>
+                  {language === 'ta' ? 'விலை (₹) *' : language === 'hi' ? 'मूल्य (₹) *' : 'Price (₹) *'}
+                </Text>
                 <View style={styles.priceInputWrapper}>
                   <Text style={styles.currencyPrefix}>₹</Text>
                   <TextInput
@@ -289,7 +306,9 @@ export function EditProductModal({
               </View>
 
               <View style={[styles.fieldGroup, { flex: 0.9 }]}>
-                <Text style={styles.fieldLabel}>Stock Units</Text>
+                <Text style={styles.fieldLabel}>
+                  {language === 'ta' ? 'கிடைக்கும் அலகுகள்' : language === 'hi' ? 'स्टॉक इकाइयाँ' : 'Stock Units'}
+                </Text>
                 <View style={styles.stepperContainer}>
                   <TouchableOpacity
                     style={styles.stepBtn}
@@ -312,10 +331,20 @@ export function EditProductModal({
 
             {/* 3. Status */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Listing Status</Text>
+              <Text style={styles.fieldLabel}>
+                {language === 'ta' ? 'பட்டியல் நிலை' : language === 'hi' ? 'सूची स्थिति' : 'Listing Status'}
+              </Text>
               <View style={styles.statusRow}>
                 {STATUS_OPTIONS.map((opt) => {
                   const active = status === opt.key;
+                  const label =
+                    opt.key === 'published'
+                      ? (language === 'ta' ? 'வெளியிடப்பட்டது' : language === 'hi' ? 'प्रकाशित' : opt.label)
+                      : opt.key === 'draft'
+                      ? (language === 'ta' ? 'வரைவு' : language === 'hi' ? 'ड्राफ्ट' : opt.label)
+                      : opt.key === 'inquiries'
+                      ? (language === 'ta' ? 'விசாரணைகள்' : language === 'hi' ? 'पूछताछ' : opt.label)
+                      : (language === 'ta' ? 'விற்பனையானது' : language === 'hi' ? 'बिका हुआ' : opt.label);
                   return (
                     <TouchableOpacity
                       key={opt.key}
@@ -332,7 +361,7 @@ export function EditProductModal({
                           active && { color: '#FFFFFF', fontWeight: '700' },
                         ]}
                       >
-                        {opt.label}
+                        {label}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -342,11 +371,31 @@ export function EditProductModal({
 
             {/* 4. Category */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Category / Craft Type</Text>
+              <Text style={styles.fieldLabel}>
+                {language === 'ta' ? 'வகை / கைவினை வகை' : language === 'hi' ? 'श्रेणी / शिल्प प्रकार' : 'Category / Craft Type'}
+              </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catScroll}>
                 <View style={styles.catRow}>
                   {CATEGORIES.map((c) => {
                     const active = category.toLowerCase() === c.toLowerCase();
+                    const catLabel =
+                      c === 'Handloom Textile'
+                        ? (language === 'ta' ? 'கைத்தறி ஜவுளி' : language === 'hi' ? 'हथकरघा वस्त्र' : c)
+                        : c === 'Pottery & Clay'
+                        ? (language === 'ta' ? 'மண்பாண்டம் & களிமண்' : language === 'hi' ? 'मिट्टी के बर्तन' : c)
+                        : c === 'Wood Carving'
+                        ? (language === 'ta' ? 'மர வேலைப்பாடு' : language === 'hi' ? 'लकड़ी की नक्काशी' : c)
+                        : c === 'Metalwork'
+                        ? (language === 'ta' ? 'உலோக வேலை' : language === 'hi' ? 'धातु शिल्प' : c)
+                        : c === 'Jewelry'
+                        ? (language === 'ta' ? 'நகைகள்' : language === 'hi' ? 'आभूषण' : c)
+                        : c === 'Painting'
+                        ? (language === 'ta' ? 'ஓவியம்' : language === 'hi' ? 'चित्रकारी' : c)
+                        : c === 'Weaving'
+                        ? (language === 'ta' ? 'நெசவு' : language === 'hi' ? 'बुनाई' : c)
+                        : c === 'Embroidery'
+                        ? (language === 'ta' ? 'எம்பிராய்டரி' : language === 'hi' ? 'कढ़ाई' : c)
+                        : (language === 'ta' ? 'பிற' : language === 'hi' ? 'अन्य' : c);
                     return (
                       <TouchableOpacity
                         key={c}
@@ -355,7 +404,7 @@ export function EditProductModal({
                         activeOpacity={0.8}
                       >
                         <Text style={[styles.catChipText, active && styles.catChipTextActive]}>
-                          {c}
+                          {catLabel}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -367,7 +416,9 @@ export function EditProductModal({
             {/* 5. Multilingual Descriptions */}
             <View style={styles.fieldGroup}>
               <View style={styles.descHeader}>
-                <Text style={styles.fieldLabel}>Product Description</Text>
+                <Text style={styles.fieldLabel}>
+                  {language === 'ta' ? 'தயாரிப்பு விளக்கம்' : language === 'hi' ? 'उत्पाद विवरण' : 'Product Description'}
+                </Text>
                 <View style={styles.langTabsRow}>
                   <TouchableOpacity
                     style={[styles.langTab, activeLangTab === 'EN' && styles.langTabActive]}
@@ -403,7 +454,7 @@ export function EditProductModal({
                   numberOfLines={5}
                   value={descEn}
                   onChangeText={setDescEn}
-                  placeholder="Enter English product description..."
+                  placeholder={language === 'ta' ? 'ஆங்கிலத்தில் தயாரிப்பு விளக்கத்தை உள்ளிடவும்...' : language === 'hi' ? 'अंग्रेजी में उत्पाद विवरण दर्ज करें...' : 'Enter English product description...'}
                   placeholderTextColor="#9CA3AF"
                   textAlignVertical="top"
                 />
@@ -449,12 +500,18 @@ export function EditProductModal({
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={styles.gemTitleRow}>
-                      <Text style={styles.gemTitle}>GeM Portal Standardization</Text>
+                      <Text style={styles.gemTitle}>
+                        {language === 'ta' ? 'GeM போர்டல் தரப்படுத்தல்' : language === 'hi' ? 'GeM पोर्टल मानकीकरण' : 'GeM Portal Standardization'}
+                      </Text>
                       <View style={styles.gemBadgePill}>
-                        <Text style={styles.gemBadgeText}>Govt e-Market</Text>
+                        <Text style={styles.gemBadgeText}>
+                          {language === 'ta' ? 'அரசு இ-சந்தை' : language === 'hi' ? 'सरकारी ई-बाज़ार' : 'Govt e-Market'}
+                        </Text>
                       </View>
                     </View>
-                    <Text style={styles.gemSubtitle}>HSN code, Pehchan ID & bulk export fields</Text>
+                    <Text style={styles.gemSubtitle}>
+                      {language === 'ta' ? 'HSN குறியீடு, பெஹ்சான் ஐடி மற்றும் மொத்த ஏற்றுமதி' : language === 'hi' ? 'HSN कोड, पहचान आईडी और बल्क निर्यात फ़ील्ड' : 'HSN code, Pehchan ID & bulk export fields'}
+                    </Text>
                   </View>
                 </View>
                 {gemSectionOpen ? (
@@ -478,7 +535,9 @@ export function EditProductModal({
                     ) : (
                       <>
                         <Sparkles size={14} color="#1E3A8A" strokeWidth={2.2} />
-                        <Text style={styles.autoSuggestText}>Auto-Suggest HSN & Specs for {category}</Text>
+                        <Text style={styles.autoSuggestText}>
+                          {language === 'ta' ? 'HSN & விவரக்குறிப்புகளை தானாகப் பரிந்துரைக்கவும்' : language === 'hi' ? 'HSN और विनिर्देश स्वतः सुझाएं' : `Auto-Suggest HSN & Specs for ${category}`}
+                        </Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -486,7 +545,9 @@ export function EditProductModal({
                   {/* HSN & Pehchan ID */}
                   <View style={styles.rowTwo}>
                     <View style={[styles.fieldGroup, { flex: 1 }]}>
-                      <Text style={styles.gemFieldLabel}>HSN Code * (GST / GeM)</Text>
+                      <Text style={styles.gemFieldLabel}>
+                        {language === 'ta' ? 'HSN குறியீடு * (GST / GeM)' : language === 'hi' ? 'HSN कोड * (GST / GeM)' : 'HSN Code * (GST / GeM)'}
+                      </Text>
                       <TextInput
                         style={styles.gemInput}
                         value={hsnCode}
@@ -497,7 +558,9 @@ export function EditProductModal({
                       />
                     </View>
                     <View style={[styles.fieldGroup, { flex: 1 }]}>
-                      <Text style={styles.gemFieldLabel}>Pehchan ID (Artisan Card)</Text>
+                      <Text style={styles.gemFieldLabel}>
+                        {language === 'ta' ? 'பெஹ்சான் ஐடி (கைவினைஞர் அட்டை)' : language === 'hi' ? 'पहचान आईडी (कारीगर कार्ड)' : 'Pehchan ID (Artisan Card)'}
+                      </Text>
                       <TextInput
                         style={styles.gemInput}
                         value={pehchanId}
@@ -511,11 +574,23 @@ export function EditProductModal({
 
                   {/* Certification Type */}
                   <View style={styles.fieldGroup}>
-                    <Text style={styles.gemFieldLabel}>Artisan / OEM Certification</Text>
+                    <Text style={styles.gemFieldLabel}>
+                      {language === 'ta' ? 'கைவினைஞர் சான்றிதழ்' : language === 'hi' ? 'कारीगर / ओईएम प्रमाणन' : 'Artisan / OEM Certification'}
+                    </Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       <View style={styles.certRow}>
                         {CERT_OPTIONS.map((c) => {
                           const active = certType === c;
+                          const certLabel =
+                            c === 'Pehchan Card'
+                              ? (language === 'ta' ? 'பெஹ்சான் அட்டை' : language === 'hi' ? 'पहचान कार्ड' : c)
+                              : c === 'Handloom Mark'
+                              ? (language === 'ta' ? 'கைத்தறி முத்திரை' : language === 'hi' ? 'हथकरघा मार्क' : c)
+                              : c === 'Silk Mark'
+                              ? (language === 'ta' ? 'பட்டு முத்திரை' : language === 'hi' ? 'सिल्क मार्क' : c)
+                              : c === 'GI User'
+                              ? (language === 'ta' ? 'புவிசார் குறியீடு பயனர்' : language === 'hi' ? 'जीआई उपयोगकर्ता' : c)
+                              : (language === 'ta' ? 'MSME உத்யம்' : language === 'hi' ? 'एमएसएमई उद्यम' : c);
                           return (
                             <TouchableOpacity
                               key={c}
@@ -524,7 +599,7 @@ export function EditProductModal({
                               activeOpacity={0.8}
                             >
                               <Text style={[styles.certChipText, active && styles.certChipTextActive]}>
-                                {c}
+                                {certLabel}
                               </Text>
                             </TouchableOpacity>
                           );
@@ -536,22 +611,26 @@ export function EditProductModal({
                   {/* Dimensions & Weight */}
                   <View style={styles.rowTwo}>
                     <View style={[styles.fieldGroup, { flex: 1.2 }]}>
-                      <Text style={styles.gemFieldLabel}>Dimensions (LxWxH cm)</Text>
+                      <Text style={styles.gemFieldLabel}>
+                        {language === 'ta' ? 'பரிமாணங்கள் (நீxஅxஉ செ.மீ)' : language === 'hi' ? 'आयाम (लंxचौxऊ सेमी)' : 'Dimensions (LxWxH cm)'}
+                      </Text>
                       <TextInput
                         style={styles.gemInput}
                         value={dimensions}
                         onChangeText={setDimensions}
-                        placeholder="e.g. 25x15x15 cm"
+                        placeholder={language === 'ta' ? 'எ.கா. 25x15x15 செ.மீ' : language === 'hi' ? 'उदा. 25x15x15 सेमी' : 'e.g. 25x15x15 cm'}
                         placeholderTextColor="#9CA3AF"
                       />
                     </View>
                     <View style={[styles.fieldGroup, { flex: 0.8 }]}>
-                      <Text style={styles.gemFieldLabel}>Weight (kg)</Text>
+                      <Text style={styles.gemFieldLabel}>
+                        {language === 'ta' ? 'எடை (கிலோ)' : language === 'hi' ? 'वज़न (किग्रा)' : 'Weight (kg)'}
+                      </Text>
                       <TextInput
                         style={styles.gemInput}
                         value={weightKg}
                         onChangeText={setWeightKg}
-                        placeholder="e.g. 0.8"
+                        placeholder={language === 'ta' ? 'எ.கா. 0.8' : language === 'hi' ? 'उदा. 0.8' : 'e.g. 0.8'}
                         placeholderTextColor="#9CA3AF"
                         keyboardType="numeric"
                       />
@@ -560,12 +639,14 @@ export function EditProductModal({
 
                   {/* Package Contents */}
                   <View style={styles.fieldGroup}>
-                    <Text style={styles.gemFieldLabel}>Package Contents (for GeM Delivery)</Text>
+                    <Text style={styles.gemFieldLabel}>
+                      {language === 'ta' ? 'பொதி உள்ளடக்கங்கள்' : language === 'hi' ? 'पैकेज सामग्री (GeM डिलीवरी)' : 'Package Contents (for GeM Delivery)'}
+                    </Text>
                     <TextInput
                       style={styles.gemInput}
                       value={packageContents}
                       onChangeText={setPackageContents}
-                      placeholder="e.g. 1 N Handcrafted Terracotta Vase"
+                      placeholder={language === 'ta' ? 'எ.கா. 1 N கைவினைப் பொருள்' : language === 'hi' ? 'उदा. 1 N हस्तशिल्प उत्पाद' : 'e.g. 1 N Handcrafted Terracotta Vase'}
                       placeholderTextColor="#9CA3AF"
                     />
                   </View>
@@ -573,7 +654,9 @@ export function EditProductModal({
                   {/* GSTIN & GI Tag */}
                   <View style={styles.rowTwo}>
                     <View style={[styles.fieldGroup, { flex: 1 }]}>
-                      <Text style={styles.gemFieldLabel}>GSTIN (Optional / URP)</Text>
+                      <Text style={styles.gemFieldLabel}>
+                        {language === 'ta' ? 'GSTIN (விருப்பத்தேர்வு / URP)' : language === 'hi' ? 'GSTIN (वैकल्पिक / URP)' : 'GSTIN (Optional / URP)'}
+                      </Text>
                       <TextInput
                         style={styles.gemInput}
                         value={gstin}
@@ -584,7 +667,9 @@ export function EditProductModal({
                       />
                     </View>
                     <View style={[styles.fieldGroup, { flex: 1 }]}>
-                      <Text style={styles.gemFieldLabel}>GI Tag Reg No</Text>
+                      <Text style={styles.gemFieldLabel}>
+                        {language === 'ta' ? 'புவிசார் குறியீடு (GI Tag) எண்' : language === 'hi' ? 'जीआई टैग पंजीकरण संख्या' : 'GI Tag Reg No'}
+                      </Text>
                       <TextInput
                         style={styles.gemInput}
                         value={giTag}
@@ -599,7 +684,13 @@ export function EditProductModal({
                   <View style={styles.localContentBanner}>
                     <ShieldCheck size={16} color="#059669" strokeWidth={2.2} />
                     <Text style={styles.localContentText}>
-                      Make In India: <Text style={{ fontWeight: '700' }}>100% Class-I Local Supplier</Text> (GeM public procurement priority)
+                      {language === 'ta' ? (
+                        <>இந்தியாவில் தயாரிப்போம்: <Text style={{ fontWeight: '700' }}>100% வகுப்பு-I உள்ளூர் சப்ளையர்</Text> (GeM பொது கொள்முதல் முன்னுரிமை)</>
+                      ) : language === 'hi' ? (
+                        <>मेक इन इंडिया: <Text style={{ fontWeight: '700' }}>100% वर्ग-I स्थानीय आपूर्तिकर्ता</Text> (GeM सार्वजनिक खरीद प्राथमिकता)</>
+                      ) : (
+                        <>Make In India: <Text style={{ fontWeight: '700' }}>100% Class-I Local Supplier</Text> (GeM public procurement priority)</>
+                      )}
                     </Text>
                   </View>
                 </View>
@@ -607,11 +698,12 @@ export function EditProductModal({
             </View>
           </ScrollView>
 
-
           {/* Footer Actions */}
           <View style={styles.sheetFooter}>
             <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={saving}>
-              <Text style={styles.cancelBtnText}>Cancel</Text>
+              <Text style={styles.cancelBtnText}>
+                {language === 'ta' ? 'ரத்து செய்' : language === 'hi' ? 'रद्द करें' : 'Cancel'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -625,7 +717,9 @@ export function EditProductModal({
               ) : (
                 <>
                   <Check size={18} color="#FFFFFF" strokeWidth={2.5} />
-                  <Text style={styles.saveBtnText}>Save Changes</Text>
+                  <Text style={styles.saveBtnText}>
+                    {language === 'ta' ? 'மாற்றங்களைச் சேமி' : language === 'hi' ? 'परिवर्तन सहेजें' : 'Save Changes'}
+                  </Text>
                 </>
               )}
             </TouchableOpacity>

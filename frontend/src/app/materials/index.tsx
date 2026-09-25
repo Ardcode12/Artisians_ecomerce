@@ -9,10 +9,13 @@ import {
   Modal,
   Animated,
   StatusBar,
-  Platform,
+  Image,
+  ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import {
   ArrowLeft,
   Search,
@@ -25,10 +28,45 @@ import {
   Package,
   X,
   Volume2,
+  CheckCircle2,
+  Star,
+  Phone,
+  RefreshCw,
 } from 'lucide-react-native';
 
+import { BACKEND_URL } from '@/config/api';
 import { useAuth } from '@/context/AuthContext';
 import { Fonts, Shadow } from '@/constants/artisan-theme';
+import { getMaterialImage } from '@/utils/materialImages';
+
+interface SupplierItem {
+  id: string;
+  name: string;
+  phone: string;
+  whatsapp: string;
+  address: string;
+  city: string;
+  state: string;
+  location_str: string;
+  rating: number;
+  review_count: number;
+  verified: boolean;
+  description: string;
+  delivery_available: string;
+  image_url: string;
+  distance_km: number;
+  distance_str: string;
+  matched_material?: {
+    id: string;
+    name: string;
+    category: string;
+    price: number;
+    unit: string;
+    in_stock: boolean;
+    min_order: string;
+    image_url: string;
+  };
+}
 
 export default function MaterialsHomeScreen() {
   const insets = useSafeAreaInsets();
@@ -39,6 +77,13 @@ export default function MaterialsHomeScreen() {
   const [isVoiceModalVisible, setIsVoiceModalVisible] = useState(false);
   const [voiceListening, setVoiceListening] = useState(false);
   const [pulseAnim] = useState(new Animated.Value(1));
+
+  // Location and Nearby Data
+  const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationName, setLocationName] = useState<string>('Detecting location...');
+  const [locating, setLocating] = useState<boolean>(true);
+  const [nearbySuppliers, setNearbySuppliers] = useState<SupplierItem[]>([]);
+  const [loadingNearby, setLoadingNearby] = useState<boolean>(true);
 
   // Determine craft type for personalized chips
   const craftType = (user as any)?.craft_type || 'Pottery';
@@ -58,18 +103,84 @@ export default function MaterialsHomeScreen() {
 
   const craftData = getCraftChips();
 
+  // On mount: Detect GPS location and fetch real nearby data
+  useEffect(() => {
+    detectLocationAndSuppliers();
+  }, []);
+
+  const detectLocationAndSuppliers = async () => {
+    setLocating(true);
+    let lat = 13.0827;
+    let lon = 80.2707;
+    let locLabel = 'Chennai, Tamil Nadu';
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        lat = position.coords.latitude;
+        lon = position.coords.longitude;
+
+        try {
+          const rev = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
+          if (rev && rev.length > 0) {
+            const place = rev[0];
+            const parts = [
+              place.district || place.city || place.subregion,
+              place.region || place.country,
+            ].filter(Boolean);
+            if (parts.length > 0) {
+              locLabel = parts.join(', ');
+            }
+          }
+        } catch (revErr) {
+          console.warn('Reverse geocode fallback', revErr);
+        }
+      }
+    } catch (e) {
+      console.warn('Location detection fallback to default', e);
+    } finally {
+      setUserCoords({ lat, lon });
+      setLocationName(locLabel);
+      setLocating(false);
+      fetchNearbySuppliers(lat, lon);
+    }
+  };
+
+  const fetchNearbySuppliers = async (lat: number, lon: number) => {
+    try {
+      setLoadingNearby(true);
+      const res = await fetch(
+        `${BACKEND_URL}/api/materials/suppliers?lat=${lat}&lon=${lon}&sort=nearest`
+      );
+      const json = await res.json();
+      if (json.success && json.suppliers) {
+        setNearbySuppliers(json.suppliers.slice(0, 3));
+      }
+    } catch (e) {
+      console.warn('Failed to load nearby suppliers', e);
+    } finally {
+      setLoadingNearby(false);
+    }
+  };
+
   const handleSearchSubmit = (term?: string) => {
     const q = (term !== undefined ? term : searchQuery).trim();
-    if (q) {
-      router.push({
-        pathname: '/materials/search' as any,
-        params: { q },
-      });
-    } else {
-      router.push({
-        pathname: '/materials/search' as any,
-        params: {},
-      });
+    router.push({
+      pathname: '/materials/search' as any,
+      params: {
+        q: q || '',
+        lat: userCoords ? userCoords.lat.toString() : '',
+        lon: userCoords ? userCoords.lon.toString() : '',
+      },
+    });
+  };
+
+  const handleCallSupplier = (phone: string) => {
+    if (phone) {
+      Linking.openURL(`tel:${phone.replace(/\s+/g, '')}`);
     }
   };
 
@@ -127,6 +238,40 @@ export default function MaterialsHomeScreen() {
           <Text style={styles.pageSubtitle}>Find everything you need for your craft</Text>
         </View>
 
+        {/* Location Indicator & Refresh at Starting of Page */}
+        <View style={styles.locationBanner}>
+          <View style={styles.locationLeft}>
+            <View style={styles.locPinCircle}>
+              <MapPin size={18} color="#C04B25" strokeWidth={2.4} />
+            </View>
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <View style={styles.locBadgeRow}>
+                <View style={styles.locActiveDot} />
+                <Text style={styles.locActiveText}>GPS LOCATION DETECTED</Text>
+              </View>
+              <Text style={styles.locationName} numberOfLines={1}>
+                {locationName}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.refreshBtn}
+            onPress={detectLocationAndSuppliers}
+            disabled={locating}
+            activeOpacity={0.7}
+          >
+            {locating ? (
+              <ActivityIndicator size="small" color="#C04B25" />
+            ) : (
+              <View style={styles.refreshInner}>
+                <RefreshCw size={14} color="#C04B25" strokeWidth={2.2} />
+                <Text style={styles.refreshText}>Detect</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
         {/* Search Bar */}
         <View style={styles.searchBarContainer}>
           <Search size={20} color="#6B778C" strokeWidth={2} style={styles.searchIcon} />
@@ -160,13 +305,117 @@ export default function MaterialsHomeScreen() {
           <View style={styles.heroTextWrap}>
             <Text style={styles.heroTitle}>Find Suppliers Near Me</Text>
             <Text style={styles.heroSubtitle}>
-              See real suppliers close to you, ranked by price and rating.
+              Real suppliers near {locationName.split(',')[0] || 'you'}, ranked by proximity and rating.
             </Text>
           </View>
           <View style={styles.heroArrowCircle}>
             <ChevronRight size={22} color="#C04B25" strokeWidth={2.5} />
           </View>
         </TouchableOpacity>
+
+        {/* Nearby Data Section (Based on Location) */}
+        <View style={styles.nearbySection}>
+          <View style={styles.nearbyHeaderRow}>
+            <Text style={styles.sectionHeading}>Nearby Suppliers</Text>
+            <TouchableOpacity
+              onPress={() => handleSearchSubmit()}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.viewAllText}>View All ({nearbySuppliers.length})</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loadingNearby ? (
+            <View style={styles.nearbyLoading}>
+              <ActivityIndicator size="small" color="#C04B25" />
+              <Text style={styles.loadingNearbyText}>Finding suppliers near {locationName.split(',')[0]}...</Text>
+            </View>
+          ) : nearbySuppliers.length === 0 ? (
+            <View style={styles.nearbyEmptyCard}>
+              <Text style={styles.nearbyEmptyText}>No suppliers found within 25 km yet.</Text>
+            </View>
+          ) : (
+            <View style={styles.nearbyList}>
+              {nearbySuppliers.map((sup) => {
+                const mat = sup.matched_material;
+                return (
+                  <TouchableOpacity
+                    key={sup.id}
+                    style={styles.nearbyCard}
+                    activeOpacity={0.88}
+                    onPress={() =>
+                      router.push({
+                        pathname: `/materials/${sup.id}` as any,
+                        params: {
+                          material: mat?.name || '',
+                          lat: userCoords?.lat.toString() || '',
+                          lon: userCoords?.lon.toString() || '',
+                        },
+                      })
+                    }
+                  >
+                    <View style={styles.nearbyCardTop}>
+                      {/* Material Thumbnail matching text */}
+                      <Image
+                        source={getMaterialImage(mat?.name || sup.name, mat?.image_url || sup.image_url)}
+                        style={styles.nearbyThumb}
+                        resizeMode="cover"
+                      />
+
+                      <View style={styles.nearbyInfo}>
+                        <View style={styles.nearbyNameRow}>
+                          <Text style={styles.nearbyName} numberOfLines={1}>
+                            {sup.name}
+                          </Text>
+                          {sup.verified && (
+                            <CheckCircle2 size={15} color="#16A34A" fill="#DCFCE7" style={{ marginLeft: 4 }} />
+                          )}
+                        </View>
+
+                        <Text style={styles.nearbyAddress} numberOfLines={1}>
+                          {sup.location_str || sup.address}
+                        </Text>
+
+                        <View style={styles.nearbyMetaRow}>
+                          <View style={styles.distanceBadge}>
+                            <MapPin size={12} color="#C04B25" />
+                            <Text style={styles.distanceText}>{sup.distance_str}</Text>
+                          </View>
+                          <View style={styles.ratingBadge}>
+                            <Star size={13} color="#F59E0B" fill="#F59E0B" style={{ marginRight: 3 }} />
+                            <Text style={styles.ratingText}>{sup.rating.toFixed(1)}</Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      <ChevronRight size={20} color="#94A3B8" />
+                    </View>
+
+                    {/* Bottom strip: Supplied material + price & call button */}
+                    {mat && (
+                      <View style={styles.nearbyCardBottom}>
+                        <Text style={styles.matPreviewText}>
+                          Supplies: <Text style={{ fontWeight: '700', color: '#0F2438' }}>{mat.name}</Text> • ₹{mat.price}/{mat.unit}
+                        </Text>
+
+                        {sup.phone && (
+                          <TouchableOpacity
+                            style={styles.quickCallBtn}
+                            onPress={() => handleCallSupplier(sup.phone)}
+                            activeOpacity={0.8}
+                          >
+                            <Phone size={13} color="#1E6533" style={{ marginRight: 4 }} />
+                            <Text style={styles.quickCallText}>Call</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </View>
 
         {/* Personalized Craft Row */}
         <View style={styles.craftSection}>
@@ -359,7 +608,7 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   titleSection: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   pageTitle: {
     fontSize: 26,
@@ -372,6 +621,73 @@ const styles = StyleSheet.create({
     color: '#6B778C',
     marginTop: 4,
   },
+  locationBanner: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F0ECE4',
+    ...Shadow.sm,
+  },
+  locationLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  locPinCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FDEEE9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  locBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  locActiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16A34A',
+    marginRight: 5,
+  },
+  locActiveText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#16A34A',
+    letterSpacing: 0.4,
+  },
+  locationName: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0F2438',
+  },
+  refreshBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    backgroundColor: '#FAF5F2',
+    borderWidth: 1,
+    borderColor: '#F3D5CA',
+  },
+  refreshInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  refreshText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#C04B25',
+  },
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -381,7 +697,7 @@ const styles = StyleSheet.create({
     borderColor: '#E6EAEE',
     height: 48,
     paddingHorizontal: 16,
-    marginBottom: 18,
+    marginBottom: 16,
     ...Shadow.sm,
   },
   searchIcon: {
@@ -400,16 +716,16 @@ const styles = StyleSheet.create({
   heroCard: {
     backgroundColor: '#F7C4AB',
     borderRadius: 20,
-    paddingVertical: 18,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 22,
   },
   heroPinCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#C04B25',
     justifyContent: 'center',
     alignItems: 'center',
@@ -419,24 +735,154 @@ const styles = StyleSheet.create({
     marginHorizontal: 14,
   },
   heroTitle: {
-    fontSize: 17,
+    fontSize: 16.5,
     fontWeight: '700',
     color: '#0F2438',
     letterSpacing: -0.2,
   },
   heroSubtitle: {
-    fontSize: 12.5,
+    fontSize: 12,
     color: '#475569',
-    marginTop: 4,
-    lineHeight: 16.5,
+    marginTop: 3,
+    lineHeight: 16,
   },
   heroArrowCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  nearbySection: {
+    marginBottom: 22,
+  },
+  nearbyHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  viewAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#C04B25',
+  },
+  nearbyLoading: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F0ECE4',
+  },
+  loadingNearbyText: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 8,
+  },
+  nearbyEmptyCard: {
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  nearbyEmptyText: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  nearbyList: {
+    gap: 10,
+  },
+  nearbyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#EFEAE2',
+    ...Shadow.sm,
+  },
+  nearbyCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nearbyThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: '#F3EFE9',
+  },
+  nearbyInfo: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  nearbyNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nearbyName: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#0F2438',
+    flexShrink: 1,
+  },
+  nearbyAddress: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  nearbyMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 10,
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  distanceText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#C04B25',
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  nearbyCardBottom: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F2EC',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  matPreviewText: {
+    fontSize: 12,
+    color: '#64748B',
+    flex: 1,
+  },
+  quickCallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  quickCallText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#1E6533',
   },
   craftSection: {
     marginBottom: 24,
@@ -445,24 +891,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#0F2438',
-    marginBottom: 12,
     letterSpacing: -0.2,
   },
   chipsRow: {
-    flexDirection: 'row',
-    paddingRight: 10,
+    gap: 8,
+    paddingVertical: 2,
+    marginTop: 10,
   },
   craftChip: {
-    backgroundColor: '#FDEFE7',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#E6EAEE',
   },
   craftChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#9C4121',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#0F2438',
   },
   categorySection: {
     marginBottom: 24,
@@ -471,76 +918,74 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 12,
   },
   categoryCard: {
     width: '48%',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#F0EDE6',
-    padding: 16,
-    marginBottom: 12,
-    minHeight: 110,
-    justifyContent: 'space-between',
+    borderColor: '#E6EAEE',
+    ...Shadow.sm,
   },
   categoryCardFull: {
     width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    minHeight: 76,
-    paddingVertical: 14,
   },
   catIconWrap: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
   },
   catLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#0F2438',
     lineHeight: 18,
-    marginLeft: 0,
   },
   recentSection: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   recentRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
   },
   recentChip: {
-    backgroundColor: '#EDF0F3',
+    backgroundColor: '#F1F4F8',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    marginRight: 10,
   },
   recentChipText: {
-    fontSize: 13.5,
-    color: '#2A3B4D',
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#475569',
   },
   voiceModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 36, 56, 0.45)',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   voiceModalBox: {
-    width: '88%',
+    width: '100%',
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
+    position: 'relative',
     ...Shadow.lg,
   },
   closeVoiceBtn: {
-    alignSelf: 'flex-end',
+    position: 'absolute',
+    top: 16,
+    right: 16,
     padding: 4,
   },
   voicePulseCircle: {
@@ -550,32 +995,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#C04B25',
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 16,
+    marginBottom: 20,
+    marginTop: 10,
+    ...Shadow.md,
   },
   voicePromptTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#0F2438',
-    marginBottom: 6,
   },
   voicePromptSub: {
     fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
+    marginTop: 6,
     marginBottom: 16,
   },
   voiceWavesRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FDF0E6',
+    gap: 6,
+    backgroundColor: '#FBE9E7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
   },
   voiceStatusText: {
     fontSize: 12,
-    color: '#9C4121',
     fontWeight: '600',
-    marginLeft: 6,
+    color: '#C04B25',
   },
 });

@@ -135,10 +135,20 @@ async def generate_description_endpoint(
             if raw_audio_b64:
                 clean_b64 = raw_audio_b64.split(",")[-1].strip()
                 if len(clean_b64) > 50:
+                    raw_bytes = base64.b64decode(clean_b64)
+                    ext = ".m4a"
+                    if raw_bytes.startswith(b"RIFF"):
+                        ext = ".wav"
+                    elif raw_bytes.startswith(b"ID3") or raw_bytes[:2] in (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2"):
+                        ext = ".mp3"
+                    elif raw_bytes.startswith(b"OggS"):
+                        ext = ".ogg"
+                    elif raw_bytes.startswith(b"\x1a\x45\xdf\xa3"):
+                        ext = ".webm"
                     temp_id = uuid.uuid4().hex[:8]
-                    temp_audio_path = UPLOADS_DIR / f"voice-{temp_id}.m4a"
+                    temp_audio_path = UPLOADS_DIR / f"voice-{temp_id}{ext}"
                     with open(temp_audio_path, "wb") as buffer:
-                        buffer.write(base64.b64decode(clean_b64))
+                        buffer.write(raw_bytes)
         except Exception:
             pass
 
@@ -150,6 +160,7 @@ async def generate_description_endpoint(
             whisper_result = transcribe_audio_file(str(temp_audio_path), language=lang_hint)
             if whisper_result:
                 transcription = whisper_result
+                logger.info(f"[AI] Voice transcribed to: '{transcription}'")
             else:
                 warning = (
                     "Audio was received but could not be transcribed "
@@ -205,10 +216,20 @@ async def transcribe_voice_endpoint(
             if raw_audio_b64:
                 clean_b64 = raw_audio_b64.split(",")[-1].strip()
                 if len(clean_b64) > 50:
+                    raw_bytes = base64.b64decode(clean_b64)
+                    ext = ".m4a"
+                    if raw_bytes.startswith(b"RIFF"):
+                        ext = ".wav"
+                    elif raw_bytes.startswith(b"ID3") or raw_bytes[:2] in (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2"):
+                        ext = ".mp3"
+                    elif raw_bytes.startswith(b"OggS"):
+                        ext = ".ogg"
+                    elif raw_bytes.startswith(b"\x1a\x45\xdf\xa3"):
+                        ext = ".webm"
                     temp_id = uuid.uuid4().hex[:8]
-                    temp_audio_path = UPLOADS_DIR / f"stt-{temp_id}.m4a"
+                    temp_audio_path = UPLOADS_DIR / f"stt-{temp_id}{ext}"
                     with open(temp_audio_path, "wb") as buffer:
-                        buffer.write(base64.b64decode(clean_b64))
+                        buffer.write(raw_bytes)
         except Exception:
             pass
 

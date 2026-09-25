@@ -39,7 +39,7 @@ export function SocialReachStep({
   previewImage,
   onNext,
 }: Props) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const [ig, setIg] = useState<{
     linked: boolean;
@@ -62,10 +62,35 @@ export function SocialReachStep({
 
   const canPost = ig.linked && ig.auto_post_enabled;
 
+  const title = language === 'ta' ? 'அதிக வாங்குபவர்களை சென்றடையுங்கள்' : language === 'hi' ? 'अधिक खरीदारों तक पहुँचें' : 'Reach more buyers';
+  const subtitle = language === 'ta' ? 'இந்த தயாரிப்பை 15–20 வினாடி AI விளம்பர ரீலாக மாற்றவும்' : language === 'hi' ? 'इस उत्पाद को 15–20 सेकंड के AI विज्ञापन रील में बदलें' : 'Turn this product into a 15–20 second AI ad reel';
+  const moodLabel = language === 'ta' ? 'ஒரு பாணியைத் தேர்ந்தெடுக்கவும்' : language === 'hi' ? 'एक शैली चुनें' : 'Choose a mood';
+  const postIgLabel = language === 'ta' ? 'ரீலை இன்ஸ்டாகிராமில் பகிரவும்' : language === 'hi' ? 'रील को इंस्टाग्राम पर पोस्ट करें' : 'Post reel to Instagram';
+  const featuredSub = language === 'ta'
+    ? `@${ig.username || 'arti_sanproducts'} இல் இடம்பெறும் (சந்தை சேனல்)`
+    : language === 'hi'
+      ? `@${ig.username || 'arti_sanproducts'} पर प्रदर्शित (मार्केटप्लेस चैनल)`
+      : `Featured on @${ig.username || 'arti_sanproducts'} (Marketplace Channel)`;
+  const continueLabel = language === 'ta' ? 'மதிப்பாய்வுக்கு தொடரவும்' : language === 'hi' ? 'समीक्षा के लिए आगे बढ़ें' : 'Continue to Review';
+
+  const features = [
+    { Icon: Mic, label: language === 'ta' ? 'உங்கள் மொழியில் AI குரல் பதிவு' : language === 'hi' ? 'आपकी भाषा में AI वॉयसओवर' : 'AI voiceover in your language' },
+    { Icon: Subtitles, label: language === 'ta' ? 'இந்திய மொழி வரிகள்' : language === 'hi' ? 'भारतीय भाषाई कैप्शन' : 'Burned-in Indic captions' },
+    { Icon: Music, label: language === 'ta' ? 'இனிய பின்னணி இசை' : language === 'hi' ? 'पारंपरिक पृष्ठभूमि संगीत' : 'Acoustic background music' },
+    { Icon: Clock, label: language === 'ta' ? 'இன்ஸ்டாகிராமிற்கான 15–20 வினாடி ரீல்' : language === 'hi' ? 'इंस्टाग्राम के लिए 15–20 सेकंड की रील' : '15–20s reel for Instagram' },
+  ];
+
+  const getStyleLabel = (key: string, fallback: string) => {
+    if (key === 'heritage') return language === 'ta' ? 'பாரம்பரியம்' : language === 'hi' ? 'विरासत' : fallback;
+    if (key === 'festive') return language === 'ta' ? 'திருவிழா' : language === 'hi' ? 'उत्सव' : fallback;
+    if (key === 'minimal') return language === 'ta' ? 'எளிமையானது' : language === 'hi' ? 'न्यूनतम' : fallback;
+    return fallback;
+  };
+
   return (
     <ScrollView style={s.scroll} contentContainerStyle={s.wrap} showsVerticalScrollIndicator={false}>
-      <Text style={s.h1}>{t('reel.stepTitle') || 'Reach more buyers'}</Text>
-      <Text style={s.h2}>{t('reel.stepSubtitle') || 'Turn this product into a 15–20 second AI ad reel'}</Text>
+      <Text style={s.h1}>{title}</Text>
+      <Text style={s.h2}>{subtitle}</Text>
 
       {/* Phone-frame preview mock */}
       <View style={s.previewRow}>
@@ -87,12 +112,7 @@ export function SocialReachStep({
         </View>
 
         <View style={{ flex: 1, marginLeft: 16 }}>
-          {[
-            { Icon: Mic, label: 'AI voiceover in your language' },
-            { Icon: Subtitles, label: 'Burned-in Indic captions' },
-            { Icon: Music, label: 'Acoustic background music' },
-            { Icon: Clock, label: '15–20s reel for Instagram' },
-          ].map(({ Icon, label }) => (
+          {features.map(({ Icon, label }) => (
             <View key={label} style={s.featRow}>
               <Icon size={16} color="#1B6B3C" />
               <Text style={s.featText}>{label}</Text>
@@ -102,7 +122,7 @@ export function SocialReachStep({
       </View>
 
       {/* Style selector */}
-      <Text style={s.label}>{t('reel.styleLabel') || 'Choose a mood'}</Text>
+      <Text style={s.label}>{moodLabel}</Text>
       <View style={s.styleRow}>
         {STYLES.map((st) => {
           const active = reelStyle === st.key;
@@ -118,7 +138,7 @@ export function SocialReachStep({
             >
               <Icon size={20} color={active ? st.color : '#9A9A9A'} />
               <Text style={[s.styleText, active && { color: st.color, fontWeight: '700' }]}>
-                {t(st.labelKey) || st.fallback}
+                {getStyleLabel(st.key, st.fallback)}
               </Text>
             </Pressable>
           );
@@ -131,10 +151,8 @@ export function SocialReachStep({
           <InstagramIcon size={20} color="#FFFFFF" />
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={s.igTitle}>{t('reel.postToIg') || 'Post reel to Instagram'}</Text>
-          <Text style={s.igSub}>
-            {`Featured on @${ig.username || 'arti_sanproducts'} (Marketplace Channel)`}
-          </Text>
+          <Text style={s.igTitle}>{postIgLabel}</Text>
+          <Text style={s.igSub}>{featuredSub}</Text>
         </View>
         <Switch
           value={postToIg}
@@ -146,7 +164,7 @@ export function SocialReachStep({
 
       {onNext && (
         <Pressable style={s.continueBtn} onPress={onNext}>
-          <Text style={s.continueBtnText}>{t('auth_continue') || 'Continue to Review'}</Text>
+          <Text style={s.continueBtnText}>{continueLabel}</Text>
           <ChevronRight size={18} color="#FFFFFF" />
         </Pressable>
       )}

@@ -28,24 +28,12 @@ import {
 import { Colors, Fonts, Shadow, NAV_HEIGHT } from '@/constants/artisan-theme';
 import { ArtisanBottomNav, ArtisanTab } from '@/components/artisan/ArtisanBottomNav';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { BACKEND_URL } from '@/config/api';
 const { width } = Dimensions.get('window');
 
-const PERIOD_TABS = ['7 Days', '30 Days', '3 Months', '1 Year'];
-
-const DAILY_DATA = [
-  { day: 'Mon', amount: 4200 },
-  { day: 'Tue', amount: 3800 },
-  { day: 'Wed', amount: 5100 },
-  { day: 'Thu', amount: 4600 },
-  { day: 'Fri', amount: 6200 },
-  { day: 'Sat', amount: 5500 },
-  { day: 'Sun', amount: 3100 },
-];
-
-const maxAmount = Math.max(...DAILY_DATA.map((d) => d.amount));
-
 export default function EarningsScreen() {
+  const { language } = useLanguage();
   const [activeTab, setActiveTab] = useState<ArtisanTab>('home');
   const [activePeriod, setActivePeriod] = useState('7 Days');
   const [totalSales, setTotalSales] = useState(32500);
@@ -99,6 +87,25 @@ export default function EarningsScreen() {
 
   const chartBarWidth = (width - 80) / 7 - 8;
 
+  const PERIOD_TABS = [
+    { key: '7 Days', label: language === 'ta' ? '7 நாட்கள்' : language === 'hi' ? '7 दिन' : '7 Days' },
+    { key: '30 Days', label: language === 'ta' ? '30 நாட்கள்' : language === 'hi' ? '30 दिन' : '30 Days' },
+    { key: '3 Months', label: language === 'ta' ? '3 மாதங்கள்' : language === 'hi' ? '3 महीने' : '3 Months' },
+    { key: '1 Year', label: language === 'ta' ? '1 வருடம்' : language === 'hi' ? '1 वर्ष' : '1 Year' },
+  ];
+
+  const DAILY_DATA = [
+    { day: language === 'ta' ? 'திங்கள்' : language === 'hi' ? 'सोम' : 'Mon', amount: 4200 },
+    { day: language === 'ta' ? 'செவ்வாய்' : language === 'hi' ? 'मंगल' : 'Tue', amount: 3800 },
+    { day: language === 'ta' ? 'புதன்' : language === 'hi' ? 'बुध' : 'Wed', amount: 5100 },
+    { day: language === 'ta' ? 'வியாழன்' : language === 'hi' ? 'गुरु' : 'Thu', amount: 4600 },
+    { day: language === 'ta' ? 'வெள்ளி' : language === 'hi' ? 'शुक्र' : 'Fri', amount: 6200 },
+    { day: language === 'ta' ? 'சனி' : language === 'hi' ? 'शनि' : 'Sat', amount: 5500 },
+    { day: language === 'ta' ? 'ஞாயிறு' : language === 'hi' ? 'रवि' : 'Sun', amount: 3100 },
+  ];
+
+  const maxAmount = Math.max(...DAILY_DATA.map((d) => d.amount));
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -112,7 +119,9 @@ export default function EarningsScreen() {
         >
           <ArrowLeft size={20} color={Colors.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
-        <Text style={styles.screenTitle}>Analytics</Text>
+        <Text style={styles.screenTitle}>
+          {language === 'ta' ? 'பகுப்பாய்வு' : language === 'hi' ? 'विश्लेषण' : 'Analytics'}
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -127,16 +136,16 @@ export default function EarningsScreen() {
         {/* Period Tabs */}
         <View style={styles.periodRow}>
           {PERIOD_TABS.map((tab) => {
-            const isActive = activePeriod === tab;
+            const isActive = activePeriod === tab.key;
             return (
               <TouchableOpacity
-                key={tab}
+                key={tab.key}
                 style={[styles.periodTab, isActive && styles.periodTabActive]}
-                onPress={() => setActivePeriod(tab)}
+                onPress={() => setActivePeriod(tab.key)}
                 activeOpacity={0.8}
               >
                 <Text style={[styles.periodText, isActive && styles.periodTextActive]}>
-                  {tab}
+                  {tab.label}
                 </Text>
               </TouchableOpacity>
             );
@@ -146,7 +155,9 @@ export default function EarningsScreen() {
         {/* Stats Cards */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statCardLabel}>Total Sales</Text>
+            <Text style={styles.statCardLabel}>
+              {language === 'ta' ? 'மொத்த விற்பனை' : language === 'hi' ? 'कुल बिक्री' : 'Total Sales'}
+            </Text>
             <View style={styles.statCardValueRow}>
               <Text style={styles.statCardValue}>
                 ₹ {totalSales.toLocaleString('en-IN')}
@@ -161,11 +172,15 @@ export default function EarningsScreen() {
 
         <View style={styles.statsRowSmall}>
           <View style={styles.statCardSmall}>
-            <Text style={styles.statSmallLabel}>Total Orders</Text>
+            <Text style={styles.statSmallLabel}>
+              {language === 'ta' ? 'மொத்த ஆர்டர்கள்' : language === 'hi' ? 'कुल ऑर्डर' : 'Total Orders'}
+            </Text>
             <Text style={styles.statSmallValue}>{totalOrders}</Text>
           </View>
           <View style={styles.statCardSmall}>
-            <Text style={styles.statSmallLabel}>Products Sold</Text>
+            <Text style={styles.statSmallLabel}>
+              {language === 'ta' ? 'விற்ற தயாரிப்புகள்' : language === 'hi' ? 'बेचे गए उत्पाद' : 'Products Sold'}
+            </Text>
             <Text style={styles.statSmallValue}>{productsSold}</Text>
           </View>
         </View>

@@ -31,9 +31,10 @@ import {
   ChevronDown,
 } from 'lucide-react-native';
 
-import { BACKEND_URL } from '@/config/api';
+import { BACKEND_URL, normalizeImageUrl } from '@/config/api';
 import { useAuth } from '@/context/AuthContext';
 import { Fonts, Shadow } from '@/constants/artisan-theme';
+import { getMaterialImage } from '@/utils/materialImages';
 
 interface MaterialItem {
   id: string;
@@ -108,6 +109,8 @@ export default function SupplierDetailScreen() {
       setLoading(true);
       const url = new URL(`${BACKEND_URL}/api/materials/suppliers/${supplierId}`);
       if (initialMaterial) url.searchParams.append('material', initialMaterial);
+      if (params.lat) url.searchParams.append('lat', params.lat as string);
+      if (params.lon) url.searchParams.append('lon', params.lon as string);
 
       const res = await fetch(url.toString());
       const json = await res.json();
@@ -265,7 +268,7 @@ export default function SupplierDetailScreen() {
         {/* Hero Photo Banner matching Image 4 */}
         <View style={styles.heroBannerWrap}>
           <Image
-            source={{ uri: mat?.image_url || supplier.image_url }}
+            source={{ uri: normalizeImageUrl(mat?.image_url || supplier.image_url) }}
             style={styles.heroBannerImg}
             resizeMode="cover"
           />
@@ -313,7 +316,7 @@ export default function SupplierDetailScreen() {
           {/* Top Half: Thumbnail + Name + Price + In stock */}
           <View style={styles.matTopHalf}>
             <Image
-              source={{ uri: mat?.image_url || supplier.image_url }}
+              source={getMaterialImage(mat?.name || initialMaterial, mat?.image_url || supplier.image_url)}
               style={styles.matThumb}
               resizeMode="cover"
             />
@@ -638,6 +641,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 12,
     backgroundColor: '#F1F5F9',
+    overflow: 'hidden',
   },
   matDetailsWrap: {
     flex: 1,
